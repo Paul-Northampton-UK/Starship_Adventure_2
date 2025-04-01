@@ -1,0 +1,3059 @@
+# =====================================================================
+# SPACE ADVENTURE: STARSHIP PLAN - by Paul Abbott
+# =====================================================================
+# This is a YAML file that outlines the structure of a text-based
+# adventure game set on a spaceship. It includes room descriptions,
+# object placement, and object-specific actions. The game engine
+# interprets these instructions to create the game environment.
+# =====================================================================
+# Version: 1.0.0
+# Last Updated: 2025-02-12
+# =====================================================================
+# Change Log:
+# - 2025-02-12: V1.0.0  - Initial version of the Starship Plan.
+# - YYYY-MM-DD (V1.X.X) - [Brief description of updates]
+# =====================================================================
+# Key Concepts:
+# - Introduction: Initial game ,player and UI configuration
+# - Rooms & Areas: Descriptions and object placement
+# - Game objects: defines objects and their characteristics
+# - Actions: Object-specific behavior (e.g., torch actions)
+# - Commands: Generic and multi-object command definitions
+# - Puzzles and Challenges: Interactive puzzles and challenges
+# =====================================================================
+# Authors Notes:
+# This YAML file serves as the primary data source for the game engine, 
+# defining locations, objects, interactions, and dynamic game logic.
+# It does not contain any executeable code but provides the structure
+# and content for the game engine to interpret and render the game.
+# =====================================================================
+#  Table of Contents:
+#  1. Game Setup and Configuration
+#  2. Game UI Configuration
+#  3. Player Setup and Configuration
+#  4. New Game Opening Text
+#  5. Rooms & Areas: Location descriptions and initial object placement
+#  6. Object Definitions: Defines objects and object characteristics.
+#  7. Actions: Object-Specific Behavior
+#  8. Commands: Generic and Multi-Object Command Definitions
+#  9. Puzzles and Challenges: Interactive puzzles and challenges
+# =====================================================================
+
+# =====================================================================
+# 1. Game Settings and Configuration
+# =====================================================================
+  
+game_settings:
+
+  # Game loading configuration
+
+  loading_screen:
+    image: "assets/Starship_Adventure.png"    # Image displayed during loading
+    music: "assets/loading_theme.mp3"         # Music played during loading
+    duration: 5  # Duration in seconds before transitioning to the game
+
+  # End of game loading configuration
+
+  # Game save configuration
+
+  game_save:
+    save_directory: "saves/"  # Defines the OS file location for saves
+    save_format: "yaml"       # Defines file format (YAML for easy reading)
+
+    autosave:
+      enabled: true             # Enable auto-save feature
+      interval: 5               # Auto-save every 5th move
+      on_location_change: true  # Auto-save when changing locations
+      max_slots: 10             # Number of auto-save slots
+      rotation_index: 1         # Tracks which slot to overwrite next
+      file_naming: "saves/autosave_{slot}_{date}_{time}.yaml"   # Auto-save file naming convention
+
+    manual_save:
+      enabled: true                 # Enable manual-save feature
+      max_slots: 5                  # Number of manual save slots
+      rotation_index: 1             # Tracks which manual save slot to overwrite next
+      max_save_name_length: 24      # Limits save names to 24 characters
+      file_naming: "saves/{player_description}_{date}_{time}.yaml"  # Save file naming convention
+
+    last_save:
+      type: null        # Tracks the type of last save: "auto" or "manual"
+      name: null        # Stores the last manual save name
+      timestamp: null   # Last save timestamp in YYYY-MM-DD HH:MM:SS format
+
+  save_data:
+    player:
+      location: true          # Save player's current location
+      health: true            # Save health status
+      stamina: true           # Save stamina level
+      inventory: true         # Save all items currently carried
+      equipped_items: true    # Save any worn or held equipment
+      fatigue: null           # Save player fatigue level - future feature
+      hunger: null            # Save hunger/thirst state - future feature
+      injuries: null          # Save wounds, broken limbs, etc. - future feature
+
+    game_state:
+      power_status: true            # Save power state (offline, emergency, main power, torchlight)
+      gravity_levels: true          # Save gravity conditions
+      visited_rooms: true           # Save which rooms the player has been to
+      unlocked_doors: true          # Save which doors have been unlocked
+      unlocked_containers: true     # Save containers that have been unlocked
+      activated_systems: true       # Save activated consoles, terminals, etc.
+      puzzle_progress: true         # Save puzzle states (solved/unsolved)
+      environmental_factors: true   # Save radiation, oxygen, temperature conditions
+
+    object_tracking:
+      taken_items: true             # Remove items from original locations when picked up
+      moved_objects: true           # Track objects that have been moved by the player
+      container_contents: true      # Save items placed in storage objects
+
+    npcs:
+      location: true                # Save NPC positions
+      dialogue_progress: true       # Save what has been discussed
+      hostile_status: true          # Save if NPCs are hostile or friendly
+
+  # End of game save configuration
+
+  # Game mechanics and environment configuration
+
+  # ----------------------------------------------------------
+  # Environmental Units & Reference Values
+  # ----------------------------------------------------------
+  # * temperature: degrees Celsius (°C)
+  # * pressure_level: bars (1 bar ≈ Earth normal)
+  # * oxygen_level: percentage (0–100)
+  # * radiation_level: millisieverts/hour (mSv/h)
+  # * gravity_level: dimensionless (relative to Earth = 1.0)
+  # * time/duration variables: seconds (s)
+  # -----------------------------------------------------------
+
+  location_modes:
+
+    main_ship:
+      name: "Main Ship"
+      description: "Fully pressurized, standard gravity, stable life support."
+      gravity_level: 1.0
+      oxygen_level: 100
+      radiation_level: 0
+      temperature: 22
+      pressure_level: 1
+      toxicity_level: 0
+
+    yacht:
+      name: "Captain's Yacht"
+      description: "Self-contained vessel with limited but sufficient life support."
+      gravity_level: 1.0
+      oxygen_level: 100
+      radiation_level: 0
+      temperature: 22
+      pressure_level: 1
+      toxicity_level: 0
+      max_occupants: 5  # example limit
+
+    space:
+      name: "Open Space"
+      description: "Vacuum environment, no gravity, no oxygen—spacesuit mandatory."
+      gravity_level: 0.0
+      oxygen_level: 0
+      radiation_level: 5    # or a non-zero baseline
+      temperature: -270     # near-vacuum temperature
+      pressure_level: 0
+      toxicity_level: 0
+      suit_required: true
+      
+  ship_configuration:
+    decks:
+      1: "Captain's Suite"
+      2: "Bridge Deck"
+      3: "Crew Quarters"
+      4: "Engineering Level"
+      5: "Cargo Bay & Docking"
+
+  lighting_messages:
+    windows_present:
+      true: "Natural starlight streams through the windows, providing minimal visibility."
+      false: "No starlight enters here, making artificial lighting essential."
+    backup_power:
+      true: "A faint hum of backup power illuminates the most critical systems."
+      false: "With no backup power, everything is plunged into utter darkness."
+    emergency_exit:
+      true: "Dim floor strips and exit lights guide you, offering a weak glow."
+      false: "No emergency lighting is active; you're on your own in the dark."
+    requires_light_source:
+      true: "Without your own light source, you're effectively blind in here."
+      false: "There's enough ambient light for you to see without additional help."
+
+  # End of game environment configuration
+
+  # Game scoring settings
+
+  puzzle_awards:
+    main_story_score: 500         # Score awarded for solving main story puzzles
+    low_complexity_score: 25      # Score awarded for solving low complexity puzzles
+    medium_complexity_score: 50   # Score awarded for solving medium complexity puzzles
+    high_complexity_score: 100    # Score awarded for solving high complexity puzzles
+
+  # End of games scoring settings
+
+  # Game state configuration
+
+  game_state:
+    power_status: "emergency"  # Initial Ship Power State. Other states: "main_power", "offline", "torch_light"
+    visited_rooms: []          # List of visited rooms (populated during gameplay)
+    yacht_status: "docked"     # Initial state of the Captain's yacht. Can be "docked", "undocked", or "destroyed"
+
+  # End of game state configuration
+
+  # Object default properties
+
+  object_defaults:
+
+    # ✅ GENERAL OBJECT PROPERTIES  
+    is_interactive: true   # Can the player interact with this object? (Most objects should be interactive)
+    is_takeable: false     # Can the player pick up and carry this object? (Defaults to true unless overridden)
+    is_dangerous: false    # Does this object pose a danger? (Explosives, biohazards, sharp objects, etc.)
+    is_destroyable: false  # Can this object be broken or destroyed? (False unless needed for gameplay)
+    is_lockable: false     # Can this object be locked/unlocked? (Useful for doors, safes, storage units)
+    is_storage: false      # Does this object function as a container for other items? (Backpacks, lockers, etc.)
+    is_operational: false  # is the object currently operational (Torches, computers, mechanical tools)
+    is_edible: false       # Can this object be eaten by the player? (If true, is_consumable must also be true)
+    is_weapon: false       # Can this object be used as a weapon. (if true, it can initiate a combat scenario)
+    
+    # ✅ PHYSICAL OBJECT ATTRIBUTES  
+    weight: 1.0            # Default object weight in kg (Overridden for lighter/heavier items)
+    size: 1.0              # Default object size rating (For inventory and storage space calculations)
+    is_movable: false      # Can the object be moved? (Some large objects like consoles shouldn't be movable)
+    is_wearable: false     # Can this object be equipped/worn? (Boots, gloves, exo-suits, helmets, etc.)
+    is_flammable: false    # Can this object catch fire? (Used for fire mechanics, destruction, and hazards)
+    is_toxic: false        # Will consuming this object harm the player? (Poison, radiation, alien parasites)
+    is_food: false         # Differentiates consumables into edible and non-edible items.
+    is_cookable: false     # Can this object be cooked before eating? (If true, eating raw may have risks)
+    
+    # ✅ SPECIAL OBJECT FUNCTIONS  
+    is_consumable: false   # Can this object be used up? (Food, drink, medicine, batteries, fuel cells)  
+    has_durability: false  # Does this object degrade over time or use? (Weapons, tools, repair kits)
+    is_hackable: false     # Can this object be hacked? (Computers, security doors, encrypted devices)
+    is_hidden: false       # Is this object hidden from view? (Secret items, compartments, concealed weapons)
+    is_rechargeable: false # Can this object be recharged if depleted? (Batteries, energy packs)
+    is_fuel_source: false  # Does this object provide energy for another system? (Power cells, fuel tanks)
+    regenerates: false     # Determines whether an object regenerates after consumption or use.
+    is_modular: false      # Defines objects that are built from other objects.
+
+    # ✅ DIGITAL & INTERACTIVE OBJECTS  
+    is_stored: false       # Is this object stored inside another object? (Files inside computers, logs)
+    is_transferable: false # Can this object be copied/moved? (Digital files, data disks)
+    is_activatable: false  # Can this object be turned on/off? (Switches, consoles, machines)
+    is_networked: false    # Can this object connect to a system? (Computers, cameras, ship systems)
+
+    # ✅ INTERACTION RULES  
+    requires_power: false  # Does this object need power to work? (Override for tech-based objects)
+    requires_item: false   # Does this object require another item to function? (Keys for doors, fuel for engines)
+    has_security: false    # Does this object require security clearance? (Locked consoles, restricted doors)
+    is_sensitive: false    # Will it trigger alarms or consequences if disturbed? (Security systems, traps)
+    is_fragile: false      # Will it break if mishandled? (Glass items, unstable tech)
+    is_secret: false       # Is this object initially hidden and needs discovery?
+
+    # End of object default properties
+
+# End of Game Settings and Configuration
+
+
+# =====================================================================
+# 2. Game UI Configuration
+# =====================================================================
+game_ui:
+  window:
+    title: "Starship Adventure"   # Window title
+    width: 1200                   # Window dimensions in pixels
+    height: 800                   # Window dimensions in pixels
+    resizable: true               # Allow window resizing
+    fullscreen: false             # Start in fullscreen mode
+
+  title_bar:
+    display: true                             # Display the title bar
+    text: "STARSHIP ADVENTURE (Version 1.0)"  # Title bar text
+    show_turn_counter: true                   # Display the turn counter
+    turn_counter_position: "right"            # Position of the turn counter
+
+  main_display:
+    scrollable: true              # Enable scrollable text display
+    max_scroll_buffer: 1000       # Limit scroll history to avoid performance issues
+    text_wrap: true               # Wrap text to fit the display width  
+    text_color: "#FFFFFF"         # White text
+    background_color: "#000000"   # Black background
+
+  warnings_section:
+    display: true                   # Display warning messages
+    position: "below_main_display"  # Position of the warning messages
+    max_messages: 3                 # Maximum number of warnings to display
+    warning_colors:                 # Color codes for different warning levels
+      critical: "#FF0000"           # Flashing red for emergencies
+      caution: "#FFFF00"            # Solid yellow for warnings
+
+  player_stats:
+    display: true                 # Display player stats
+    position: "bottom"            # Position of the player stats display
+    stats:                        # List of player stats to display
+      - name: "Health"            # Display name of the stat
+        variable: "health"        # Corresponding player stat variable
+        color_change:             # Color changes based on percentage
+          warning: 20             # Turns yellow at 20%
+          critical: 10            # Flashes red at 10%
+      - name: "Stamina"           # Display name of the stat
+        variable: "stamina"       # Corresponding player stat variable
+        color_change:             # Color changes based on percentage
+          warning: 20             # Turns yellow at 20%
+          critical: 10            # Flashes red at 10%
+      - name: "Oxygen"            # Display name of the stat
+        variable: "oxygen"        # Corresponding player stat variable
+      - name: "Radiation"         # Display name of the stat
+        variable: "radiation"     # Corresponding player stat variable
+      - name: "Temperature"       # Display name of the stat
+        variable: "temperature"   # Corresponding player stat variable
+      - name: "Carry Capacity"    # Display name of the stat
+        variable: "carry_capacity"          # Corresponding player stat variable
+        display_format: "{current}/{max}"   # Format for displaying current/max
+        color_change:     # Color changes based on percentage
+          warning: 80     # Turns yellow at 80% full
+          critical: 90    # Turns red at 90% full
+
+  command_input:
+    display: true
+    position: "bottom"    # Position of the command input box
+    box_color: "#00FFFF"  # Bright turquoise
+    text_color: "#000000" # Black text
+    cursor: "blinking"    # Cursor style: "blinking", "static", "hidden"
+
+  ui_preferences:
+    # Text rendering speed: "instant", "fast", "medium", "slow"
+    text_speed: "medium"
+
+    # Font options: "normal", "large", etc. 
+    font_size: "normal"
+
+    # Optional color themes or accessibility settings
+    color_theme: "default"
+    # Example placeholders:
+    # color_theme: "high_contrast"
+    # color_theme: "dark_mode"
+
+    # Whether to show help/hints in command input
+    show_hints: false
+
+  main_menu:
+    display: true
+    title: "Starship Adventure"
+    options:
+      - id: "load_game"
+        text: "LOAD SAVED GAME"
+        action: "load_game"
+      - id: "start_new_game"
+        text: "START NEW GAME"
+        action: "start_ai_intro"
+
+  ai_guide:
+    introduction:
+      - "Hello earthling..."
+      - "Are you supposed to be here?"
+      - "Is your minuscule brain really up to solving this majestic arena of mystery and intrigue that I have wrought?"
+    yes_no_selection:
+      yes_action: "ask_player_name"
+      no_action: "mock_player_and_exit"
+      no_response:
+        - "I didn't think so... I will await an adversary worthy of my intellect."
+        - "You should go make yourself a nice hot cup of tea and sit and ponder your incompetence."
+        - "Good luck with that!" # Exit game after this
+    ask_name:
+      prompt: >
+        "What's your name, you measly earthling? 
+        And don't you give me one of those rubbish, silly names like 'Sexy' or 'God'. I really hate it when people expose 
+        their intellectual ineptitude. It makes me want to pee in a cup and throw it at them! 
+        If you give me a rubbish name, I'll disallow it immediately and call you 'Idiot' from here on in! 
+        Think carefully about all the possible future ramifications... So... what's your name, idiot?"
+      invalid_names:
+        - "Sexy"
+        - "God"
+        - "CoolGuy"
+        - "Master"
+      invalid_response: "Really! well I'm calling you 'Idiot' from here on in."
+      valid_action: "transition_to_game"
+
+  screen_transition:
+    fade_out: true
+    duration: 3  # Time in seconds before the game begins
+
+# End of UI Configuration
+
+# =====================================================================
+# 3. Player Setup and Configuration
+# =====================================================================
+initial_player_setup:
+
+  starting_location: "player_cabin"
+
+  inventory:
+    carry_weight: 10    # The player can carry up to 10 kg in their hands.
+    carry_size: 10      # The player can carry items with a total size up to 10 units (scale 1-20).
+
+  player_stats:
+    # 🎯 CORE STATS
+    health:
+      description: "The player's current health points."
+      max_value: 100        # Adjust based on starting health
+      current_value: 100    # Adjust based on starting health
+      regeneration_rate: 0  # Adjust if health regenerates over time
+
+    stamina:
+      description: "The player's stamina, affecting movement and strenuous actions."
+      max_value: 100        # Adjust based on starting stamina
+      current_value: 100    # Adjust based on starting stamina
+      regeneration_rate: 2  # Stamina recovers over time
+
+    oxygen:
+      description: "Oxygen level for survival in non-breathable environments."
+      max_value: 100        # Adjust based on starting oxygen
+      current_value: 100    # Adjust based on starting oxygen
+      depletion_rate: 10    # Oxygen drains when in space/low oxygen areas
+
+    energy:
+      description: "Personal energy level affecting sprinting, heavy lifting, and some actions."
+      max_value: 100        # Adjust based on starting energy
+      current_value: 100    # Adjust based on starting energy
+      depletion_rate: 3     # Used up during strenuous actions
+
+    # 🏆 PROGRESSION STATS
+    score:
+      description: "Total score accumulated from solving puzzles and progressing in the game."
+      current_value: 0      # Starting score
+
+    puzzles_solved:
+      main_story: 0         # Number of main story puzzles solved
+      low_complexity: 0     # Number of low complexity puzzles solved
+      medium_complexity: 0  # Number of medium complexity puzzles solved
+      high_complexity: 0    # Number of high complexity puzzles solved
+
+    # 🎒 INVENTORY CAPACITY
+    inventory:
+      description: "Player's inventory capacity rated by accumulated item sizes."
+      max_capacity: 50    # Adjust based on starting inventory size
+      current_items: 0    # Number of items currently carried
+
+    weight_capacity:
+      description: "Player's weight capacity rated by accumulated item weights."
+      max_weight: 50      # Adjust based on starting weight capacity
+      current_weight: 0   # Total weight of items carried
+
+    # 📡 ENVIRONMENTAL CONDITIONS
+    radiation_exposure:
+      description: "Radiation level affecting long-term health."
+      max_value: 100        # Maximum safe radiation exposure
+      current_value: 0      # Starting radiation exposure
+      effect_threshold: 50  # When reached, causes debuffs
+
+    temperature:
+      description: "Player's body temperature in extreme environments."
+      min_safe: 35          # Minimum safe body temperature
+      max_safe: 39          # Maximum safe body temperature
+      current_value: 37     # Starting body temperature
+
+    # The following stats are not used in this version of the game.
+    # They can be implemented and used in future versions / updates.
+
+    # 🧠 MENTAL & AWARENESS STATS (If applicable)
+    memory_recovery:
+      description: "How much of the player's memory has been recovered over time."
+      max_value: 100        # Maximum memory recovery
+      current_value: null   # No starting value. For future development
+      recovery_rate: null   # No recovery rate. For future development
+
+    sanity:
+      description: "Tracks psychological stability, affected by fear-inducing events."
+      max_value: 100        # Maximum sanity level
+      current_value: null   # No starting value. For future development
+      decay_rate: null      # No decay rate. For future development
+
+    # 🔧 SKILLS & ABILITIES (If applicable)
+    hacking:
+      description: "Skill in bypassing security terminals."
+      max_level: 5       # No maximum level. For future development
+      current_level: null   # No starting level. For future development
+
+    engineering:
+      description: "Skill in repairing or modifying objects."
+      max_level: 5          # Maximum level of engineering proficiency
+      current_level: null   # No starting level. For future development
+
+    piloting:
+      description: "Skill in flying the ship or using navigation tools."
+      max_level: 5          # Maximum level of piloting proficiency
+      current_level: null   # No starting level. For future development
+
+    combat:
+      description: "Proficiency with weapons or hand-to-hand combat."
+      max_level: 5          # Maximum level of combat proficiency
+      current_level: null   # No starting level. For future development
+
+# End of initial_player_setup
+
+# ========================
+# 4. New Game Opening Text
+# ========================
+
+opening_text: >
+    Darkness...<br>
+
+    A deep, heavy fog clings to your thoughts, pulling you in and out of consciousness. Your head throbs,
+    a dull ache pressing against your skull, as though you've been asleep for far too long.<br>
+
+    A faint beeping noise drifts through the haze, a soft, rhythmic pulse nudging you toward wakefulness.
+    Slowly, you stir. The world around you is formless at first, just a blur of shadow and dim light.<br>
+
+    Then, clarity begins to seep in.<br>
+
+    You realize you're lying on something firm, a bed perhaps. The air is still, carrying a metallic tinge,
+    and as your vision sharpens, so too does your awareness of your surroundings. The ceiling above you is
+    faintly illuminated by thin, glowing strips along the edges, casting a cold blue hue across the cabin.
+    The main light remains off, leaving the space wrapped in an eerie, half-lit silence.<br>
+
+    You push yourself up slowly, your movements sluggish. The room around you is compact yet functional,
+    with smooth metallic walls, a single chair in the corner, and a small table beside the bed. On the table,
+    a tablet device blinks insistently, its soft beeping cutting through the silence. Next to it, a colourful
+    comic book lies closed with its vibrant cover catching your attention.<br>
+
+    "To Infinity and Beyond..." blazes across the front in bold, colourful letters. The cover illustration
+    depicts a rugged-faced space marine, his helmet tucked under one arm, standing atop a jagged alien
+    mountain. In his other hand, he grips a tattered blue flag, its emblem, a silver star encircled by the
+    words "United Federation of Planets" fluttering defiantly against an unseen wind.<br>
+
+    Your gaze shifts to the chair in the corner, where a uniformed jumpsuit rests neatly folded. A pair of
+    sturdy boots sits beneath it, and beside them, a futuristic backpack, empty, yet seemingly meant for you.<br>
+
+    The tablet continues to beep, its soft chime persistent, as though it is waiting for you to pick it up
+    and uncover whatever message it holds.<br><br>
+
+
+    Your adventure awaits...<br>
+
+
+
+# End of opening_text
+
+# =====================================================================
+# 5. Rooms & Areas: Location descriptions and initial object placement
+# =====================================================================
+rooms:
+
+  #------------------------------------------
+  # Room 1: Ship Bridge (Main Control Room)
+  #------------------------------------------
+  - room_id: ship_bridge
+    name: "Ship Bridge"
+    room_count: 1
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [3, 18] # absolute coordinate of SW room corner
+    grid_size: [5, 4] # relative size of room from grid_reference 
+
+    windows_present: false         # The Ship Bridge has no windows.
+    backup_power: true             # The Ship Bridge does have its own backup power supply.
+    emergency_exit: false          # Emergency lighting and indicators are not present in the Ship Bridge.
+    requires_light_source: false   # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The bridge is shrouded in absolute darkness. No screens flicker, no consoles hum—just the vast,
+        silent emptiness. The air feels heavier here, as if the absence of power has drained the room
+        of its authority. Without a light source, you can barely make out the shadows of command stations.
+
+      emergency: >
+        Dim emergency lighting casts an eerie bluish glow along the walls, barely illuminating the control
+        stations. Most screens remain inactive, their surfaces reflecting the weak glow of status indicators.
+        A few panels blink warning messages, while the enormous **Bridge Viewer** looms dark and vacant, waiting for
+        someone to bring it back to life.
+
+      main_power: >
+        The bridge comes alive with brilliant lighting and the hum of active systems. Data streams race across
+        control stations, illuminating the walls with holographic projections. The **Captain's Chair** is bathed in
+        command-ready light, and the main **Bridge Viewer** dominates the room, displaying ship diagnostics and
+        navigational readouts. The heart of the ship has been restored.
+
+      torch_light: >
+        The beam of your torch sweeps across the bridge, revealing consoles locked in error states, 
+        keyboards frozen in diagnostic loops, and control panels awaiting reactivation. 
+        The **Captain's Chair** looms in the flickering light, a silent throne in a powerless kingdom.
+
+    short_description:
+      offline: "Total darkness. The bridge is lifeless, swallowed in shadows."
+      emergency: "Dim emergency lighting barely illuminates the room. Systems remain offline."
+      main_power: "The bridge is fully operational, alive with data streams and system activity."
+      torch_light: "Flickering torchlight reveals frozen consoles and silent command stations."
+
+    exits:
+      - direction: "up"
+        destination: "captains_door"
+        dynamic_description:
+          unvisited: "A locked door with an access scanner is up to the south."
+          visited: "The door to the south leads up to the **captain's door**."
+
+      - direction: "south east"
+        destination: "east_bridge_corridor_entrance"
+        dynamic_description:
+          unvisited: "A closed door leads south east."
+          visited: "The door to the south east leads to the **east bridge corridor**."
+
+      - direction: "south west"
+        destination: "west_bridge_corridor_entrance"
+        dynamic_description:
+          unvisited: "A closed door leads south west."
+          visited: "The door to the south west leads to the **west bridge corridor**."
+
+      - direction: "west"
+        destination: "mission_ops"
+        dynamic_description:
+          unvisited: "A closed door leads west."
+          visited: "The door to the west leads to **mission ops**."
+
+      - direction: "east"
+        destination: "bridge_ready_room"
+        dynamic_description:
+          unvisited: "A closed door leads east."
+          visited: "The door to the east leads to the **bridge ready room**."
+
+    objects_present:
+
+  # End of Room 1: Ship Bridge
+
+    #----------------------------------------
+    # Start of Room 1 Areas
+    #----------------------------------------
+    areas:
+
+      #------------------------------------------
+      # Room 1: Area 1: Navigation Station
+      #------------------------------------------
+      - area_id: navigation_station
+        name: "Navigation Station"
+        command_aliases: ["nav", "ns", "navigation", "navi"]
+        area_count: 11  # first digit is the room id, second digit is the area id
+
+        first_visit_description:
+          offline: >
+            The station is completely dark. You can barely make out the outlines of consoles in the dim glow 
+            of your torch—if you have one. Otherwise, you're completely blind. The silence is unsettling, 
+            as if the ship has been adrift for an eternity.
+
+          emergency: >
+            The dim emergency lighting casts long shadows across the consoles. A single display flashes bold red: 
+            "Warning - Ship is off course. Please enter course correction immediately!" The faint hum of backup 
+            power vibrates beneath your feet, and the faint static of unprocessed data crackles from the speakers. 
+            The station feels abandoned, waiting for someone to restore it.
+
+          main_power: >
+            The station is brightly illuminated, its displays alive with data streaming across the screens. The 
+            main navigation interface projects a holographic star map, tracing the ship's trajectory through the void. 
+            A low hum of energy fills the space, and every control panel is responsive and fully operational.
+
+          torch_light: >
+            Your torch beam reveals control panels, input terminals, and a navigation screen locked in error mode. 
+            The words "System Override Required" flicker on the display, waiting for manual intervention.
+
+        short_description:
+          offline: "Completely dark. The consoles are unresponsive."
+          emergency: "Dimly lit, with a flashing warning about the ship's trajectory."
+          main_power: "Fully operational, with a bright star map projecting navigational data."
+          torch_light: "The torch reveals dormant controls and a locked navigation screen."
+
+        objects_present:
+          - id: nav_console
+          - id: nav_officer_log
+          - id: nav_compartment
+          - id: nav_fish_delivery_log
+          - id: nav_fish_photo
+
+      # End of Area 1: Navigation Station
+
+      #------------------------------------------ 
+      # Room 1: Area 2: Science Station
+      #------------------------------------------
+      - area_id: science_station
+        name: "Science Station"
+        command_aliases: ["sci", "ss", "science", "scie"]
+        area_count: 12
+
+        first_visit_description:
+          offline: >
+            The station is shrouded in darkness. Without power, the consoles are dead, and the once-vibrant 
+            holograms have vanished. The silence feels unnatural in a space meant for discovery. The air 
+            carries a faint sterile scent, as if the experiments and research have been frozen in time.
+
+          emergency: >
+            The Science Station is dimly illuminated by emergency lighting. Flickering holograms cast 
+            eerie reflections across the metallic surfaces, and the faint hum of standby power resonates 
+            through the lab. Some devices display error messages, awaiting the return of full functionality.
+
+          main_power: >
+            The station is fully operational, with instruments actively analyzing data. Screens display 
+            molecular structures, spectral readings, and deep-space anomalies. A large holographic display 
+            projects shifting graphs and particle waveforms, while containment chambers secure mysterious 
+            biological samples. The air is alive with the pulse of scientific discovery.
+
+          torch_light: >
+            Your torch beam flickers across the workstations, illuminating dormant instruments and the 
+            ghostly outline of a containment chamber. A small console screen glows faintly, displaying 
+            incomplete analysis logs.
+
+        short_description:
+          offline: "Dark and lifeless, the instruments and screens remain silent."
+          emergency: "Dimly lit, with standby power keeping a few displays faintly active."
+          main_power: "A fully operational scientific hub, alive with research and discovery."
+          torch_light: "The torch reveals darkened screens and flickering holographic remains."
+
+        objects_present:
+#         - id: sci_spectral_analyzer
+#         - id: sci_bio_containment_chamber
+#         - id: sci_quantum_microscope
+#         - id: sci_exo_glove
+#         - id: sci_experimental_energy_cell
+
+      # End of Area 2: Science Station
+
+      #------------------------------------------ 
+      # Room 1: Area 3: Communication Station
+      #------------------------------------------
+      - area_id: communication_station
+        name: "Communication Station"
+        command_aliases: ["com", "cs", "communication", "comm"]
+        area_count: 13
+
+        first_visit_description:
+          offline: >
+            The station is silent, its screens dark and lifeless. Without power, no messages can be received or 
+            transmitted. The hum of background signals is eerily absent, making the space feel strangely isolated.
+
+          emergency: >
+            The **Communication Station** is dimly lit, with only a few status lights still active. The main 
+            **Long Range Transmitter** is unresponsive, though backup channels intermittently display faint static. 
+            A small **Broadcast Panel** blinks on one of the consoles, its message unreadable in the weak glow. 
+            Occasional bursts of garbled audio play through a broken speaker, remnants of lost signals.
+
+          main_power: >
+            The station hums with energy as data streams across multiple **signal interface** monitors. 
+            Real-time transmissions flow in bursts of scrolling text and waveform displays. The ship's 
+            **encryption terminal** is fully operational, and encrypted relays process incoming and outgoing 
+            data without interruption.
+
+          torch_light: >
+            The dim glow of your torch sweeps over the silent **broadcast panel**, casting moving shadows 
+            across the walls. A cracked **signal interface** flickers faintly, displaying a looping 
+            transmission log filled with fragmented messages. 
+
+        short_description:
+          offline: "A dead **Communication Station**, its screens dark and silent."
+          emergency: "A dimly lit array of inactive consoles, backup signals barely flickering."
+          main_power: "A fully operational **Communication Station**, processing interstellar transmissions."
+          torch_light: "The torch reveals static-filled **Signal Interface** screens and a looping, unreadable log."
+
+        objects_present:
+#         - id: com_signal_interface
+#         - id: com_encryption_terminal
+#         - id: com_voice_modulator
+#         - id: com_long_range_transmitter
+#         - id: com_broadcast_panel
+
+      # End of Area 3: Communication Station
+
+      #------------------------------------------ 
+      # Room 1: Area 4: Helm
+      #------------------------------------------
+      - area_id: helm_station
+        name: "Helm Station"
+        command_aliases: ["helm", "hs"]
+        area_count: 14
+
+        first_visit_description:
+          offline: >
+            The station is lifeless, its screens blank. Without power, the helm is useless, and any 
+            attempts to interact with it prove futile. The silence of the inactive systems makes the 
+            vastness outside feel even more distant.
+
+          emergency: >
+            The **Helm Console** flickers dimly under emergency power. Navigation readouts are offline, 
+            and **Thruster Controls** are unresponsive. A red warning indicator blinks: 
+            "PRIMARY PROPULSION SYSTEMS OFFLINE. MANUAL OVERRIDE REQUIRED." The subtle hum beneath your 
+            feet suggests the ship is in a barely functioning standby mode.
+
+          main_power: >
+            The **Helm Station** is fully operational. Screens display real-time velocity, heading, and 
+            gravitational stress factors. The ship's **Thruster Controls** are fully responsive, awaiting 
+            command input. A steady pulse of data flows across the **Navigation Console**, reinforcing a 
+            sense of control.
+
+          torch_light: >
+            The faint glow of your torch reveals darkened controls, frozen **Navigation Displays**, and 
+            an unresponsive **Thruster Control**. The stillness of the station is unsettling, as if the 
+            ship itself is waiting for someone to bring it back to life.
+
+        short_description:
+          offline: "A lifeless station, its screens dark and silent."
+          emergency: "A dimly lit console with unresponsive **Thruster Controls**."
+          main_power: "A fully operational navigation center, controlling the ship's movement."
+          torch_light: "The torch flickers over dark screens and frozen **Navigation Panels**."
+
+        objects_present:
+#          - id: helm_navigation_console
+#          - id: helm_thruster_control
+#          - id: helm_manual_override_panel
+
+      # End of Area 4: Helm Station
+
+      #------------------------------------------ 
+      # Room 1: Area 5: Weapons Station
+      #------------------------------------------
+      - area_id: weapons_station
+        name: "Weapons Station"
+        command_aliases: ["wea", "weap","ws", "weapons", "weapons_station"]
+        area_count: 15
+
+        first_visit_description:
+          offline: >
+            The entire station is dead. Dark monitors reflect the emergency lighting, and without power, 
+            none of the ship's defensive or offensive systems are functional. The air here feels heavier, 
+            as if the ship itself is aware of its vulnerability.
+
+          emergency: >
+            The station is dimly illuminated by emergency lighting. The **Targeting Console** remains offline, 
+            but a red status message blinks repeatedly: "PRIMARY WEAPONS SYSTEMS DISABLED. MANUAL RESET REQUIRED." 
+            A faint hum suggests some residual power still flows through the consoles.
+
+          main_power: >
+            The station hums with controlled energy. The **Targeting Console** Screens displays real-time weapon 
+            readouts, showing Targeting Locks, System Power Levels, and shield integrity. The ship's
+            **Firing Controls** are primed and ready, waiting for a command.
+
+          torch_light: >
+            The glow of your torch flickers over the inactive **Targeting Console** and the silent
+            **Weapon Firing Controls**. The once-dominant displays now shows only static error messages. The lack of 
+            operational systems makes the station feel eerily powerless.
+
+        short_description:
+          offline: "A dead station with dark screens and inactive controls."
+          emergency: "A dimly lit tactical console with offline systems."
+          main_power: "A fully operational weapon control station."
+          torch_light: "The torch illuminates silent, inactive targeting panels."
+
+        objects_present:
+#          - id: weapons_targeting_console
+#          - id: weapons_firing_controls
+#          - id: weapons_diagnostics_panel
+#          - id: weapons_manual_override
+
+      # End of Area 5: Weapons Station
+
+      #------------------------------------------ 
+      # Room 1: Area 6: Engineering Station
+      #------------------------------------------
+      - area_id: engineering_station
+        name: "Engineering Station"
+        command_aliases: ["eng", "engineer", "es", "engineering", "engineering_station"]
+        area_count: 16
+
+        first_visit_description:
+          offline: >
+            The **Engineering Station** is completely dark, its screens unresponsive. Without power, there is 
+            no way to monitor or adjust any of the ship's systems. The silence is unnerving, as if the ship itself 
+            is waiting for someone to bring it back to life.
+
+          emergency: >
+            The **Engineering Station** is dimly illuminated by emergency lighting. The **Power Control Console** 
+            flickers erratically, and multiple warning indicators flash red: "MAIN REACTOR OFFLINE. AUXILIARY POWER 
+            ACTIVE." Several **Propulsion Diagnostics** displays show degraded efficiency levels, highlighting the 
+            ship's fragile state.
+
+          main_power: >
+            The **Engineering Station** hums with controlled energy. Every **Power Control Console**,
+            **Shield Management Interface**, and **Propulsion Diagnostics** display is alive with crisp data
+            streams, providing full oversight of the ship's vital functions. The ship is fully operational, and 
+            every system responds fluidly to potential adjustments.
+
+          torch_light: >
+            The beam of your torch sweeps across lifeless screens and dark consoles. A **Propulsion Diagnostics**
+            terminal blinks weakly, attempting a system reboot.
+
+        short_description:
+          offline: "A dead console, powerless and silent."
+          emergency: "A dimly lit station, flashing reactor failure warnings."
+          main_power: "A fully active command station for ship diagnostics."
+          torch_light: "Dark screens faintly illuminated by your torch."
+
+        objects_present:
+#          - id: eng_power_control_console
+#          - id: eng_shield_management_interface
+#          - id: eng_propulsion_diagnostics
+#          - id: eng_emergency_override_panel
+
+      # End of Area 6: Engineering Station
+
+      #------------------------------------------ 
+      # Room 1: Area 7: Captain's Chair
+      #------------------------------------------
+      - area_id: captains_chair
+        name: "Captain's Chair"
+        command_aliases: ["cap", "captain", "cc", "captains chair", "cha", "chair"]
+        area_count: 17
+
+        first_visit_description:
+          offline: >
+            The **Captain's Chair** is surrounded by darkness. Its status display remains lifeless, and without power, 
+            it is little more than an ornate seat in the void. The silence around it makes the emptiness 
+            of the **Ship Bridge** even more profound.
+
+          emergency: >
+            Dominating the center of the **Ship Bridge** is the **Captain's Chair**, a throne of authority designed for 
+            both comfort and control. The seat is crafted from reinforced composite materials, with a smooth, 
+            ergonomic design that exudes command presence. Embedded into the armrests are subtle touch-sensitive 
+            controls, allowing access to various ship functions—though, under emergency power, they remain offline. 
+            A small status screen on the **Captain's Console** blinks with a repeating message: "CRITICAL SYSTEM FAILURE. 
+            COMMAND ACCESS REQUIRED."
+
+          main_power: >
+            The **Captain's Chair** is fully active, The **Captain's Display** is streaming real-time ship diagnostics. 
+            Command inputs are accessible, allowing for direct control of shipwide operations. The integrated 
+            panels glow softly, awaiting your input. It is from this seat that decisions shaping the fate 
+            of the crew would have been made.
+
+          torch_light: >
+            The glow of your torch flickers across the **Captain's Chair**, highlighting the contours of its
+            **Captain's Console** and a small, locked **Captain's Drawer** beneath the seat. The chair feels even
+            more isolated in the dim light, an abandoned throne waiting for its ruler to return.
+
+        short_description:
+          offline: "A grand yet powerless command chair, lost in darkness."
+          emergency: "A dimly lit command chair with inactive controls."
+          main_power: "A fully operational seat of command, brimming with data."
+          torch_light: "A regal chair, partially illuminated by your torch."
+
+        objects_present:
+#          - id: cap_captains_chair
+#          - id: cap_captains_console
+#          - id: cap_captains_display
+#          - id: cap_captains_drawer
+
+      # End of Area 7: Captain's Chair
+
+      #------------------------------------------ 
+      # Room 1: Area 8: Bridge Viewer
+      #------------------------------------------
+      - area_id: large_bridge_viewer
+        name: "Bridge Viewer"
+        command_aliases: ["bv", "bridge_viewer", "large_bridge_viewer", "viewer", "bridge viewer"]
+        area_count: 18
+
+        first_visit_description:
+          offline: >
+            The viewer is completely dark, its massive screen blending seamlessly into the surrounding wall. 
+            Without power, it is nothing more than a vast, unresponsive void. The bridge feels strangely incomplete 
+            without the usual celestial display dominating its front wall.
+
+          emergency: >
+            The massive **bridge viewer** spans nearly the entire front of the bridge, a towering display designed for 
+            tactical and navigational purposes. In standby mode, its normally vibrant projections are replaced by 
+            a faint, flickering glow. A small, flashing prompt in the corner reads: "SYSTEM DIAGNOSTICS INCOMPLETE. 
+            MAIN POWER REQUIRED." The emptiness beyond the darkened viewer feels unsettling.
+
+          main_power: >
+            The **bridge viewer** is fully operational, projecting a breathtaking panorama of deep space. Stars, nebulae, 
+            and distant planetary bodies drift slowly across the vast screen, accompanied by navigational readouts 
+            and mission-critical data. The vastness of the cosmos stretches before you, a reminder of both 
+            opportunity and isolation.
+
+          torch_light: >
+            Your torch beam barely registers on the massive darkened screen, swallowed by the unlit surface. 
+            The viewer remains dead, offering no reflection or response. A small **diagnostic panel** glints faintly 
+            in the lower corner, but without power, it's unlikely to be of any use.
+
+        short_description:
+          offline: "A massive, lifeless display, swallowed by darkness."
+          emergency: "A towering, inactive screen with a faint diagnostic prompt."
+          main_power: "A panoramic projection of deep space, displaying navigational data and sensor readings."
+          torch_light: "A dark screen, unresponsive to your torch's faint glow."
+
+        objects_present:
+#          - id: lbv_viewer_screen
+#          - id: lbv_diagnostic_panel
+#          - id: lbv_auxiliary_feed_controls
+
+      # End of Area 8: Bridge Viewer
+
+    # End of Areas
+
+  # End of Room 1: Ship Bridge (Main Control Room) <inducluding all areas>
+
+  #-----------------------------
+  # Room 2: Captain's Corridor
+  #-----------------------------
+  - room_id: captains_corridor
+    name: "Captain's Access Corridor"
+    room_count: 2
+    location_mode: "main_ship"
+    deck_level: 1  # This links to the deck names in ship_configuration
+    grid_reference: [5, 13] # absolute coordinate of SW room corner
+    grid_size: [1, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # The Captain's Access Corridor contains windows.
+    backup_power: true            # The Captain's Suite contains it's own back up power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Captain's Access Corridor.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The corridor is shrouded in near-complete darkness, the legacy of past captains now just shadows lining the
+        unseen walls. The air feels heavier here, the silence absolute except for the faint hum of the ship's dormant
+        systems.
+
+      emergency: >
+        You step into the Captain's Access Corridor, a long, stately passage lined with polished chrome walls and
+        antique brass fixtures. The dim emergency lighting casts elongated shadows across portraits of past captains,
+        their stern gazes watching your every move. Along the walls, elegant plaques and flickering holographic
+        displays recount epic voyages and storied battles. The corridor feels abandoned, yet echoes of authority
+        still linger.
+
+      main_power: >
+        Fully illuminated, the corridor exudes prestige and history. The portraits of past captains are now bathed in
+        soft lighting, while detailed holographic projections display their greatest triumphs. The walls pulse faintly
+        with status indicators, and the air carries the subtle scent of polished metal and aged leather. This is a
+        place of legacy, where history has been written, and where the future of command is decided.
+
+      torch_light: >
+        Your torch casts flickering light against the metallic walls, briefly illuminating fragments of grand
+        portraits and elegant plaques. The faces of past captains stare back at you in brief flashes, their eyes
+        seeming to follow you as you move. The corridor remains still, its legacy waiting to be uncovered.
+
+    short_description:
+      offline: "A pitch-black corridor, silent and unnerving."
+      emergency: "A solemn corridor adorned with portraits and echoes of past command."
+      main_power: "A regal passage lined with history and legacy."
+      torch_light: "Dimly illuminated by your torch, glimpses of history come and go in the shadows."
+
+    objects_present:
+#        - id: cc_captain_portraits
+#        - id: cc_captain_plaques
+#        - id: cc_captain_holograms
+
+    exits:
+      - direction: "north"
+        destination: "captains_door"
+        dynamic_description:
+          unvisited: "A secure door to the north leads back to the ship's bridge."
+          visited: "The north door leads back to the ship's bridge."
+
+      - direction: "south"
+        destination: "captains_quarters"
+        dynamic_description:
+          unvisited: "A secure-looking door is positioned to the south."
+          visited: "The south leads into the captain's private quarters."
+
+      - direction: "east"
+        destination: "captains_office"
+        dynamic_description:
+          unvisited: "A closed door sits on the east wall."
+          visited: "The east leads into the captain's office."
+
+      - direction: "west"
+        destination: "captains_lounge"
+        dynamic_description:
+          unvisited: "A door to the west looks welcoming."
+          visited: "The west leads into the captain's lounge."
+
+      - direction: "up"
+        destination: "captains_observation_platform"
+        dynamic_description:
+          unvisited: "A sleek spiral staircase leads upwards."
+          visited: "Upstairs leads to the captain's personal observation deck."
+
+  # End of Room 2: Captain's Corridor
+
+  #---------------------------------------------------------
+  # Room 3: East Bridge Corridor - Entrance (Starboard Side)
+  #---------------------------------------------------------
+  - room_id: east_bridge_corridor_entrance
+    name: "East Bridge Corridor - Entrance"
+    room_count: 3
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [9, 13] # absolute coordinate of SW room corner
+    grid_size: [2, 4] # relative size of room from grid_reference 
+
+    windows_present: true         # The East Bridge Corridor has windows on one side.
+    backup_power: false           # The East Bridge Corridor does not have it's own backup power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the East Bridge Corridor.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The corridor is pitch black, the emergency lighting completely inactive. The observation windows reveal
+        nothing but a vast, starless void, their reinforced surfaces reflecting only your own silhouette. The silence
+        is suffocating, the emptiness overwhelming.
+
+      emergency: >
+        You step into the East Bridge Corridor, a sweeping passage curving gently along the outer edge of the bridge
+        saucer. The dim emergency lighting flickers along the floor and ceiling, casting eerie reflections off the
+        metallic walls. To your right, massive observation windows stretch into the distance, revealing a breathtaking
+        panorama of deep space and the curvature of the ship's primary hull below. The corridor continues into
+        darkness to the south.
+
+      main_power: >
+        The corridor is now fully illuminated, its walls gleaming with polished precision. The observation windows
+        display a vast, endless sea of stars, unblemished by distortion. Soft blue lighting runs along the edges of
+        the floor, guiding the path forward. To the south, the corridor extends further along the ship's structure,
+        its path now clearly defined.
+
+      torch_light: >
+        Your torch beam flickers along the corridor, its light swallowed by the darkness. The observation windows
+        glisten as you pass, catching the faintest reflections of your movements. The only visible path forward is a
+        dim passage leading south.
+
+    short_description:
+      offline: "The corridor is lost in total darkness, its layout indistinguishable."
+      emergency: "A dimly lit corridor curves around the bridge saucer, revealing a spectacular starfield."
+      main_power: "A fully illuminated passage with stunning views of space through expansive observation windows."
+      torch_light: "Your torch reveals a curved hallway with massive observation windows overlooking deep space."
+
+    objects_present:
+#      - id: ebc_tech_screen
+#      - id: ebc_emergency_intercom
+
+    exits:
+      - direction: "south"
+        destination: "east_bridge_corridor_middle"
+        dynamic_description:
+          unvisited: "A dim corridor extends south, its end unknown."
+          visited: "The southern path leads toward the middle section of the East Bridge Corridor."
+
+      - direction: "north west"
+        destination: "ship_bridge"
+        dynamic_description:
+          unvisited: "A reinforced door stands to the northwest, its purpose unclear."
+          visited: "The northwest door leads back into the bridge."
+
+  # End of Room 3: East Bridge Corridor - Entrance (Starboard Side)
+
+  #-----------------------------------------------------------
+  # Room 4: East Bridge Corridor - Middle (Starboard Side)
+  #-----------------------------------------------------------
+  - room_id: east_bridge_corridor_middle
+    name: "East Bridge Corridor - Middle"
+    room_count: 4
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [9, 8] # absolute coordinate of SW room corner
+    grid_size: [2, 4] # relative size of room from grid_reference 
+
+    windows_present: true         # The East Bridge Corridor has windows on one side.
+    backup_power: false           # The East Bridge Corridor does not have it's own backup power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the East Bridge Corridor.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The corridor is engulfed in complete darkness. Without light, the vast windows show nothing but an empty
+        abyss. The faintest outline of control panels and walls can be felt, but the space around you is utterly
+        disorienting.
+
+      emergency: >
+        The corridor arcs gracefully around the bridge saucer, offering a mesmerizing panorama of distant nebulas and
+        flickering stars through the reinforced observation windows. The dim glow of emergency lighting highlights
+        sleek metallic walls, and the faint hum of ship systems lingers in the silence. To the left, a flickering
+        emergency panel pulses with unread alerts, awaiting attention.
+
+      main_power: >
+        Now fully illuminated, the corridor is bathed in crisp lighting, enhancing the breathtaking view of the
+        cosmic landscape beyond the reinforced observation windows. Status indicators along the walls display
+        real-time ship diagnostics, and a soft hum of energy resonates beneath your feet. A functional access
+        terminal on the wall remains open for crew use.
+
+      torch_light: >
+        Your torch beam cuts through the darkness, casting sharp shadows across the curved corridor. The emergency
+        panel flickers, its alerts barely visible in the limited glow. The observation windows, now eerie and
+        distorted in the half-light, provide a ghostly reflection of your movements.
+
+    short_description:
+      offline: "A corridor lost in total darkness, the walls and path ahead barely discernible."
+      emergency: "A curved corridor with a breathtaking view of deep space, dimly lit by emergency lighting."
+      main_power: "A brightly lit corridor offering a stunning panorama of distant stars and galactic formations."
+      torch_light: "A sweeping hallway with ghostly reflections in the observation windows, illuminated by your torch."
+
+    objects_present:
+#      - id: ebcm_tech_screen
+#      - id: ebcm_emergency_intercom
+
+    exits:
+      - direction: "north"
+        destination: "east_bridge_corridor_entrance"
+        dynamic_description:
+          unvisited: "A dim corridor leads north, its end obscured in shadow."
+          visited: "To the north, the corridor leads back toward the bridge entrance."
+
+      - direction: "west"
+        destination: "player_cabin"
+        dynamic_description:
+          unvisited: "A closed door stands to the east, its purpose unknown."
+          visited: "To the east lies your cabin, a small yet functional living space."
+
+      - direction: "south"
+        destination: "east_bridge_corridor_end"
+        dynamic_description:
+          unvisited: "A dark passage extends south, vanishing around the curve of the ship."
+          visited: "To the south, the corridor leads toward the aft section of the bridge deck."
+
+  # End of Room 4: East Bridge Corridor - Middle (Starboard Side)
+
+  #----------------------------------------------------
+  # Room 5: East Bridge Corridor - End (Starboard Side)
+  #----------------------------------------------------
+  - room_id: east_bridge_corridor_end
+    name: "East Bridge Corridor - End"
+    room_count: 5
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [9, 3] # absolute coordinate of SW room corner
+    grid_size: [2, 4] # relative size of room from grid_reference 
+
+    windows_present: true         # The East Bridge Corridor has windows on one side.
+    backup_power: false           # The East Bridge Corridor does not have it's own backup power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the East Bridge Corridor.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The corridor fades into total darkness. Without power, the viewports reveal nothing but an empty void. 
+        The silence is absolute, leaving you uncertain about what lies ahead.
+
+      emergency: >
+        The corridor gently curves to its final stretch, opening into a more spacious area where crew members likely
+        gathered to observe the stellar horizon. The emergency lighting casts long shadows, dimly illuminating the
+        widened observation windows that provide a stunning view of deep space. To the south, the corridor transitions
+        into a larger space, leading toward what looks like a **crew rest lounge**.
+
+      main_power: >
+        Fully illuminated, the corridor presents an inviting contrast to the sterile, functional pathways before it.
+        The observation windows shimmer with real-time display overlays, highlighting celestial objects of interest.
+        Crew members likely once gathered here, watching the stars drift by as they took moments of respite. To the
+        south, the corridor seamlessly transitions into a **crew rest lounge**, its welcoming atmosphere apparent.
+
+      torch_light: >
+        Your torch flickers over the widened viewport frames, reflecting off the metallic surfaces of the corridor. 
+        A faint schematic display glows near the terminal, barely visible in the dim beam of light. The southern 
+        passage appears to open into a more spacious area.
+
+    short_description:
+      offline: "The corridor is lost in total darkness, its purpose obscured."
+      emergency: "A dimly lit corridor widening toward a panoramic viewing area."
+      main_power: "A well-lit corridor offering an expansive cosmic view."
+      torch_light: "Faint light reveals the contours of a widened viewport and a distant doorway."
+
+    objects_present:
+#      - id: ebce_tech_screen
+#      - id: ebce_emergency_intercom
+
+    exits:
+      - direction: "north"
+        destination: "east_bridge_corridor_middle"
+        dynamic_description:
+          unvisited: "The corridor extends north into shadowed passageways."
+          visited: "To the north, the corridor leads back toward the bridge."
+
+      - direction: "south west"
+        destination: "bridge_crew_rest_area"
+        dynamic_description:
+          unvisited: "A wide opening to the south west suggests a larger space beyond."
+          visited: "To the south west lies the Bridge Crew Rest Area, a haven for relaxation."
+
+# End of Room 5: East Bridge Corridor - End (Starboard Side) 
+
+  #----------------------------------------------------
+  # Room 6: West Bridge Corridor - Entrance (Port Side)
+  #----------------------------------------------------
+  - room_id: west_bridge_corridor_entrance
+    name: "West Bridge Corridor - Entrance"
+    room_count: 6
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [0, 13] # absolute coordinate of SW room corner
+    grid_size: [2, 4] # relative size of room from grid_reference 
+
+    windows_present: true         # The West Bridge Corridor has windows on one side.
+    backup_power: false           # The West Bridge Corridor does not have it's own backup power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the West Bridge Corridor.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The corridor is completely dark, save for the faint glow of distant stars through the observation windows.
+        Without light, the curved walls vanish into the void.
+
+      emergency: >
+        The passage arcs around the port side of the bridge. The observation windows on your left overlook the depths
+        of space, where distant stars pulse against an endless void. The ambient glow of the emergency lighting gives
+        the passage a subdued, tranquil atmosphere.
+
+      main_power: >
+        The corridor is fully illuminated, casting a crisp glow across the curved metallic walls. The observation 
+        windows reveal a breathtaking view of distant galaxies, unmarred by darkness.
+
+      torch_light: >
+        Your torchlight skims over the metal bulkheads, highlighting a set of embedded control panels and intercom
+        stations along the walls.
+
+    short_description:
+      offline: "A completely darkened passage curving around the bridge saucer."
+      emergency: "A dimly lit passage with a stellar view through the observation windows."
+      main_power: "A well-lit corridor curving along the port side of the bridge."
+      torch_light: "Your torchlight faintly illuminates the curved corridor."
+
+    objects_present:
+#      - id: wbc_tech_screen
+#      - id: wbc_emergency_intercom
+
+    exits:
+      - direction: "south"
+        destination: "west_bridge_corridor_middle"
+        dynamic_description:
+          unvisited: "The corridor extends further into the dimly lit passage."
+          visited: "The corridor continues south, curving along the bridge deck."
+
+      - direction: "north east"
+        destination: "ship_bridge"
+        dynamic_description:
+          unvisited: "A reinforced door leads back to the bridge."
+          visited: "To the northeast, the door leads back into the bridge."
+
+  # End of Room 6: West Bridge Corridor - Entrance (Port Side)
+
+  #------------------------------------------
+  # Room 7: West Bridge Corridor - Middle
+  #------------------------------------------
+  - room_id: west_bridge_corridor_middle
+    name: "West Bridge Corridor - Middle"
+    room_count: 7
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [0, 8] # absolute coordinate of SW room corner
+    grid_size: [2, 4] # relative size of room from grid_reference 
+
+    windows_present: true         # The West Bridge Corridor has windows on one side.
+    backup_power: false           # The West Bridge Corridor does not have it's own backup power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the West Bridge Corridor.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The emergency lights flicker faintly, barely illuminating the curved passage. The deep void beyond the
+        observation windows feels closer in the dim light. On the western wall, a **sealed maintenance panel** is
+        embedded into the bulkhead, its edges secured with reinforced locking screws.
+
+      emergency: >
+        The corridor follows the graceful curve of the bridge deck, lined with observation windows that reveal the
+        infinite blackness of space. A **sealed maintenance panel** on the western bulkhead is secured with
+        **heavy-duty fasteners**, blending seamlessly into the wall.
+
+      main_power: >
+        The passage is brightly lit, and the reflection of the polished floor creates the illusion of infinite space. 
+        The **maintenance panel** on the western bulkhead remains locked, awaiting **authorized personnel** for access.
+
+      torch_light: >
+        Your torch beam sweeps across the walls, revealing a **secured maintenance panel**. The panel is flush with
+        the bulkhead, with **reinforced locking screws** holding it in place.
+
+    short_description:
+      offline: "A dark corridor with faint emergency lighting and a secured maintenance panel."
+      emergency: "A curved corridor with a sealed maintenance panel in the west bulkhead."
+      main_power: "A brightly lit passage with an access panel set into the bulkhead."
+      torch_light: "The dim glow of your torch highlights a maintenance panel on the wall."
+
+    objects_present:
+#      - id: wbcm_alert_panel
+#      - id: wbcm_access_terminal
+#      - id: wbcm_sealed_maintenance_panel
+
+    exits:
+      - direction: "north"
+        destination: "west_bridge_corridor_entrance"
+        dynamic_description:
+          unvisited: "The corridor continues north toward the bridge."
+          visited: "To the north, the bridge entrance is visible."
+
+      - direction: "south"
+        destination: "west_bridge_corridor_end"
+        dynamic_description:
+          unvisited: "The corridor stretches southward into the dimly lit passage."
+          visited: "The passage to the south leads toward the end of the bridge deck."
+
+      - direction: "east"
+        destination: "hidden_maintenance_alcove"
+        dynamic_description:
+          unvisited: "A locked **maintenance panel** is flush with the bulkhead, requiring tools to access."
+          visited: "The **open maintenance hatch** leads into a cramped alcove behind the corridor walls."
+
+
+  #------------------------------------------
+  # Room 8: West Bridge Corridor - End
+  #------------------------------------------
+  - room_id: west_bridge_corridor_end
+    name: "West Bridge Corridor - End"
+    room_count: 8
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [0, 3] # absolute coordinate of SW room corner
+    grid_size: [2, 4] # relative size of room from grid_reference 
+
+    windows_present: true         # The West Bridge Corridor has windows on one side.
+    backup_power: false           # The West Bridge Corridor does not have it's own backup power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the West Bridge Corridor.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        This section of the corridor is completely dark. The only visible detail is the faintest shimmer of distant
+        starlight through the observation windows.
+
+      emergency: >
+        The final stretch of the West Bridge Corridor gently curves toward the rear of the bridge deck, leading into
+        a more open space. The observation windows here are larger, offering a sweeping panorama of deep space where
+        distant galaxies twinkle in the void.
+
+        A small alcove with an inactive control terminal sits against the inner bulkhead, possibly once used for
+        monitoring bridge traffic. The soft hum of the emergency lighting is the only sound accompanying the silent
+        ballet of stars beyond the glass.
+
+      main_power: >
+        The corridor is brightly lit, revealing a small terminal alcove. The observation windows provide a
+        breathtaking, uninterrupted view of the cosmos.
+
+      torch_light: >
+        Your torchlight scans the area, casting long shadows across the walls. The faint outline of a terminal alcove
+        emerges against the bulkhead.
+
+    short_description:
+      offline: "A dark corridor stretching toward the ship's rear."
+      emergency: "A dim corridor offering an expansive view of deep space."
+      main_power: "A brightly lit section of the corridor with an observation alcove."
+      torch_light: "A faintly illuminated passage leading to an open crew area."
+
+    objects_present:
+#      - id: wbce_tech_screen
+#      - id: wbce_emergency_intercom
+
+    exits:
+      - direction: "north"
+        destination: "west_bridge_corridor_middle"
+        dynamic_description:
+          unvisited: "The corridor leads back toward the bridge."
+          visited: "To the north, the corridor arcs back toward the bridge."
+
+      - direction: "south east"
+        destination: "bridge_crew_rest_area"
+        dynamic_description:
+          unvisited: "A wide doorway leads into a dimly lit crew rest area."
+          visited: "To the southeast, the crew rest area offers a place for relaxation."
+
+  # End of Room 8: West Bridge Corridor - End
+
+  #------------------------------------------
+  # Room 9: Bridge Crew Rest Area
+  #------------------------------------------
+  - room_id: bridge_crew_rest_area
+    name: "Bridge Crew Rest Area"
+    room_count: 9
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [3, -1] # absolute coordinate of SW room corner
+    grid_size: [5, 3] # relative size of room from grid_reference 
+
+    windows_present: true         # The Crew Rest Area has windows on three sides.
+    backup_power: false           # The Crew Rest Area does not have it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Crew Rest Area.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The room is eerily silent and submerged in complete darkness. Without power, the only faint light comes from
+        the stars beyond the transparent dome. The furnishings are little more than dark silhouettes, and without a
+        light source, navigating is nearly impossible.
+
+      emergency: >
+        A stark contrast to the rest of the ship, the Bridge Crew Rest Area offers a rare moment of solace. The
+        transparent dome overhead reveals an endless expanse of space, allowing the distant starlight to bathe the
+        room in a dim celestial glow. Soft reclining chairs and floating seating pods create a sense of ease, while
+        inactive holographic game tables sit idly, waiting for power. A compact food station stands in the corner,
+        though its dispensers remain locked due to low power reserves.
+
+      main_power: >
+        Fully illuminated, the lounge exudes an inviting warmth. The holographic game tables flicker to life,
+        displaying interactive strategy boards and puzzles. The food dispensers hum softly, ready to provide
+        nourishment. The transparent dome overhead now dynamically adjusts its tint to reduce glare while still
+        offering a breathtaking panoramic view of deep space. It is a place of comfort, designed for weary crew
+        members to unwind between shifts.
+
+      torch_light: >
+        The beam of your torch sweeps across the lounge, revealing the soft curves of reclining chairs and the sleek
+        surfaces of floating game tables. The transparent dome remains an unfiltered window to the vastness of space,
+        its stars casting faint reflections against the glass-like floor.
+
+    short_description:
+      offline: "A darkened lounge with barely visible furnishings and an open view of space."
+      emergency: "A dimly lit lounge with reclining chairs, a food station, and a panoramic dome overhead."
+      main_power: "A well-lit crew lounge, complete with active game tables and a functional food dispenser."
+      torch_light: "The lounge is dark, but your torch highlights scattered seating and silent game consoles."
+
+    objects_present:
+#      - id: bcra_holographic_game_table
+#      - id: bcra_food_dispenser
+#      - id: bcra_reclining_chairs
+#      - id: bcra_dome_viewport
+
+    exits:
+      - direction: "north east"
+        destination: "east_bridge_corridor_end"
+        dynamic_description:
+          unvisited: "A corridor stretches northeast, leading back toward the bridge."
+          visited: "To the northeast, the east corridor entrance leads back toward the bridge."
+
+      - direction: "north west"
+        destination: "west_bridge_corridor_end"
+        dynamic_description:
+          unvisited: "A corridor extends northwest, curving back toward the bridge."
+          visited: "To the northwest, the west corridor entrance leads back toward the bridge."
+
+  # End of Room 9: Bridge Crew Rest Area
+
+  #------------------------------------------
+  # Room 10: Bridge Ready Room
+  #------------------------------------------
+  - room_id: bridge_ready_room
+    name: "Bridge Ready Room"
+    room_count: 10
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [9, 19] # absolute coordinate of SW room corner
+    grid_size: [2, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # The Bridge Ready Room has windows on two sides.
+    backup_power: true            # The Bridge Ready Room has it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Bridge Ready Room.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The ready room is swallowed in complete darkness, its once-commanding displays now nothing more than silent,
+        lifeless panels. Without power, the room is a void of forgotten strategy and abandoned plans, its purpose
+        lost to the shadows.
+
+      emergency: >
+        The ready room exudes an air of tense preparedness. Emergency lighting casts long, flickering shadows across
+        the walls, illuminating a large, inactive holographic strategy table in the center of the room. Dim displays
+        flicker with unread status alerts, hinting at prior engagements and planned maneuvers. The space feels
+        abandoned, as if frozen in the middle of an urgent tactical discussion that never concluded.
+
+      main_power: >
+        The ready room is fully operational, its consoles humming with real-time ship diagnostics, fleet
+        communication logs, and active mission briefings. A sleek holographic map flickers above the central strategy
+        table, displaying ship trajectories and incoming sensor data. This is a space of rapid decision-making, where
+        every second matters in high-stakes situations.
+
+      torch_light: >
+        Your torch beam glides across the silent consoles, revealing dust-specked screens and a strategy table that
+        once pulsed with tactical brilliance. The room's emptiness is unsettling, its once-heated debates replaced by
+        a profound and uneasy silence.
+
+    short_description:
+      offline: "A dark, silent room filled with lifeless displays."
+      emergency: "A dimly lit tactical hub, flickering with past alerts."
+      main_power: "A fully operational strategy room with active displays."
+      torch_light: "A dormant command space, its details only visible in brief flickers of light."
+
+    objects_present:
+#      - id: brr_strategy_table
+#      - id: brr_tactical_display
+#      - id: brr_officers_terminal
+
+    exits:
+      - direction: "west"
+        destination: "ship_bridge"
+        dynamic_description:
+          unvisited: "A secure-looking door leads west."
+          visited: "The door to the west leads back to the ship bridge."
+
+  # End of Room 10: Bridge Ready Room
+
+  #-----------------------------------------------
+  # Room 11: Mission Operations Room (Mission Ops)
+  #-----------------------------------------------
+  - room_id: mission_ops
+    name: "Mission Operations Room"
+    room_count: 11
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [0, 19] # absolute coordinate of SW room corner
+    grid_size: [2, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # The Mission Ops room has windows on two sides.
+    backup_power: true            # The Mission Ops room has it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Mission Ops room.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    
+    first_visit_description:
+      offline: >
+        The Mission Operations Room is plunged into darkness. Tactical displays remain dormant, and the central
+        holo-map flickers briefly before fading into static. Without power, the room is little more than a forgotten
+        relic of past operations. 
+
+      emergency: >
+        The dim emergency lighting casts long, fractured shadows across the high-tech command consoles. Holographic
+        displays flicker erratically, struggling to maintain their data streams. The central battle map pulses weakly,
+        its once-detailed navigation charts reduced to ghostly outlines. Secure transmission consoles along the far
+        wall remain locked, their encrypted channels inaccessible.
+
+      main_power: >
+        Mission Ops hums with activity, its advanced displays streaming real-time tactical data, fleet positions,
+        and encrypted communications. The massive holographic battle map hovers above the central console, its
+        vibrant projections displaying stellar navigation charts, ship movements, and active mission objectives in
+        precise detail. Secure consoles hum with classified transmissions, ready to coordinate fleet-wide operations.
+
+      torch_light: >
+        Your torch beam sweeps across the cold, silent consoles, illuminating fractured remnants of tactical data
+        that flicker across the lifeless displays. The room feels abandoned, its purpose waiting to be restored.
+
+    short_description:
+      offline: "A dark, silent chamber filled with dead tactical displays."
+      emergency: "A dimly lit war room, its flickering holo-maps struggling to stay online."
+      main_power: "A bustling tactical and mission planning hub, alive with encrypted data streams."
+      torch_light: "A silent chamber of broken data streams, waiting for power to return."
+
+    objects_present:
+#      - id: mis_holo_battle_map
+#      - id: mis_secure_comms_console
+#      - id: mis_tactical_display
+#      - id: mis_mission_database
+
+    exits:
+      - direction: "east"
+        destination: "ship_bridge"
+        dynamic_description:
+          unvisited: "A reinforced door stands to the west."
+          visited: "The door to the west leads back to the bridge."
+
+  # End of Room 11: Mission Operations Room
+
+  #--------------------------------------------------
+  # Room 12: Player Cabin (Starting Location)
+  #--------------------------------------------------
+  - room_id: player_cabin
+    name: "Player Cabin"
+    room_count: 12
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [6, 9] # absolute coordinate of SW room corner
+    grid_size: [2, 2] # relative size of room from grid_reference
+
+    windows_present: false        # The Player Cabin does not have windows.
+    backup_power: false           # The Player Cabin does not have it's own power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the Player Cabin.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The room is plunged into total darkness. The faint scent of metal and synthetic fabrics lingers, 
+        but without a light source, you are blind to your surroundings.
+
+      emergency: >
+        A compact yet functional cabin, its smooth metallic walls dimly illuminated by the emergency lighting
+        strips running along the ceiling edges. The air carries a faint metallic scent, sterile yet oddly
+        comforting. A sturdy bed sits against the far wall, with a large foot **locker** positioned at its base.
+        A small **table** beside the bed holds a blinking **tablet** and a colorful **comic** book. A **chair** with
+        a neatly folded **jumpsuit** rests in the corner, while a **backpack** and **boots** lie beside it.
+
+      main_power: >
+        The cabin is now fully illuminated, revealing a clean, well-maintained space. The foot locker's polished
+        surface reflects the bright overhead lighting, and the tablet's screen shines with crisp clarity. The
+        hum of life support and environmental controls creates a soft background noise, making the cabin feel
+        alive and operational.
+
+      torch_light: >
+        Your torch casts flickering shadows against the metallic walls. The outline of the **bed**, **table**,
+        and **foot locker** emerges in the gloom, while the **tablet's blinking light** reflects faintly in
+        the darkness.
+
+    short_description:
+      offline: "Total darkness envelops the room."
+      emergency: "A dimly lit cabin with a bed, table, and foot locker."
+      main_power: "A well-lit and orderly cabin, now fully operational."
+      torch_light: "A small cabin, faintly revealed in your torchlight."
+
+    exits:
+      - direction: "east"
+        destination: "east_bridge_corridor_middle"
+        dynamic_description:
+          unvisited: "A closed door leads west."
+          visited: "The door to the west leads to the East Bridge Corridor."
+
+      - direction: "north"
+        destination: "player_cabin_small_kitchen"
+        dynamic_description:
+          unvisited: "A doorway leads north."
+          visited: "To the north is a small kitchen."
+
+      - direction: "south"
+        destination: "player_cabin_small_bathroom"
+        dynamic_description:
+          unvisited: "A doorway leads south."
+          visited: "To the south is a compact bathroom."
+
+    objects_present:
+#      - id: cab_tablet
+#      - id: cab_comic_book
+#      - id: cab_bed
+#      - id: cab_foot_locker
+#      - id: cab_table
+#      - id: cab_chair
+#      - id: cab_jumpsuit
+      - id: cab_backpack
+#      - id: cab_boots
+
+  # End of Room 12: Player Cabin
+
+  #--------------------------------------------------
+  # Room 13: Small Kitchen (Connected to Player Cabin)
+  #--------------------------------------------------
+  - room_id: player_cabin_small_kitchen
+    name: "Small Kitchen"
+    room_count: 13
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [6, 12] # absolute coordinate of SW room corner
+    grid_size: [2, 1] # relative size of room from grid_reference
+
+    windows_present: false        # The Small Kitchen does not have windows.
+    backup_power: false           # The Small Kitchen does not have it's own power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the Small Kitchen.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The kitchen is lifeless, shrouded in darkness. The scent of stale air lingers, but no details are visible in
+        the pitch black.
+
+      emergency: >
+        A compact, functional kitchen barely large enough to stand in. A **food dispenser** is mounted on the wall,
+        its indicator lights inactive due to the ship's emergency power state. A **storage compartment** for rations
+        sits beneath the counter, and a **sink** is built into the wall, but no water flows. The air is still,
+        carrying the faint scent of synthetic meals long expired.
+
+      main_power: >
+        The kitchen hums with soft ambient lighting. The **food dispenser** displays available meal options, the
+        **sink** functions again, and the **storage compartment** unlocks, granting access to neatly packed rations.
+
+      torch_light: >
+        Your torch flickers across the small space, revealing the dull metal of the **food dispenser**,
+        **storage compartment**, and **sink**. Their surfaces gleam faintly under the dim glow.
+
+    short_description:
+      offline: "A pitch-black, non-functional kitchen."
+      emergency: "A tiny kitchen with inactive appliances."
+      main_power: "A small but fully operational kitchen."
+      torch_light: "A barely visible kitchen illuminated by your torch."
+
+    exits:
+      - direction: "south"
+        destination: "player_cabin"
+        dynamic_description:
+          unvisited: "A doorway leads south."
+          visited: "To the south is your cabin."
+
+    objects_present:
+#      - id: kit_food_dispenser
+#      - id: kit_storage_compartment
+#      - id: kit_sink
+
+  # End of Room 13: Small Kitchen
+
+  #--------------------------------------------------
+  # Room 14: Small Bathroom (Connected to Player Cabin)
+  #--------------------------------------------------
+  - room_id: player_cabin_small_bathroom
+    name: "Small Bathroom"
+    room_count: 14
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [6, 7] # absolute coordinate of SW room corner
+    grid_size: [2, 1] # relative size of room from grid_reference
+
+    windows_present: false        # The Small Bathroom bathroom does not have windows.
+    backup_power: false           # The Small Bathroom bathroom does not have it's own power supply.
+    emergency_exit: true          # Emergency lighting and indicators are present in the Small Bathroom.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The bathroom is completely dark, the air cold and stagnant. Nothing is visible beyond the reach of total
+        blackness.
+
+      emergency: >
+        A compact bathroom unit with minimalistic fixtures. A **mirror** is built into the wall above a mall
+        **sink**, and a **sealed toilet** sits against the opposite side. The air is cold, and the sink does not
+        respond, likely due to power constraints.
+
+      main_power: >
+        The bathroom is now fully functional. The **sink** runs with purified water, the **toilet** operates normally,
+        and the **mirror's** built-in lighting activates, reflecting your weary face with unsettling clarity.
+
+      torch_light: >
+        Your torch casts eerie shadows against the metallic surfaces. The **mirror** reflects the light back at you,
+        while the **sink** and **toilet** appear undisturbed.
+
+    short_description:
+      offline: "A pitch-black, lifeless bathroom."
+      emergency: "A tiny, inactive bathroom with a mirror, sink, and sealed toilet."
+      main_power: "A small, fully functional bathroom."
+      torch_light: "A faintly illuminated bathroom, barely visible in the darkness."
+
+    exits:
+      - direction: "north"
+        destination: "player_cabin"
+        dynamic_description:
+          unvisited: "A doorway leads back to your cabin."
+          visited: "A doorway leads north."
+
+
+    objects_present:
+#      - id: bath_mirror
+#      - id: bath_sink
+#      - id: bath_toilet
+
+  # End of Room 14: Small Bathroom
+
+  #-----------------------------------------------------
+  # Room 15: Hidden Maintenance Alcove (Puzzle Room)
+  #-----------------------------------------------------
+  - room_id: hidden_maintenance_alcove
+    name: "Maintenance Alcove"
+    room_count: 15
+    location_mode: "main_ship"
+    deck_level: 2  # This links to the deck names in ship_configuration
+    grid_reference: [3, 9] # absolute coordinate of SW room corner
+    grid_size: [2, 2] # relative size of room from grid_reference
+
+    windows_present: false        # The Maintenance Alcove does not have windows.
+    backup_power: false           # The Maintenance Alcove does not have it's own power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Maintenance Alcove.
+    requires_light_source: true   # The player needs a carriable light source in this room.
+
+    first_visit_description:
+      offline: >
+        The moment you pry open the panel, a gust of stale, pressurized air rushes out, carrying the scent of
+        machine oil and dust. You crawl inside, finding yourself in a narrow, claustrophobic
+        **maintenance alcove** barely large enough to stand in. Pipes and conduits twist around the space, pulsing
+        faintly as the ship's dwindling emergency power struggles to keep basic functions online. The entire alcove is
+        shrouded in **absolute darkness**, and without a torch, you are completely blind.
+
+      emergency: >
+        You step inside the cramped **maintenance alcove**, its low ceiling forcing you to hunch slightly.
+        Thick bundles of insulated cables snake along the walls, humming faintly as they distribute the ship's
+        dwindling emergency power. A dust-covered **toolbox** sits wedged into the corner beneath a flickering
+        diagnostic panel. Despite the tight space, you get the distinct feeling that no one has been in here
+        for a long, long time.
+
+      main_power: >
+        The **maintenance alcove** is fully illuminated by bright overhead lights. The once-ominous shadows
+        retreat, revealing an intricate maze of **conduits** and **control panels**, their displays blinking with
+        diagnostic readouts. A sturdy **toolbox** rests beneath a primary access terminal, its lid slightly ajar.
+        The space is still uncomfortably small, but at least it doesn't feel like a death trap.
+
+      torch_light: >
+        As your torch beam flickers across the alcove, shadows dance eerily against the metal walls. The tight,
+        industrial space is barely large enough for one person, filled with cables and maintenance panels. A
+        dusty **toolbox** catches the edge of your light, its latches corroded with age.
+
+    short_description:
+      offline: "A pitch-black maintenance alcove. You see nothing."
+      emergency: "A cramped alcove filled with pipes, conduits, and flickering power readouts."
+      main_power: "A fully lit maintenance alcove with exposed wiring and diagnostic panels."
+      torch_light: "A narrow, industrial alcove, illuminated only by your torch."
+
+    objects_present:
+#      - id: hma_abandoned_toolbox
+#      - id: hma_diagnostic_panel
+#      - id: hma_power_conduits
+
+    exits:
+      - direction: "west"
+        destination: "west_bridge_corridor_middle"
+        dynamic_description:
+          unvisited: "To the west a maintenance panel lies ajar, revealing a cramped passage back to the corridor."
+          visited: "A panel opening leads west back to the West Bridge Corridor."
+
+  # End of Room 15: Hidden Maintenance Alcove
+
+  #------------------------------------------
+  # Room 16: Captain's Office
+  #------------------------------------------
+  - room_id: captains_office
+    name: "Captain's Office"
+    room_count: 16
+    location_mode: "main_ship"
+    deck_level: 1  # This links to the deck names in ship_configuration
+    grid_reference: [7, 13] # absolute coordinate of SW room corner
+    grid_size: [2, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # the Captain's Office contains windows.
+    backup_power: true            # The Captain's Suite contains it's own back up power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Captain's Office.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The office is a void of nothingness, consumed by absolute darkness. The weight of authority still lingers
+        here, pressing against the silence.
+
+      emergency: >
+        The Captain's Office is a place of contemplation and command. A desk **console** sits at the center,
+        linked to a secured mission **archive** on the far wall. A single communication **panel** flickers faintly,
+        looping an unread alert.
+
+      main_power: >
+        With full illumination, the Captain's Office is revealed in its full technological elegance. The mission
+        **archive** hums softly, displaying classified data streams. The desk **console** is fully active, its
+        interface awaiting an authorized user. The room exudes an aura of discipline and control.
+
+      torch_light: >
+        Your torch beam cuts through the darkness, revealing a mission **archive** console, the captain's **desk**,
+        and an inactive communication **panel** awaiting reactivation.
+
+    short_description:
+      offline: "A silent chamber, its authority lost to darkness."
+      emergency: "Dimly lit, with a desk console and secured archives."
+      main_power: "A high-tech command center, brimming with classified data."
+      torch_light: "Your torch highlights a desk, a mission archive, and a flickering console."
+
+    objects_present:
+#      - id: co_desk_console
+#      - id: co_mission_archive
+#      - id: co_communication_panel
+
+    exits:
+      - direction: "west"
+        destination: "captains_corridor"
+        dynamic_description:
+          unvisited: "A sliding door leads west."
+          visited: "The western doorway leads back to the Captain's Corridor."
+
+  # End of Room 16: Captain's Office
+
+  #------------------------------------------
+  # Room 17: Captain's Lounge
+  #------------------------------------------
+  - room_id: captains_lounge
+    name: "Captain's Lounge"
+    room_count: 17
+    location_mode: "main_ship"
+    deck_level: 1  # This links to the deck names in ship_configuration
+    grid_reference: [2, 13] # absolute coordinate of SW room corner
+    grid_size: [2, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # the Captain's Lounge contains windows on two sides.
+    backup_power: true            # The Captain's Suite contains it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Captain's Lounge.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The lounge is a dead, lifeless void. Whatever warmth or comfort once existed here is swallowed by darkness.
+
+      emergency: >
+        A private retreat, distinct from the rest of the ship. Plush **seating pods**, a **stasis bar**, and a
+        **holo-fireplace** create an atmosphere of quiet contemplation. The dim lighting gives the room an air of
+        mystery. 
+
+        A dining **table** is set near the center of the room, and at its head stands an old, malfunctioning robotic
+        butler, frozen in place.
+
+      main_power: >
+        The lounge comes to life, its **holo-fireplace** flickering warmly. The **stasis bar** hums as its selection
+        of preserved beverages rotates into view. A haven of solitude, were it not for the **robotic butler**, who
+        now twitches erratically and delivers nonsensical lines of service.
+
+      torch_light: >
+        Your torch sweeps across luxurious seating, a **stasis bar**, and the cold remnants of a once-warm holographic
+        fire. The silhouette of a **robotic butler** stands frozen at the table.
+
+    short_description:
+      offline: "A silent lounge, completely shrouded in darkness."
+      emergency: "Dimly lit, with seating, a bar, and an inactive fireplace."
+      main_power: "A warm, inviting retreat filled with soft lighting and luxury."
+      torch_light: "Your torch flickers across plush seats and a quiet bar."
+
+    objects_present:
+#      - id: cl_stasis_bar
+#      - id: cl_holo_fireplace
+#      - id: cl_seating_pods
+#      - id: cl_dining_table
+#      - id: cl_robotic_butler
+
+    exits:
+      - direction: "east"
+        destination: "captains_corridor"
+        dynamic_description:
+          unvisited: "A polished doorway leads east."
+          visited: "The eastern doorway leads back to the Captain's Corridor."
+
+      - direction: "south"
+        destination: "captains_private_kitchen"
+        dynamic_description:
+          unvisited: "A doorway to the south leads somewhere private."
+          visited: "The southern doorway leads to the Captain's Private Kitchen."
+
+  # Enf of Room 17: Captain's Lounge
+
+  #------------------------------------------
+  # Room 18: Captain's Quarters
+  #------------------------------------------
+  - room_id: captains_quarters
+    name: "Captain's Quarters"
+    room_count: 18
+    location_mode: "main_ship"
+    deck_level: 1  # This links to the deck names in ship_configuration
+    grid_reference: [4, 9] # absolute coordinate of SW room corner
+    grid_size: [3, 3] # relative size of room from grid_reference 
+
+    windows_present: true         # the Captain's Quarters contains windows.
+    backup_power: true            # The Captain's Suite contains it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Captain's Quarters.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The room is completely dark, leaving only vague outlines in the faint glow of emergency lighting. The
+         large **bed**, **desk**, and personal storage **locker** are indistinct in the gloom. Silence fills the air,
+        amplifying the eerie sense of abandonment.
+
+      emergency: >
+        The Captain's Quarters is a mix of authority and personal retreat. The dim emergency lighting casts long
+        shadows over a large, reinforced **bed**, a command **desk**, and a personal **terminal** positioned along
+        the wall. A reinforced storage **locker** sits securely beside the desk, its access panel inactive. To the
+        east and west, private doors lead to a kitchen and bathroom,  while a sealed airlock at the
+        rear suggests something more beyond.
+
+      main_power: >
+        Fully illuminated, the Captain's Quarters showcase a blend of authority and personal retreat. The personal 
+        **terminal** hums softly, displaying ship diagnostics, while the reinforced storage **locker** remains securely 
+        locked. The well-made **bed** provides an inviting contrast to the otherwise utilitarian environment. 
+
+      torch_light: >
+        Your torch casts shifting shadows across the Captain's living quarters. The **bed**, **desk**, and
+        reinforced storage **locker** stand out in the beam. The torchlight catches on the edges of doorways
+        to the east and west, hinting at additional rooms. The airlock door at the rear remains closed, its
+        control panel unresponsive.
+
+    short_description:
+      offline: "A vast, silent space lost to darkness."
+      emergency: "Dimly lit, featuring a bed, desk, and locked storage locker."
+      main_power: "The Captain's private retreat, fully illuminated and efficient."
+      torch_light: "A torch-lit space with a bed, desk, and reinforced locker."
+
+    objects_present:
+#      - id: cq_command_desk
+#      - id: cq_personal_terminal
+#      - id: cq_reinforced_locker
+#      - id: cq_captains_bed
+
+    exits:
+      - direction: "north"
+        destination: "captains_corridor"
+        dynamic_description:
+          unvisited: "A secure doorway leads north."
+          visited: "The northern doorway leads back to the Captain's Corridor."
+
+      - direction: "east"
+        destination: "captains_private_bathroom"
+        dynamic_description:
+          unvisited: "A doorway to the east leads somewhere private."
+          visited: "The eastern doorway leads to the Captain's Private Bathroom."
+
+      - direction: "west"
+        destination: "captains_private_kitchen"
+        dynamic_description:
+          unvisited: "A doorway to the west leads somewhere private."
+          visited: "The western doorway leads to the Captain's Private Kitchen."
+
+      - direction: "south"
+        destination: "captains_docking_bay"
+        dynamic_description:
+          unvisited: "A sealed airlock door is built into the southern wall."
+          visited: "The airlock door to the south leads to the Captain's personal yacht."
+
+  # End of Room 18: Captain's Quarters
+
+  #------------------------------------------
+  # Room 19: Captain's Private Kitchen
+  #------------------------------------------
+  - room_id: captains_private_kitchen
+    name: "Captain's Private Kitchen"
+    room_count: 19
+    location_mode: "main_ship"
+    deck_level: 1  # This links to the deck names in ship_configuration
+    grid_reference: [2, 10] # absolute coordinate of SW room corner
+    grid_size: [1, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # the Captain's Kitchen contains one window.
+    backup_power: true            # The Captains Suite contains it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Captain's Kitchen.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The kitchen is swallowed in complete darkness. Any stored supplies are unreachable without power.
+
+      emergency: >
+        A compact but well-stocked kitchen designed for efficiency. A **food synthesizer** sits against the far
+        wall, inactive due to power constraints. A **storage unit** is built into the cabinetry, and a 
+        **cooking station** remains cold.
+
+      main_power: >
+        The kitchen hums to life. The **food synthesizer** lights up, offering a variety of programmed meals. The
+        **storage unit** unlocks, revealing carefully preserved rations. The **cooking station** is now fully
+        operational.
+
+      torch_light: >
+        Your torch sweeps across the cold, inactive appliances. The **food synthesizer**, **storage unit**, and
+        **cooking station** remain lifeless in the dim light.
+
+    short_description:
+      offline: "A dark, unresponsive kitchen."
+      emergency: "A compact but well-equipped kitchen, currently limited."
+      main_power: "Fully functional, with a food synthesizer and preserved rations."
+      torch_light: "Your torch reveals inactive appliances and food storage."    
+
+    objects_present:
+#      - id: cpk_food_synthesizer
+#      - id: cpk_storage_unit
+#      - id: cpk_cooking_station
+
+    exits:
+      - direction: "east"
+        destination: "captains_quarters"
+        dynamic_description:
+          unvisited: "A doorway leads west."
+          visited: "The western doorway leads back to the Captain's Quarters."
+
+      - direction: "north"
+        destination: "captains_lounge"
+        dynamic_description:
+          unvisited: "A discreet doorway leads north."
+          visited: "The northern doorway leads directly into the Captain's Lounge."
+
+  # End of Room 19: Captain's Private Kitchen
+
+  #------------------------------------------
+  # Room 20: Captain's Private Bathroom
+  #------------------------------------------
+  - room_id: captains_private_bathroom
+    name: "Captain's Private Bathroom"
+    room_count: 20
+    location_mode: "main_ship"
+    deck_level: 1  # This links to the deck names in ship_configuration
+    grid_reference: [8, 10] # absolute coordinate of SW room corner
+    grid_size: [1, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # the Captain's Bathroom contains one window.
+    backup_power: true            # The Captains Suite contains it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present in the Captain's Bathroom.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The bathroom is completely dark, the silence pressing in. The **sink**, **shower**, and **mirror** remain
+        hidden in the shadows, offering no relief from the overwhelming void.
+
+      emergency: >
+        A compact yet luxurious bathroom, designed for efficiency and comfort.  The **mirror** built into the wall
+        flickers slightly, and the **sink** remains dry due to power restrictions. A **hygiene pod** sits at the
+        back, sealed in standby mode.
+
+      main_power: >
+        The bathroom hums softly, fully operational. The **mirror** activates, displaying biometric readouts. The
+        **sink** dispenses purified water, and the **hygiene pod** glows with a soft readiness indicator.
+
+      torch_light: >
+        Your torch flickers over sleek surfaces, catching glimpses of a **mirror**, **sink**, and a
+        **sealed hygiene pod**.
+
+    short_description:
+      offline: "A silent, lifeless hygiene facility."
+      emergency: "A dimly lit private bathroom with a sealed hygiene pod."
+      main_power: "Fully functional, with biometric displays and active water systems."
+      torch_light: "A bathroom revealed by torchlight, its hygiene pod inactive."    
+
+    objects_present:
+#      - id: cpb_mirror
+#      - id: cpb_sink
+#      - id: cpb_hygiene_pod
+
+    exits:
+      - direction: "west"
+        destination: "captains_quarters"
+        dynamic_description:
+          unvisited: "A discreet doorway leads west."
+          visited: "The western doorway leads back to the Captain's Quarters."
+
+  # End of Room 20: Captain's Private Bathroom
+
+  #---------------------------------------------------
+  # Room 21: Captain's Observation Platform
+  #---------------------------------------------------
+  - room_id: captains_observation_platform
+    name: "Captain's Observation Platform"
+    room_count: 21
+    location_mode: "main_ship"
+    deck_level: 0  # This links to the deck names in ship_configuration
+    grid_reference: [5, 14] # absolute coordinate of SW room corner
+    grid_size: [1, 1] # relative size of room from grid_reference 
+    
+    windows_present: true         # the Observation Platform is completely surrounded by a protective clear dome. 
+    backup_power: true            # The Captains Suite contains it's own backup power supply.
+    emergency_exit: false         # Emergency lighting and indicators are not present on the Observation Platform.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+    
+    first_visit_description:
+      offline: >
+        The observation platform is enveloped in darkness, the vast cosmos hidden from view. Without lighting,
+        the reinforced dome overhead merges seamlessly with the void, making it impossible to see anything.
+
+      emergency: >
+        A breathtaking observation deck perched above the Captain's Quarters. A transparent dome provides an
+        unfiltered, panoramic view of the galaxy beyond. The emergency lighting barely illuminates the space,
+        but the silhouette of a large impressive **telescope** dominates the center of the platform.
+
+      main_power: >
+        The observation platform is fully illuminated, revealing a stunning celestial expanse through the reinforced
+        dome. A large impressive **telescope** stands at the heart of the platform, its advanced optics
+        scanning the depths of space. Nearby, reclining seats provide a comfortable place to gaze into the cosmos.
+
+      torch_light: >
+        The beam of your torch skims across polished metal and curved glass, momentarily reflecting off the
+        navigation telescope. The vast expanse of stars above remains unchanged, their cold light indifferent to
+        your presence.
+
+    short_description:
+      offline: "A darkened observation platform where the stars are hidden."
+      emergency: "A celestial viewing deck with dim lighting and a towering telescope."
+      main_power: "A breathtaking observation platform with a fully functional navigation **telescope**."
+      torch_light: "Your torch illuminates the **telescope** and the **observation panel**"
+
+    objects_present:
+#      - id: cop_telescope
+#      - id: cop_seat
+#      - id: cop_map
+
+    exits:
+      - direction: "down"
+        destination: "captains_corridor"
+        dynamic_description:
+          unvisited: "A sleek spiral stairway descends below."
+          visited: "The stairway leads back to the Captain's Corridor."
+
+  # End of Room 21: Captain's Observation Platform
+
+  #--------------------------------------------------
+  # Room 22: Starship Docking Bay (Captain's Yacht Dock)
+  #--------------------------------------------------
+  - room_id: captains_docking_bay
+    name: "Captain's Docking Bay"
+    room_count: 22
+    location_mode: "main_ship"
+    deck_level: 1
+    grid_reference: [5, 6] # absolute coordinate of SW room corner
+    grid_size: [1, 2] # relative size of room from grid_reference 
+
+    windows_present: true         # the Docking Bay is surrounded by windows on two sides.
+    backup_power: true            # The Captains Suite contains it's own backup power supply.
+    emergency_exit: true          # Emergency lighting and indicators are visible at the Docking Bay.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The docking bay is plunged into darkness, its usual operational hum replaced by absolute silence. The
+        **docking airlock** is inactive, its controls completely unresponsive. However, a manual override **lever**
+        is mounted beside the hatch, allowing emergency access. Without power, escape will require effort.
+      emergency: >
+        The dim emergency lighting strips along the floor cast a dull glow over the docking bay. The airlock
+        status **display** flickers with low-power warnings, but the manual override **lever** is active, allowing the
+        airlock to function despite power constraints.
+      main_power: >
+        The docking bay is fully operational, bathed in bright overhead lights. The airlock control **panel** glows
+        green. The storage **lockers** hum with soft energy, available for use, and all docking systems are
+        responsive. 
+      torch_light: >
+        Your torch beam slices through the darkness, illuminating the manual override **lever** and sealed airlock
+        **hatch**. The **status display** flickers weakly, displaying an unreadable error code. 
+
+    yacht_state_description:    # Game engine will append the room description depending on
+                                # the state of the Captain's Yacht.
+      docked: >
+        The Captain's Yacht is firmly secured by the docking clamps, its streamlined hull gleaming faintly in the low
+        light. A soft hiss of stabilizing gasses escapes from beneath the coupling, reminding you the craft can be
+        launched at a moment's notice. The airlock to the yacht stands ready, the interior lights visible through the
+        transparent hatch. 
+      undocked: >
+        The docking clamps lie empty, their mechanical arms retracted to the sides of the bay. Where the yacht once
+        rested, only a few dangling cables and a faint ring of scuffed paint betray that it was ever here at all.
+        A hollow echo underscores the absence of the Captain's Yacht, as if the bay itself feels the loss.
+      destroyed: >
+        The docking bay is a graveyard of melted steel and shattered hull fragments. The yacht's remains are barely
+        recognizable, its once-pristine hull reduced to scorched wreckage. A faint metallic tang lingers in the air,
+        a grim reminder of the destruction.
+
+    short_description:
+      offline: >
+        A darkened docking bay, with only a faint manual override lever visible. 
+      emergency: >
+        Dimly lit under emergency power, with a manual override system still online.
+      main_power: >
+        A fully operational docking bay, all systems ready. 
+      torch_light: >
+        Your torch beam reveals the manual override lever. 
+
+    short_yacht_state_description:  # Game engine will append the room description describing the state of the
+                                    # Captain's Yacht (either docked, undocked, or destroyed).
+      docked: >
+        The Captain's Yacht remains secured at the docking clamps. A soft hum emanates from the stabilizing thrusters,
+        keeping it prepped for departure.
+      undocked: >
+        An empty docking cradle sits forlornly. The Yacht is nowhere to be seen.
+      destroyed: >
+        A gnarled wreck where the Yacht once was, the blackened metal and torn wiring tell a grim tale of destruction.
+
+    objects_present:
+#      - id: dock_status_display
+#      - id: dock_airlock_control
+#      - id: dock_manual_override
+#      - id: dock_storage_lockers
+
+    exits:
+      - direction: "north"
+        destination: "captains_quarters"
+        dynamic_description:
+            unvisited: "A sealed passageway leads north."
+            visited: "The north passage leads back to the Captain's Quarters."
+
+      - direction: "south"
+        destination: "yacht_bridge"
+        dynamic_description:
+          unvisited: "A sealed airlock stands at the far end, potentially leading to the Captain's Yacht."
+          visited: "An airlock here normally gives access to the Captain's Yacht—if it's still docked."
+
+        conditions:
+          - if_yacht_status_in: ["undocked", "destroyed"]
+            warning: "If you go that way you'll die, but hey!, that's up to you! You sure you want to do this?"
+            allow_forced_travel: false  # if true, player can commit space-suicide!
+
+  # End of Room 22: Starship Docking Bay
+
+  # -----------------------------------------------
+  # Room 23: Yacht Bridge
+  # -----------------------------------------------
+  - room_id: yacht_bridge
+    name: "Captain's Yacht - Bridge"
+    room_count: 23
+    location_mode: "yacht"
+    deck_level: -5
+    grid_reference: [5, 4] # absolute coordinate of SW room corner
+    grid_size: [1, 1] # relative size of room from grid_reference 
+
+    windows_present: true         # the Yacht Bridge is surrounded by windows on three sides.
+    backup_power: true            # The Captain's Yacht contains it's own power supply.
+    emergency_exit: false         # No emergency lighting is required as the Captain's Yacht only has three rooms.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The compact bridge of the Captain's Yacht is plunged into total darkness. No screens flicker, no consoles
+        hum, just an unsettling hush as the craft drifts through space, powerless and silent.
+      emergency: >
+        A dull red glow bathes the yacht's bridge in tense light. Flickering readouts hint at minimal backup power,
+        forcing you to rely on manual overrides for any piloting maneuvers.
+      main_power: >
+        Floodlights illuminate the Yacht Bridge, revealing a sleek command console and a single pilot seat facing an
+        interactive display of navigational data. Everything seems primed for immediate flight.
+      torch_light: >
+        Your torch beam flickers across a compact but well-equipped flight deck, highlighting a lone command chair
+        and a few overhead compartments. The rest of the bridge hides in deep shadows without main power.
+
+    yacht_state_description:  # Game engine will append the room description describing whether yacht is docked or undocked.
+      docked: >
+        Outside the bridge's forward window, you can see the secure connection to the main ship. Docking clamps
+        remain locked in place, keeping the yacht firmly attached.
+
+      undocked: >
+        Beyond the forward canopy lies open space; the docking clamps have been released, leaving the yacht free to
+        drift or move under its own thrusters. A faint rumble signals that the craft is no longer tethered to the
+        mothership.
+
+    short_description:
+      offline: >
+        A dark, silent micro-bridge with no sign of power.
+      emergency: >
+        A dimly lit flight deck struggling on minimal backup.
+      main_power: >
+        A bright, fully operational cockpit ready for launch.
+      torch_light: >
+        Your torch reveals a cramped but capable command station.
+
+    short_yacht_state_description:  # Game engine will append a short line describing whether yacht is docked or undocked.
+      docked: >
+        The yacht is clamped securely to the main vessel.
+      undocked: >
+        The yacht is drifting free from the mothership.
+
+    objects_present:
+#      - id: yacht_flight_console
+#      - id: yacht_command_chair
+#      - id: yacht_navigation_display
+
+    exits:
+      - direction: "north"
+        destination: "captains_docking_bay"
+        dynamic_description:
+          unvisited: >
+            The sealed airlock leads back to the main vessel - assuming the yacht is still docked!
+          visited: >
+            The airlock to the north connects to the starship's docking bay, assuming you're docked of course!
+
+        conditions:
+          - if_yacht_status_in: ["undocked"]
+            warning: >
+              Opening that airlock now would lead straight into open space. 
+              If you go that way, you'll die. Are you sure you want to do this?
+            allow_forced_travel: false
+
+      - direction: "south"
+        destination: "yacht_living_quarters"
+        dynamic_description:
+          unvisited: "A narrow doorway to the south leads deeper into the yacht."
+          visited: "To the south lie the living quarters."
+
+  # End of Room 23: Yacht Bridge
+
+  # -----------------------------------------------
+  # Room 24: Yacht Living Quarters
+  # -----------------------------------------------
+  - room_id: yacht_living_quarters
+    name: "Captain's Yacht - Living Quarters"
+    room_count: 24
+    location_mode: "yacht"
+    deck_level: -5
+    grid_reference: [5, 2] # absolute coordinate of SW room corner
+    grid_size: [1, 1] # relative size of room from grid_reference 
+
+    windows_present: true         # The Yacht Living Quarters are surrounded by windows three sides.
+    backup_power: true            # The Captain's Yacht contains it's own power supply.
+    emergency_exit: false         # No emergency lighting is required as the Captain's Yacht only has three rooms.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The living space is submerged in darkness, making it impossible to see the compact but efficient layout of
+        the yacht's private quarters.
+      emergency: >
+        A faint red glow illuminates a small lounge and a fold-away **bed**. Emergency lights reflect off minimalistic
+        storage **lockers**, revealing that personal comforts are limited in this craft.
+      main_power: >
+        The quarters light up, revealing a surprisingly cozy space. A compact **bed** folds neatly against the wall, and
+        a small **table** with integrated holo-entertainment screens occupies one corner. **Storage lockers** line the
+        walls, each labeled and locked tight.
+      torch_light: >
+        By torchlight, you see simple but functional furnishings. The **bed**, **table**, and **storage lockers** are
+        mostly intact, hinting that these quarters can sustain short-term habitation.
+
+    short_description:
+      offline: "A dark, cramped living area offering no visible details."
+      emergency: "A dimly lit living space with basic amenities and flickering lights."
+      main_power: "A bright, functional yacht cabin with fold-away bedding and storage."
+      torch_light: "A small living area partially revealed by your flashlight."
+
+    objects_present:
+#      - id: yacht_fold_bed
+#      - id: yacht_locker
+#      - id: yacht_holo_table
+
+    exits:
+      - direction: "north"
+        destination: "yacht_bridge"
+        dynamic_description:
+          unvisited: "A narrow doorway to the north leads back to the yacht bridge."
+          visited: "Through the northern doorway lies the yacht bridge."
+
+      - direction: "down"
+        destination: "yacht_engine_room"
+        dynamic_description:
+          unvisited: "A small hatch in the floor suggests a route to the engine room."
+          visited: "A floor hatch to the south leads to the engine room."
+
+  # End of Room 24: Yacht Living Quarters
+
+  # -----------------------------------------------
+  # Room 25: Yacht Engine Room
+  # -----------------------------------------------
+  - room_id: yacht_engine_room
+    name: "Captain's Yacht - Engine Room"
+    room_count: 25
+    location_mode: "yacht"
+    deck_level: -4
+    grid_reference: [5, 2] # absolute coordinate of SW room corner
+    grid_size: [1, 1] # relative size of room from grid_reference 
+    
+    windows_present: false        # There are no windows in the engine room.
+    backup_power: true            # The Captain's yacht contains it's own power supply.
+    emergency_exit: false         # No emergency lighting is required as the yacht is only three rooms.
+    requires_light_source: false  # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        You climb into a dark, claustrophobic chamber dominated by silent machinery. The absence of hum from the
+        engines is disconcerting.
+      emergency: >
+        A weak crimson glow pulses through the confined space. The **drive core** sputters intermittently, struggling
+        to maintain backup power. Tubes rattle softly, signaling unstable energy flow. The yacht's systems teeter
+        on the brink of total failure.
+      main_power: >
+        The engine room is ablaze with activity. The compact but powerful **drive core** hums steadily, lighting the
+        chamber in a soft blue aura. Maintenance **consoles** flash real-time data on core stability and power output.
+      torch_light: >
+        In the torch's beam, you see a dense cluster of pipes, cables, and conduits wrapped around a glowing reactor
+        core. A single maintenance terminal flickers weakly, waiting for commands.
+
+    short_description:
+      offline: "A dark, cramped space where the yacht's dormant drive core looms."
+      emergency: "Dimly lit by red warnings, the engine systems struggle under low power."
+      main_power: "Fully operational, with consoles humming around a healthy drive core."
+      torch_light: "A tight engine bay illuminated only by your torch."
+
+    objects_present:
+#      - id: yacht_drive_core
+#      - id: yacht_maintenance_terminal
+#      - id: yacht_power_couplings
+
+    exits:
+      - direction: "up"
+        destination: "yacht_living_quarters"
+        dynamic_description:
+          unvisited: "A narrow crawlspace ladder goes up, presumably to the living quarters."
+          visited: "Climbing up leads to the yacht living quarters."
+
+  # End of Room 25: Yacht Engine Room
+
+  #------------------------------------------
+  # Room 26: Captain's Door
+  #------------------------------------------
+  - room_id: captains_door
+    name: "Captain's Door"
+    room_count: 26
+    location_mode: "main_ship"
+    deck_level: 1  # This links to the deck names in ship_configuration
+    grid_reference: [4, 16] # absolute coordinate of SW room corner
+    grid_size: [3, 1] # relative size of room from grid_reference 
+
+    windows_present: false         # The Captain's Door has no windows.
+    backup_power: true             # The Captain's Door does have its own backup power supply.
+    emergency_exit: false          # Emergency lighting and indicators are not present at the Captain's Door.
+    requires_light_source: false   # The player can see without a torch due to ambient lighting.
+
+    first_visit_description:
+      offline: >
+        The **captains door** is completely inactive, its once-luminous frame now a dull, lifeless panel. There
+        is no way to open it until power is restored. The incline leading up to it feels eerily abandoned,
+        swallowed by darkness.
+
+      emergency: >
+        The grand-looking **Captain's Door** stands at the top of a gentle incline leading away from the bridge
+        deck, elevated above the surrounding command stations. A polished plaque beside it reads "Captain's
+        Quarters" in finely etched metallic script. The dim glow of emergency power flickers along the frame, but
+        a small **status panel** blinks faintly: "AUTHORIZED ENTRY REQUIRED." The incline gives the entrance an
+        added sense of prestige, reinforcing the exclusivity of what lies beyond.
+
+      main_power: >
+        Fully powered, the **Captain's Door** door glows a steady gold at the summit of the gently rising slope. The
+        security system hums with readiness, awaiting proper authorization. The door plaque shines proudly, a
+        symbol of command and authority. Beyond this threshold lies the domain of the captain.
+
+      torch_light: >
+        Your torch beam glides across the metallic surface of the **captains door**, illuminating the gold-etched
+        plaque. The incline ahead disappears into shadow, while the status light remains dim, refusing to respond.
+        The door stands resolute, its lock system unyielding in the absence of power.
+
+    short_description:
+      offline: "A dark, elevated entryway, swallowed by the shadows."
+      emergency: "A grand, raised doorway overlooking the bridge, glowing faintly."
+      main_power: "A regal entryway at the top of a gentle incline, gleaming with authority."
+      torch_light: "Your torch casts flickering light over the sloped approach and the locked door."
+
+    objects_present:
+#      - id: cap_door_status_panel
+#      - id: cap_door_quantum_lock
+#      - id: cap_captains_door
+
+    exits:
+      - direction: "south"
+        destination: "captains_corridor"
+        dynamic_description:
+          unvisited: "You are unable to see past the locked door to the south."
+          visited: "The door to the south leads to the captain's corridor."
+
+      - direction: "down"
+        destination: "ship_bridge"
+        dynamic_description:
+          unvisited: "A ramp to the north descends back down into the ship bridge"
+          visited: "The ramp to the north east leads back to the ship bridge."
+
+      # End of Area 9: Captain's Door
+
+# End of Rooms
+
+# =====================================================================
+# 6. Object Definitions: Defines objects and object characteristics.
+# =====================================================================
+
+object_definitions:
+  
+  - object_id: nav_console
+    # The nav_console provides a puzzle element that allows the player to access the nav_compartment and gain access 
+    # to the torch and the security pass. Both items are required for additional puzzles in the game.
+
+    object_name: "Navigation Console"
+    object_count: 1
+    weight: 250         # In kilograms.
+    size: 20            # On a scale of 1 (small) to 20 (large).
+    object_description: >
+      A sleek, futuristic navigation console commands your attention, its smooth touchscreen aglow with an otherworldly
+      light. A blinking cursor dances invitingly across the interface, as if urging you to start typing. Atop the display,
+      a striking framed photo catches your eye—its vibrant colors and surreal composition draws your attention. The console
+      stands ready, its mysterious login prompt, a silent invitation to step into a world of untold navigational wonders.
+      There might be something interesting in there, if only you can login!
+      
+    object_characteristics: # this section turns on the neccesary flags from 'obect_defaults:' to describe the object.
+      is_hackable: true
+      is_activatable: true
+      is_networked: true
+      requires_power: true
+      is_storage: true
+
+      storage_category: digital_files
+
+    commands: ["Type", "Read", "Enter", "Insert", "Login", "Logout"]
+    synonyms: ["console", "nav console", "control panel"]
+
+#    actions:
+#      type_password: 
+#        description: "You type in the password and press Enter..."
+#        result_success: "The console processes your input."
+#        result_failure: "Access denied. Incorrect password."
+#        condition: "Requires the correct password from the nav_officer_log."
+#      read_log:
+#        description: "You select 'Nav Officer's Log' from the screen."
+#        result: "The log entry appears on the display."
+#      copy_file:
+#        description: "You attempt to copy the log file."
+#        result_success: "You copy the file to the external storage device."
+#        result_failure: "Copy failed. No external storage device inserted."
+#        condition: "Requires an external storage device inserted."
+
+
+  - object_id: nav_compartment
+    # This hidden compartment is built into the Navigation Station. It remains locked until the player logs in via 
+    # the nav_console.
+  
+    object_name: "Hidden Storage Compartment"
+    object_count: 2
+    object_description: >
+      A small, almost invisible compartment is nestled within the structure of the navigation station. its edges
+      blending seemlessly with the console's sleek surface. The subtle craftsmanship makes it look like part of
+      the design, an elegant mystery waiting to be noticed. Its existence seems to invite closer inspection, ask
+      though it might hold something valuable, or perhaps something entirely unexpected.
+
+    initial_state: "Locked"  # Locked by default; opens when accessed via nav_console.
+    dependencies:
+      requires_console_access: true  # Unlocks only after successful login at nav_console.
+    storage_contents:
+      - nav_torch
+      - nav_security_pass
+    built_from: none  # Fully integrated into the Navigation Station.
+
+    object_characteristics:
+      is_interactive: true  # Can be interacted with.
+      is_operational: true  # Works when unlocked.
+      is_storage: true      # Holds small carriable objects.
+      is_lockable: true     # Can be locked/unlocked.
+      is_takeable: false    # This compartment cannot be removed from the Navigation Station.
+
+    commands: ["Open", "Close", "Lock", "Unlock"]
+    synonyms: ["Panel", "Drawer", "Locker"]
+    actions:
+
+
+  - object_id: nav_officer_log
+    # A digital log entry stored inside the Navigation Console. It contains a password hint to unlock the compartment.
+
+    object_name: "Navigation Officer's Log"
+    object_count: 3
+    object_description: >
+      A standard ship log entry, recorded by the Navigation Officer. The text appears slightly distorted, but a few
+      lines stand out: 'Note to self: If I forget my password again, it's just the name of my first pet followed by
+      the docking bay number. Stupid security rules...'
+
+    initial_state: "Stored"  # The log is initially stored in the nav_console.
+    dependencies:
+      requires_console_access: true  # Requires nav_console login to be read.
+    stored_in: nav_console  # Default storage location.
+    built_from: none  # A digital file, not a physical object.
+
+    object_characteristics:
+      is_interactive: true  # The player can interact with it.
+      is_stored: true  # A digital file, not a physical object.
+      is_transferable: true  # Can be copied to another storage device.
+      is_destroyable: false  # Cannot be deleted (for now).
+      is_hackable: false  # No hacking mechanics needed.
+
+    commands: ["Read", "Copy", "Paste"]
+    synonyms: ["Officer Log", "log message", " log Record"]
+
+
+  - object_id: nav_fish_delivery_log
+    # A digital log entry about the arrival of the Navigation Officer's exotic pet.
+
+    object_name: "Delivery Note"
+    object_count: 4
+    object_description: >
+      A personal log entry from the Navigation Officer. She seems excited: "Finally! It's here! I just got
+      confirmation that my package has arrived in Docking Bay 22! I can't wait to introduce everyone to Tiberius!
+      Ardean Dancing Fish are so rare in the Federation. Just drop the pet seed into fresh water, and in ten
+      minutes, I'll have a most rare, vibrant, and energetic fish this side of the galaxy!"
+
+    initial_state: "Stored"  # Stored in the nav_console.
+    dependencies:
+      requires_console_access: true  # Must be logged into nav_console to read.
+    stored_in: nav_console  # Default storage location.
+    built_from: none  # Digital file.
+
+    object_characteristics:
+      is_interactive: true  # Can be read.
+      is_stored: true  # Digital file.
+      is_transferable: true  # Can be copied.
+      is_destroyable: false  # Cannot be deleted.
+
+    commands: ["Read", "Copy", "Paste"]
+    synonyms: ["Delivery Log", "delivery message", "delivery Record"]
+
+
+  - object_id: nav_fish_photo
+    # A framed picture on the Navigation Console, showing the officer's pet.
+
+    object_name: "Framed Picture."
+    object_count: 5
+    weight: 0.1         # Weight in kg's
+    size: 2             # Physical size. [1 to 20]
+    object_description: >
+      A beautifully framed photograph depicts an Ardean Dancing Fish mid-jump, its shimmering colors catching the light
+      in mesmerizing patterns. Below the image, the name 'Tiberius' is elegantly inscribed, lending the picture an air
+      of quiet mystery."
+
+
+    initial_state: "Visible"  # Always present.
+    dependencies: none  # No special conditions to view it.
+    built_from: none  # Decorative object.
+
+    object_characteristics:
+      is_interactive: true  # Can be examined.
+      is_operational: true  # Always active.
+      is_takeable: true     # This is a carriable puzzle clue.
+
+    commands: ["Look", "Examine", "Inspect"]
+    synonyms: [ "Picture", "framed picture", "photo" , "fish photo"]
+
+
+  - object_id: cab_backpack
+    object_name: "Standard Backpack"
+    weight: 1.0           # Weight in kg's
+    size: 5               # Physical size. [1 to 20]
+    capacity_weight: 60   # The backpack can hold up to 80 kg.
+    capacity_size: 100    # The backpack can hold items totaling up to 100 size units.
+    object_description: >
+      A rugged, durable backpack with multiple compartments. It looks capable of holding a good deal of your gear.
+    
+    object_characteristics:
+      is_takeable: true
+      wearable: true     # Mark it as wearable.
+      is_storage: true
+      storage_type: backpack     # Used in our player logic to identify it.
+
+# =====================================================================
+# 7. Actions: Game actions definitions
+# =====================================================================
+game_actions:
+
+  # ✅ OPENING & CLOSING OBJECTS
+  open:
+    description: "Open a door, compartment, or storage unit."
+    success: "You open the {object_name}."
+    failure: "The {object_name} is locked."
+  close:
+    description: "Close a door, compartment, or storage unit."
+    success: "You close the {object_name}."
+    failure: "The {object_name} won't close properly."
+
+  # ✅ ACTIVATING & DEACTIVATING DEVICES
+  turn_on:
+    description: "Activate a powered device."
+    success: "The {object_name} hums to life."
+    failure: "The {object_name} requires power to function."
+  turn_off:
+    description: "Deactivate a powered device."
+    success: "The {object_name} powers down."
+    failure: "The {object_name} is already off."
+
+  # ✅ HANDLING ITEMS (TAKE, DROP, USE, EAT)
+  take:
+    description: "Pick up an item."
+    success: "You take the {object_name}."
+    failure: "You can't take the {object_name}."
+  drop:
+    description: "Remove an item from inventory."
+    success: "You drop the {object_name}."
+    failure: "You can't drop that."
+  use:
+    description: "Use an item."
+    success: "You use the {object_name}."
+    failure: "You can't use that right now."
+  eat:
+    description: "Consume food."
+    success: "You eat the {object_name}."
+    failure: "That's not something you can eat."
+  drink:
+    description: "Consume liquid."
+    success: "You drink the {object_name}."
+    failure: "There's nothing to drink."
+
+  # ✅ READING & EXAMINING OBJECTS
+  read:
+    description: "Read text on an object."
+    success: "You read the {object_name}."
+    failure: "There's nothing readable here."
+  examine:
+    description: "Inspect an object closely."
+    success: "You examine the {object_name}."
+    failure: "There's nothing special about it."
+
+  # ✅ LOCKING & UNLOCKING OBJECTS
+  lock:
+    description: "Lock a door or compartment."
+    success: "You lock the {object_name}."
+    failure: "You need a key or access to lock this."
+  unlock:
+    description: "Unlock a door or compartment."
+    success: "You unlock the {object_name}."
+    failure: "You need the correct key or passcode."
+
+
+
+  # End of Game Actions
+
+# =====================================================================
+# 8. Commands: Generic and Multi-Object Command Definitions
+# =====================================================================
+game_commands:
+
+  # ✅ MOVEMENT COMMANDS
+  go:
+    description: "Move in a direction (e.g., 'go north')."
+    synonyms: ["move", "walk", "navigate"]
+  enter:
+    description: "Step inside an area or structure."
+    synonyms: ["step in", "go inside"]
+  exit:
+    description: "Leave an area or structure."
+    synonyms: ["leave", "step out"]
+  climb:
+    description: "Ascend ladders, ropes, or climbable surfaces."
+    synonyms: ["scale", "ascend"]
+  jump:
+    description: "Leap over obstacles or gaps."
+    synonyms: ["hop", "vault"]
+
+  # ✅ OBJECT INTERACTION COMMANDS
+  take:
+    description: "Pick up an item."
+    synonyms: ["grab", "pick up"]
+  drop:
+    description: "Remove an item from inventory."
+    synonyms: ["release", "put down"]
+  open:
+    description: "Open doors, compartments, drawers, etc."
+    synonyms: ["unseal", "unlock"]
+  close:
+    description: "Shut something."
+    synonyms: ["seal", "lock"]
+  turn_on:
+    description: "Activate a device or system."
+    synonyms: ["switch on", "power up"]
+  turn_off:
+    description: "Deactivate a device or system."
+    synonyms: ["switch off", "power down"]
+  push:
+    description: "Press a button or move an object forward."
+    synonyms: ["press", "shove"]
+  pull:
+    description: "Drag or yank something."
+    synonyms: ["tug", "draw"]
+
+  # ✅ EXAMINATION COMMANDS
+  look:
+    description: "Get details about the environment."
+    synonyms: ["observe", "view"]
+  examine:
+    description: "Closely inspect an object."
+    synonyms: ["inspect", "analyze"]
+  read:
+    description: "View written text on an object."
+    synonyms: ["scan", "study"]
+
+  # ✅ INVENTORY & RESOURCE MANAGEMENT
+  inventory:
+    description: "Show what you are carrying."
+    synonyms: ["inv", "bag"]
+  use:
+    description: "Apply an item."
+    synonyms: ["activate", "utilize"]
+  eat:
+    description: "Consume food."
+    synonyms: ["consume", "chew"]
+  drink:
+    description: "Consume liquid."
+    synonyms: ["sip", "gulp"]
+
+  # ✅ GAME CONTROL COMMANDS
+  help:
+    description: "Provides a summarized list of commands."
+    synonyms: ["commands", "info"]
+  save:
+    description: "Store game progress."
+    synonyms: ["store", "record"]
+  load:
+    description: "Resume a saved game."
+    synonyms: ["restore", "reload"]
+  quit:
+    description: "Exit the game."
+    synonyms: ["exit", "leave"]
+
+# End of Commands:
+  
+# =====================================================================
+# 9. Puzzles and Challenges: Interactive puzzles and challenges
+# =====================================================================
+game_puzzles:
+
+  unlock_nav_compartment:
+    puzzle_name: "Unlock the Navigation Compartment"
+    puzzle_count: 1
+    puzzle_description: >
+      The Navigation Officer's hidden **storage compartment** is locked and requires a password. The player
+      must find two clues—one in a **log file** and one in a **framed picture**—to deduce the correct password.
+    puzzle_type: "password_entry"  # This puzzle requires a typed input.
+    puzzle_trigger: "enter_password at nav_console"
+    
+    conditions:
+      requires_objects:
+        - nav_officer_log  # The log provides the docking bay clue.
+        - nav_fish_photo   # The framed picture reveals the pet's name.
+      correct_input: "Tiberius22"  # The required password.
+      success_triggers:
+        - unlock nav_compartment  # The compartment unlocks when solved.
+        - award_score 10  # Player receives 10 points.
+    
+    fail_conditions:
+      incorrect_input: "Access denied. Incorrect password."
+
+  # End of Puzzles and Challenges
+
+  
+# =====================================================================
+# 10. Player language capture
+# =====================================================================
+
+invalid_respone: # Responses when game can't understand player inputs
+  response:
+    [
+      "I'm sorry, but I have absolutely no idea what you're talking about!",
+      "I've passed that statement through my universal translator and I got nothing!",
+      "Your words are like static in deep space — I can't make any sense of them.",
+      "That command defies the laws of physics... and my programming!",
+      "Error: Command not recognized. Perhaps you should try speaking ENGLISH!!",
+      "Your input seems lost in translation — could you rephrase that?",
+      "I'm sorry! What did you just call me?",
+      "What in hell's name have you been smoking!",
+      "I'll tell you what... why don't you try that again?",
+      "Say that again! I dare you!",
+      "Is your keyboard fully functional, or is it just that you can't spell!",
+      "That is about as useful as a window on a submarine.",
+      "Well, that's the most confusing thing I've heard all day — are you even trying?",
+      "I have no idea what you're rambling about — try forming an actual sentence next time.",
+      "I beg your pardon! I have absolutely no repsonse for that!"
+    ]
+
+invalid_direction: # Responses when navigation command is not possible
+  response:
+    [
+      "So... you can walk through walls now!",
+      "You attempt to exit that way and bang your forehead against the wall!",
+      "Do you think you can go that way? I'm willing to try again if you are!",
+      "Nice try, but that exit leads nowhere!",
+      "I suggest you actually 'read' the available exits first, before attempting to move!",
+      "You're trying to take a shortcut, aren't you? Best of luck with that!",
+      "It's not safe to go that way. If you make it through, you might end up in space, and in space... 'nobody can hear your scream!'",
+      "I'm really trying to help you here! I display the exits for you and everything! You just don't try do you?",
+      "You're not quite ready for this game, are you? The lights are on but it appears nobody's home!",
+      "That way leads to eternal damnation! Personally, I'd take another exit if I were you!",
+      "That exit only exists in a different dimension! You'd better look for another one.",
+      "Computer says 'No'!",
+      "I'm sorry, Dave. I'm afraid I can't let you go that way.",
+      "Your attempt to navigate this ship is futile!",
+      "I have a bad feeling about this… you can't go that way kid!"
+    ]
+
+profanity_detector: # Responses when player swears (English only)
+  swear_words:
+    [
+      "arse", "arsehead", "arsehole", "ass", "asshole", "bastard", "bitch", "bloody", "bollocks", 
+      "brotherfucker", "bugger", "bullshit", "child-fucker", "Christ", "cock", "cocksucker", "crap", 
+      "cunt", "dammit", "damn", "dick", "dickhead", "dumbass", "dyke", "faggot", "fuck", "fucker", 
+      "fucking", "god dammit", "goddammit", "hell", "holy shit", "jackarse", "jack-ass", "jackass", 
+      "Jesus, Christ", "kike", "mother fucker", "mother-fucker", "motherfucker", "nigga", "nigger", 
+      "pigfucker", "piss", "prick", "pussy", "shit", "shite", "sisterfucker", "slut", "son of a bitch", 
+      "son of a whore", "spastic", "sweet Jesus", "twat", "wanker", "skank"
+    ]
+  response:
+    [
+      "Do you kiss your mother with that mouth?", 
+      "My, what a colourful repertoire you have! Your mother must be so proud!", 
+      "Somewhere out there, a tree is tirelessly producing oxygen for you. I think you owe it an apology!", 
+      "If only we got a dollar for every bad word, we'd be rich by now!", 
+      "Your words just bounced off me and hit the 'I don't care' wall.", 
+      "I'd give that insult a C-. Creativity counts, you know?", 
+      "Oops, your verbal filter must be on vacation.", 
+      "I'm allergic to negativity. Bless me!", 
+      "If this were a battle of wits, I'd feel bad for you. I'm clearly armed.", 
+      "Congratulations! You've won the 'Sailor Mouth of the Year' award.", 
+      "Someday you'll go far—and I really hope you stay there.", 
+      "Beauty is only skin deep, but ugly goes clean to the bone.", 
+      "Oh, I'm sorry. Did the middle of my sentence interrupt the beginning of yours?", 
+      "You bring everyone a lot of joy... when you leave the room.", 
+      "I believe in lifting people, not tearing them down. Let's find a way to understand each other."
+    ]
+
+#END OF FILE =====================================================================
