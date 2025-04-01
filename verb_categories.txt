@@ -1,0 +1,1524 @@
+Verb Categories Documentation
+===========================
+
+INVENTORY
+---------
+Description: Commands for viewing inventory and equipment
+
+Verbs:
+  - i
+    Action: inventory
+    Target: 
+    Intent: CommandIntent.INVENTORY
+
+  - inventory
+    Action: inventory
+    Target: 
+    Intent: CommandIntent.INVENTORY
+
+  - inv
+    Action: inventory
+    Target: 
+    Intent: CommandIntent.INVENTORY
+
+  - items
+    Action: inventory
+    Target: 
+    Intent: CommandIntent.INVENTORY
+
+  - cargo
+    Action: inventory
+    Target: 
+    Intent: CommandIntent.INVENTORY
+
+  - loadout
+    Action: inventory
+    Target: 
+    Intent: CommandIntent.INVENTORY
+
+
+QUIT
+----
+Description: Commands for exiting the game
+
+Verbs:
+  - q
+    Action: quit
+    Target: 
+    Intent: CommandIntent.QUIT
+
+  - quit
+    Action: quit
+    Target: 
+    Intent: CommandIntent.QUIT
+
+  - exit
+    Action: quit
+    Target: 
+    Intent: CommandIntent.QUIT
+
+  - bye
+    Action: quit
+    Target: 
+    Intent: CommandIntent.QUIT
+
+  - logout
+    Action: quit
+    Target: 
+    Intent: CommandIntent.QUIT
+
+  - disconnect
+    Action: quit
+    Target: 
+    Intent: CommandIntent.QUIT
+
+
+HELP
+----
+Description: Commands for getting help and information
+
+Verbs:
+  - h
+    Action: help
+    Target: 
+    Intent: CommandIntent.HELP
+
+  - help
+    Action: help
+    Target: 
+    Intent: CommandIntent.HELP
+
+  - ?
+    Action: help
+    Target: 
+    Intent: CommandIntent.HELP
+
+  - commands
+    Action: help
+    Target: 
+    Intent: CommandIntent.HELP
+
+  - tutorial
+    Action: help
+    Target: 
+    Intent: CommandIntent.HELP
+
+  - manual
+    Action: help
+    Target: 
+    Intent: CommandIntent.HELP
+
+
+MOVE
+----
+Description: Commands for movement and navigation
+
+Verbs:
+  - go
+    Action: go
+    Target: 
+    Intent: CommandIntent.MOVE
+
+  - walk
+    Action: walk
+    Target: 
+    Intent: CommandIntent.MOVE
+
+  - run
+    Action: run
+    Target: 
+    Intent: CommandIntent.MOVE
+
+  - move
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+
+  - head
+    Action: head
+    Target: 
+    Intent: CommandIntent.MOVE
+
+  - float
+    Action: float
+    Target: 
+    Intent: CommandIntent.MOVE
+
+  - drift
+    Action: drift
+    Target: 
+    Intent: CommandIntent.MOVE
+
+Directions:
+  - north
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: north
+
+  - south
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: south
+
+  - east
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: east
+
+  - west
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: west
+
+  - up
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: up
+
+  - down
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: down
+
+  - forward
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: forward
+
+  - backward
+    Action: move
+    Target: 
+    Intent: CommandIntent.MOVE
+    Direction: backward
+
+Locations:
+  - bridge
+    Action: go
+    Target: to bridge
+    Intent: CommandIntent.MOVE
+
+  - engineering
+    Action: go
+    Target: to engineering
+    Intent: CommandIntent.MOVE
+
+  - cargo bay
+    Action: go
+    Target: to cargo bay
+    Intent: CommandIntent.MOVE
+
+  - airlock
+    Action: go
+    Target: to airlock
+    Intent: CommandIntent.MOVE
+
+  - medbay
+    Action: go
+    Target: to medbay
+    Intent: CommandIntent.MOVE
+
+  - quarters
+    Action: go
+    Target: to quarters
+    Intent: CommandIntent.MOVE
+
+
+LOOK
+----
+Description: Commands for looking at surroundings and objects
+
+Verbs:
+  - look
+    Action: look
+    Target: 
+    Intent: CommandIntent.LOOK
+
+  - l
+    Action: l
+    Target: 
+    Intent: CommandIntent.LOOK
+
+  - examine
+    Action: examine
+    Target: 
+    Intent: CommandIntent.LOOK
+
+  - inspect
+    Action: inspect
+    Target: 
+    Intent: CommandIntent.LOOK
+
+  - check
+    Action: check
+    Target: 
+    Intent: CommandIntent.LOOK
+
+  - survey
+    Action: survey
+    Target: 
+    Intent: CommandIntent.LOOK
+
+Objects:
+  - console
+    Action: look
+    Target: console
+    Intent: CommandIntent.LOOK
+
+  - panel
+    Action: look
+    Target: panel
+    Intent: CommandIntent.LOOK
+
+  - terminal
+    Action: look
+    Target: terminal
+    Intent: CommandIntent.LOOK
+
+  - display
+    Action: look
+    Target: display
+    Intent: CommandIntent.LOOK
+
+  - hologram
+    Action: look
+    Target: hologram
+    Intent: CommandIntent.LOOK
+
+  - device
+    Action: look
+    Target: device
+    Intent: CommandIntent.LOOK
+
+  - equipment
+    Action: look
+    Target: equipment
+    Intent: CommandIntent.LOOK
+
+  - machinery
+    Action: look
+    Target: machinery
+    Intent: CommandIntent.LOOK
+
+
+COMMUNICATE
+-----------
+Description: Commands for communication and interaction
+
+Verbs:
+  - talk
+    Action: talk
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+  - speak
+    Action: speak
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+  - chat
+    Action: chat
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+  - converse
+    Action: converse
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+  - contact
+    Action: contact
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+  - hail
+    Action: hail
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+  - transmit
+    Action: transmit
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+  - broadcast
+    Action: broadcast
+    Target: 
+    Intent: CommandIntent.COMMUNICATE
+
+Targets:
+  - alien
+    Action: talk
+    Target: alien
+    Intent: CommandIntent.COMMUNICATE
+
+  - robot
+    Action: talk
+    Target: robot
+    Intent: CommandIntent.COMMUNICATE
+
+  - android
+    Action: talk
+    Target: android
+    Intent: CommandIntent.COMMUNICATE
+
+  - ai
+    Action: talk
+    Target: ai
+    Intent: CommandIntent.COMMUNICATE
+
+  - computer
+    Action: talk
+    Target: computer
+    Intent: CommandIntent.COMMUNICATE
+
+  - crew
+    Action: talk
+    Target: crew
+    Intent: CommandIntent.COMMUNICATE
+
+  - captain
+    Action: talk
+    Target: captain
+    Intent: CommandIntent.COMMUNICATE
+
+  - officer
+    Action: talk
+    Target: officer
+    Intent: CommandIntent.COMMUNICATE
+
+Complex Commands:
+  - hail the alien ship
+    Action: hail
+    Target: alien ship
+    Intent: CommandIntent.COMMUNICATE
+
+  - contact engineering
+    Action: contact
+    Target: engineering
+    Intent: CommandIntent.COMMUNICATE
+
+  - transmit distress signal
+    Action: transmit
+    Target: distress signal
+    Intent: CommandIntent.COMMUNICATE
+
+  - broadcast message to all stations
+    Action: broadcast
+    Target: message all stations
+    Intent: CommandIntent.COMMUNICATE
+
+
+COMBAT
+------
+Description: Commands for combat and combat-related actions
+
+Verbs:
+  - attack
+    Action: attack
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - fight
+    Action: fight
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - hit
+    Action: hit
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - strike
+    Action: strike
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - shoot
+    Action: shoot
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - fire
+    Action: fire
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - blast
+    Action: blast
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - discharge
+    Action: discharge
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - engage
+    Action: engage
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - neutralize
+    Action: neutralize
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+Targets:
+  - alien
+    Action: attack
+    Target: alien
+    Intent: CommandIntent.COMBAT
+
+  - robot
+    Action: attack
+    Target: robot
+    Intent: CommandIntent.COMBAT
+
+  - android
+    Action: attack
+    Target: android
+    Intent: CommandIntent.COMBAT
+
+  - drone
+    Action: attack
+    Target: drone
+    Intent: CommandIntent.COMBAT
+
+  - hostile
+    Action: attack
+    Target: hostile
+    Intent: CommandIntent.COMBAT
+
+  - threat
+    Action: attack
+    Target: threat
+    Intent: CommandIntent.COMBAT
+
+  - enemy
+    Action: attack
+    Target: enemy
+    Intent: CommandIntent.COMBAT
+
+  - creature
+    Action: attack
+    Target: creature
+    Intent: CommandIntent.COMBAT
+
+Weapons:
+  - phaser
+    Action: attack
+    Target: alien phaser
+    Intent: CommandIntent.COMBAT
+
+  - blaster
+    Action: attack
+    Target: alien blaster
+    Intent: CommandIntent.COMBAT
+
+  - laser
+    Action: attack
+    Target: alien laser
+    Intent: CommandIntent.COMBAT
+
+  - pulse
+    Action: attack
+    Target: alien pulse
+    Intent: CommandIntent.COMBAT
+
+  - beam
+    Action: attack
+    Target: alien beam
+    Intent: CommandIntent.COMBAT
+
+  - torpedo
+    Action: attack
+    Target: alien torpedo
+    Intent: CommandIntent.COMBAT
+
+  - missile
+    Action: attack
+    Target: alien missile
+    Intent: CommandIntent.COMBAT
+
+
+SEARCH
+------
+Description: Commands for searching and finding objects
+
+Verbs:
+  - search
+    Action: search
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+  - find
+    Action: find
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+  - locate
+    Action: locate
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+  - seek
+    Action: seek
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+  - probe
+    Action: probe
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+  - detect
+    Action: detect
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+  - discover
+    Action: discover
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+  - track
+    Action: track
+    Target: 
+    Intent: CommandIntent.SEARCH
+
+Targets:
+  - console
+    Action: search
+    Target: console
+    Intent: CommandIntent.SEARCH
+
+  - panel
+    Action: search
+    Target: panel
+    Intent: CommandIntent.SEARCH
+
+  - terminal
+    Action: search
+    Target: terminal
+    Intent: CommandIntent.SEARCH
+
+  - device
+    Action: search
+    Target: device
+    Intent: CommandIntent.SEARCH
+
+  - data
+    Action: search
+    Target: data
+    Intent: CommandIntent.SEARCH
+
+  - information
+    Action: search
+    Target: information
+    Intent: CommandIntent.SEARCH
+
+  - signal
+    Action: search
+    Target: signal
+    Intent: CommandIntent.SEARCH
+
+  - lifeform
+    Action: search
+    Target: lifeform
+    Intent: CommandIntent.SEARCH
+
+  - artifact
+    Action: search
+    Target: artifact
+    Intent: CommandIntent.SEARCH
+
+
+MANIPULATE
+----------
+Description: Commands for manipulating objects and devices
+
+Verbs:
+  - open
+    Action: open
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - close
+    Action: close
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - lock
+    Action: lock
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - unlock
+    Action: unlock
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - push
+    Action: push
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - pull
+    Action: pull
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - turn
+    Action: turn
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - press
+    Action: press
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - activate
+    Action: activate
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - deactivate
+    Action: deactivate
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - engage
+    Action: engage
+    Target: 
+    Intent: CommandIntent.COMBAT
+
+  - disengage
+    Action: disengage
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+Objects:
+  - console
+    Action: open
+    Target: console
+    Intent: CommandIntent.MANIPULATE
+
+  - panel
+    Action: open
+    Target: panel
+    Intent: CommandIntent.MANIPULATE
+
+  - terminal
+    Action: open
+    Target: terminal
+    Intent: CommandIntent.MANIPULATE
+
+  - screen
+    Action: open
+    Target: screen
+    Intent: CommandIntent.MANIPULATE
+
+  - hatch
+    Action: open
+    Target: hatch
+    Intent: CommandIntent.MANIPULATE
+
+  - airlock
+    Action: open
+    Target: airlock
+    Intent: CommandIntent.MANIPULATE
+
+  - gate
+    Action: open
+    Target: gate
+    Intent: CommandIntent.MANIPULATE
+
+  - valve
+    Action: open
+    Target: valve
+    Intent: CommandIntent.MANIPULATE
+
+  - circuit
+    Action: open
+    Target: circuit
+    Intent: CommandIntent.MANIPULATE
+
+  - system
+    Action: open
+    Target: system
+    Intent: CommandIntent.MANIPULATE
+
+
+CLIMB
+-----
+Description: Commands for climbing and movement in different environments
+
+Verbs:
+  - climb
+    Action: climb
+    Target: 
+    Intent: CommandIntent.CLIMB
+
+  - jump
+    Action: jump
+    Target: 
+    Intent: CommandIntent.MANIPULATE
+
+  - crawl
+    Action: crawl
+    Target: 
+    Intent: CommandIntent.CLIMB
+
+  - swim
+    Action: swim
+    Target: 
+    Intent: CommandIntent.CLIMB
+
+  - hover
+    Action: hover
+    Target: 
+    Intent: CommandIntent.CLIMB
+
+  - fly
+    Action: fly
+    Target: 
+    Intent: CommandIntent.CLIMB
+
+  - launch
+    Action: launch
+    Target: 
+    Intent: CommandIntent.CLIMB
+
+  - land
+    Action: land
+    Target: 
+    Intent: CommandIntent.CLIMB
+
+Objects:
+  - ladder
+    Action: climb
+    Target: ladder
+    Intent: CommandIntent.CLIMB
+
+  - wall
+    Action: climb
+    Target: wall
+    Intent: CommandIntent.CLIMB
+
+  - rope
+    Action: climb
+    Target: rope
+    Intent: CommandIntent.CLIMB
+
+  - gap
+    Action: climb
+    Target: gap
+    Intent: CommandIntent.CLIMB
+
+  - fence
+    Action: climb
+    Target: fence
+    Intent: CommandIntent.CLIMB
+
+  - pit
+    Action: climb
+    Target: pit
+    Intent: CommandIntent.CLIMB
+
+  - tunnel
+    Action: climb
+    Target: tunnel
+    Intent: CommandIntent.CLIMB
+
+  - vent
+    Action: climb
+    Target: vent
+    Intent: CommandIntent.CLIMB
+
+  - pipe
+    Action: climb
+    Target: pipe
+    Intent: CommandIntent.CLIMB
+
+  - space
+    Action: climb
+    Target: space
+    Intent: CommandIntent.CLIMB
+
+
+SOCIAL
+------
+Description: Commands for social interaction and gestures
+
+Verbs:
+  - give
+    Action: give
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - show
+    Action: show
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - trade
+    Action: trade
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - follow
+    Action: follow
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - greet
+    Action: greet
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - salute
+    Action: salute
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - wave
+    Action: wave
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - gesture
+    Action: gesture
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+  - signal
+    Action: signal
+    Target: 
+    Intent: CommandIntent.SOCIAL
+
+Objects:
+  - phaser
+    Action: give
+    Target: phaser
+    Intent: CommandIntent.SOCIAL
+
+  - blaster
+    Action: give
+    Target: blaster
+    Intent: CommandIntent.SOCIAL
+
+  - laser
+    Action: give
+    Target: laser
+    Intent: CommandIntent.SOCIAL
+
+  - tool
+    Action: give
+    Target: tool
+    Intent: CommandIntent.SOCIAL
+
+  - device
+    Action: give
+    Target: device
+    Intent: CommandIntent.SOCIAL
+
+  - data pad
+    Action: give
+    Target: data pad
+    Intent: CommandIntent.SOCIAL
+
+  - access card
+    Action: give
+    Target: access card
+    Intent: CommandIntent.SOCIAL
+
+  - credits
+    Action: give
+    Target: credits
+    Intent: CommandIntent.SOCIAL
+
+  - artifact
+    Action: give
+    Target: artifact
+    Intent: CommandIntent.SOCIAL
+
+
+ENVIRONMENT
+-----------
+Description: Commands for environmental interaction and modification
+
+Verbs:
+  - dig
+    Action: dig
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - cut
+    Action: cut
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - burn
+    Action: burn
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - pour
+    Action: pour
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - light
+    Action: light
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - extinguish
+    Action: extinguish
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - fill
+    Action: fill
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - break
+    Action: break
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - smash
+    Action: smash
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - destroy
+    Action: destroy
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+  - shatter
+    Action: shatter
+    Target: 
+    Intent: CommandIntent.ENVIRONMENT
+
+Objects:
+  - circuit
+    Action: dig
+    Target: circuit
+    Intent: CommandIntent.ENVIRONMENT
+
+  - panel
+    Action: dig
+    Target: panel
+    Intent: CommandIntent.ENVIRONMENT
+
+  - console
+    Action: dig
+    Target: console
+    Intent: CommandIntent.ENVIRONMENT
+
+  - terminal
+    Action: dig
+    Target: terminal
+    Intent: CommandIntent.ENVIRONMENT
+
+  - system
+    Action: dig
+    Target: system
+    Intent: CommandIntent.ENVIRONMENT
+
+  - device
+    Action: dig
+    Target: device
+    Intent: CommandIntent.ENVIRONMENT
+
+  - equipment
+    Action: dig
+    Target: equipment
+    Intent: CommandIntent.ENVIRONMENT
+
+  - machinery
+    Action: dig
+    Target: machinery
+    Intent: CommandIntent.ENVIRONMENT
+
+  - power
+    Action: dig
+    Target: power
+    Intent: CommandIntent.ENVIRONMENT
+
+  - energy
+    Action: dig
+    Target: energy
+    Intent: CommandIntent.ENVIRONMENT
+
+  - shield
+    Action: dig
+    Target: shield
+    Intent: CommandIntent.ENVIRONMENT
+
+
+GATHER_INFO
+-----------
+Description: Commands for gathering information and analyzing objects
+
+Verbs:
+  - read
+    Action: read
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - listen
+    Action: listen
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - smell
+    Action: smell
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - touch
+    Action: touch
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - taste
+    Action: taste
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - study
+    Action: study
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - analyze
+    Action: analyze
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - scan
+    Action: scan
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+  - monitor
+    Action: monitor
+    Target: 
+    Intent: CommandIntent.GATHER_INFO
+
+Objects:
+  - data
+    Action: read
+    Target: data
+    Intent: CommandIntent.GATHER_INFO
+
+  - information
+    Action: read
+    Target: information
+    Intent: CommandIntent.GATHER_INFO
+
+  - signal
+    Action: read
+    Target: signal
+    Intent: CommandIntent.GATHER_INFO
+
+  - display
+    Action: read
+    Target: display
+    Intent: CommandIntent.GATHER_INFO
+
+  - screen
+    Action: read
+    Target: screen
+    Intent: CommandIntent.GATHER_INFO
+
+  - terminal
+    Action: read
+    Target: terminal
+    Intent: CommandIntent.GATHER_INFO
+
+  - console
+    Action: read
+    Target: console
+    Intent: CommandIntent.GATHER_INFO
+
+  - hologram
+    Action: read
+    Target: hologram
+    Intent: CommandIntent.GATHER_INFO
+
+  - sensor
+    Action: read
+    Target: sensor
+    Intent: CommandIntent.GATHER_INFO
+
+  - scanner
+    Action: read
+    Target: scanner
+    Intent: CommandIntent.GATHER_INFO
+
+
+EQUIP
+-----
+Description: Commands for equipment management and usage
+
+Verbs:
+  - equip
+    Action: equip
+    Target: 
+    Intent: CommandIntent.EQUIP
+
+  - wear
+    Action: wear
+    Target: 
+    Intent: CommandIntent.EQUIP
+
+  - remove
+    Action: remove
+    Target: 
+    Intent: CommandIntent.EQUIP
+
+  - unequip
+    Action: unequip
+    Target: 
+    Intent: CommandIntent.EQUIP
+
+  - wield
+    Action: wield
+    Target: 
+    Intent: CommandIntent.EQUIP
+
+  - hold
+    Action: hold
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - power
+    Action: power
+    Target: 
+    Intent: CommandIntent.EQUIP
+
+  - charge
+    Action: charge
+    Target: 
+    Intent: CommandIntent.EQUIP
+
+Objects:
+  - phaser
+    Action: equip
+    Target: phaser
+    Intent: CommandIntent.EQUIP
+
+  - blaster
+    Action: equip
+    Target: blaster
+    Intent: CommandIntent.EQUIP
+
+  - laser
+    Action: equip
+    Target: laser
+    Intent: CommandIntent.EQUIP
+
+  - suit
+    Action: equip
+    Target: suit
+    Intent: CommandIntent.EQUIP
+
+  - armor
+    Action: equip
+    Target: armor
+    Intent: CommandIntent.EQUIP
+
+  - shield
+    Action: equip
+    Target: shield
+    Intent: CommandIntent.EQUIP
+
+  - generator
+    Action: equip
+    Target: generator
+    Intent: CommandIntent.EQUIP
+
+  - battery
+    Action: equip
+    Target: battery
+    Intent: CommandIntent.EQUIP
+
+  - power pack
+    Action: equip
+    Target: power pack
+    Intent: CommandIntent.EQUIP
+
+  - jetpack
+    Action: equip
+    Target: jetpack
+    Intent: CommandIntent.EQUIP
+
+
+TIME
+----
+Description: Commands for time-related actions and waiting
+
+Verbs:
+  - wait
+    Action: wait
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - rest
+    Action: rest
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - sleep
+    Action: sleep
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - pause
+    Action: pause
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - meditate
+    Action: meditate
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - nap
+    Action: nap
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - stop
+    Action: stop
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - delay
+    Action: delay
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - hold
+    Action: hold
+    Target: 
+    Intent: CommandIntent.TIME
+
+  - standby
+    Action: standby
+    Target: 
+    Intent: CommandIntent.TIME
+
+
+COMPLEX
+-------
+Description: Commands for complex actions like crafting and building
+
+Verbs:
+  - combine
+    Action: combine
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - craft
+    Action: craft
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - build
+    Action: build
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - create
+    Action: create
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - construct
+    Action: construct
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - forge
+    Action: forge
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - brew
+    Action: brew
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - synthesize
+    Action: synthesize
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - fabricate
+    Action: fabricate
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+  - assemble
+    Action: assemble
+    Target: 
+    Intent: CommandIntent.COMPLEX
+
+Objects:
+  - device
+    Action: combine
+    Target: device
+    Intent: CommandIntent.COMPLEX
+
+  - machine
+    Action: combine
+    Target: machine
+    Intent: CommandIntent.COMPLEX
+
+  - equipment
+    Action: combine
+    Target: equipment
+    Intent: CommandIntent.COMPLEX
+
+  - circuit
+    Action: combine
+    Target: circuit
+    Intent: CommandIntent.COMPLEX
+
+  - component
+    Action: combine
+    Target: component
+    Intent: CommandIntent.COMPLEX
+
+  - module
+    Action: combine
+    Target: module
+    Intent: CommandIntent.COMPLEX
+
+  - system
+    Action: combine
+    Target: system
+    Intent: CommandIntent.COMPLEX
+
+  - artifact
+    Action: combine
+    Target: artifact
+    Intent: CommandIntent.COMPLEX
+
+  - technology
+    Action: combine
+    Target: technology
+    Intent: CommandIntent.COMPLEX
+
+
+TAKE
+----
+Description: Commands for picking up and collecting items
+
+Verbs:
+  - take
+    Action: take
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - grab
+    Action: grab
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - pick
+    Action: pick
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - get
+    Action: get
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - collect
+    Action: collect
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - acquire
+    Action: acquire
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - obtain
+    Action: obtain
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - retrieve
+    Action: retrieve
+    Target: 
+    Intent: CommandIntent.TAKE
+
+  - recover
+    Action: recover
+    Target: 
+    Intent: CommandIntent.TAKE
+
+Objects:
+  - phaser
+    Action: take
+    Target: phaser
+    Intent: CommandIntent.TAKE
+
+  - blaster
+    Action: take
+    Target: blaster
+    Intent: CommandIntent.TAKE
+
+  - laser
+    Action: take
+    Target: laser
+    Intent: CommandIntent.TAKE
+
+  - tool
+    Action: take
+    Target: tool
+    Intent: CommandIntent.TAKE
+
+  - device
+    Action: take
+    Target: device
+    Intent: CommandIntent.TAKE
+
+  - data pad
+    Action: take
+    Target: data pad
+    Intent: CommandIntent.TAKE
+
+  - access card
+    Action: take
+    Target: access card
+    Intent: CommandIntent.TAKE
+
+  - credits
+    Action: take
+    Target: credits
+    Intent: CommandIntent.TAKE
+
+  - artifact
+    Action: take
+    Target: artifact
+    Intent: CommandIntent.TAKE
+
+
