@@ -1,0 +1,8 @@
+pygame>=2.5.2
+pygame-gui>=0.6.9
+PyYAML>=6.0.1
+spacy>=3.7.2
+loguru>=0.7.2
+colorama>=0.4.6
+Pillow>=10.2.0
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl 
