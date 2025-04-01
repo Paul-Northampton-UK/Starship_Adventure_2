@@ -1,0 +1,47 @@
+# Object definitions for Starship Adventure 2
+
+objects:
+  - id: "captain_chair"
+    name: "Captain's Chair"
+    description: "A large, comfortable chair with multiple control panels built into the armrests."
+    type: "furniture"
+    is_portable: false
+    is_interactive: true
+    weight: 50
+    size: "large"
+
+  - id: "control_panel"
+    name: "Control Panel"
+    description: "A wall-mounted panel covered in buttons, switches, and small displays."
+    type: "device"
+    is_portable: false
+    is_interactive: true
+    weight: 20
+    size: "medium"
+
+  - id: "navigation_console"
+    name: "Navigation Console"
+    description: "A sophisticated computer terminal displaying star charts and navigation data."
+    type: "device"
+    is_portable: false
+    is_interactive: true
+    weight: 30
+    size: "medium"
+
+  - id: "emergency_light"
+    name: "Emergency Light"
+    description: "A small, battery-powered light fixture mounted on the wall."
+    type: "lighting"
+    is_portable: false
+    is_interactive: false
+    weight: 2
+    size: "small"
+
+  - id: "access_panel"
+    name: "Access Panel"
+    description: "A metal panel that can be removed to access the ship's systems."
+    type: "structure"
+    is_portable: false
+    is_interactive: true
+    weight: 5
+    size: "medium" 

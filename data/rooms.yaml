@@ -1,0 +1,35 @@
+# Room definitions for Starship Adventure 2
+
+rooms:
+  - id: "bridge"
+    name: "Bridge"
+    description: "The ship's bridge is a spacious room with a panoramic view of space. Control panels line the walls, and a large captain's chair sits in the center."
+    exits:
+      north: "corridor"
+      east: "engineering"
+      south: "medbay"
+      west: "quarters"
+    objects:
+      - "captain_chair"
+      - "control_panel"
+      - "navigation_console"
+    is_accessible: true
+    oxygen_level: 100
+    temperature: 20
+    gravity: 1.0
+
+  - id: "corridor"
+    name: "Main Corridor"
+    description: "A long, well-lit corridor stretches before you. Emergency lighting provides a soft glow, and the walls are lined with various access panels."
+    exits:
+      north: "cargo_bay"
+      south: "bridge"
+      east: "storage"
+      west: "crew_quarters"
+    objects:
+      - "emergency_light"
+      - "access_panel"
+    is_accessible: true
+    oxygen_level: 100
+    temperature: 18
+    gravity: 1.0 
