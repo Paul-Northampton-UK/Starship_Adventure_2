@@ -1,5 +1,56 @@
 # Object definitions for Starship Adventure 2
 
+# Default characteristics for all objects
+object_defaults:
+
+  # ✅ GENERAL OBJECT PROPERTIES  
+  is_interactive: true   # Can the player interact with this object? (Most objects should be interactive)
+  is_takeable: false     # Can the player pick up and carry this object? (Defaults to true unless overridden)
+  is_dangerous: false    # Does this object pose a danger? (Explosives, biohazards, sharp objects, etc.)
+  is_destroyable: false  # Can this object be broken or destroyed? (False unless needed for gameplay)
+  is_lockable: false     # Can this object be locked/unlocked? (Useful for doors, safes, storage units)
+  is_storage: false      # Does this object function as a container for other items? (Backpacks, lockers, etc.)
+  is_operational: false  # is the object currently operational (Torches, computers, mechanical tools)
+  is_edible: false       # Can this object be eaten by the player? (If true, is_consumable must also be true)
+  is_weapon: false       # Can this object be used as a weapon. (if true, it can initiate a combat scenario)
+  
+  # ✅ PHYSICAL OBJECT ATTRIBUTES  
+  weight: 1.0            # Default object weight in kg (Overridden for lighter/heavier items)
+  size: 1.0              # Default object size rating (For inventory and storage space calculations)
+  is_movable: false      # Can the object be moved? (Some large objects like consoles shouldn't be movable)
+  is_wearable: false     # Can this object be equipped/worn? (Boots, gloves, exo-suits, helmets, etc.)
+  is_flammable: false    # Can this object catch fire? (Used for fire mechanics, destruction, and hazards)
+  is_toxic: false        # Will consuming this object harm the player? (Poison, radiation, alien parasites)
+  is_food: false         # Differentiates consumables into edible and non-edible items.
+  is_cookable: false     # Can this object be cooked before eating? (If true, eating raw may have risks)
+    
+  # ✅ SPECIAL OBJECT FUNCTIONS  
+  is_consumable: false   # Can this object be used up? (Food, drink, medicine, batteries, fuel cells)  
+  has_durability: false  # Does this object degrade over time or use? (Weapons, tools, repair kits)
+  is_hackable: false     # Can this object be hacked? (Computers, security doors, encrypted devices)
+  is_hidden: false       # Is this object hidden from view? (Secret items, compartments, concealed weapons)
+  is_rechargeable: false # Can this object be recharged if depleted? (Batteries, energy packs)
+  is_fuel_source: false  # Does this object provide energy for another system? (Power cells, fuel tanks)
+  regenerates: false     # Determines whether an object regenerates after consumption or use.
+  is_modular: false      # Defines objects that are built from other objects.
+
+  # ✅ DIGITAL & INTERACTIVE OBJECTS  
+  is_stored: false       # Is this object stored inside another object? (Files inside computers, logs)
+  is_transferable: false # Can this object be copied/moved? (Digital files, data disks)
+  is_activatable: false  # Can this object be turned on/off? (Switches, consoles, machines)
+  is_networked: false    # Can this object connect to a system? (Computers, cameras, ship systems)
+
+  # ✅ INTERACTION RULES  
+  requires_power: false  # Does this object need power to work? (Override for tech-based objects)
+  requires_item: false   # Does this object require another item to function? (Keys for doors, fuel for engines)
+  has_security: false    # Does this object require security clearance? (Locked consoles, restricted doors)
+  is_sensitive: false    # Will it trigger alarms or consequences if disturbed? (Security systems, traps)
+  is_fragile: false      # Will it break if mishandled? (Glass items, unstable tech)
+  is_secret: false       # Is this object initially hidden and needs discovery?
+
+  # End of object default properties
+
+# Individual object definitions
 objects:
   - id: "captain_chair"
     name: "Captain's Chair"
@@ -44,4 +95,102 @@ objects:
     is_portable: false
     is_interactive: true
     weight: 5
-    size: "medium" 
+    size: "medium"
+
+  - id: "nav_console"
+    name: "Navigation Console"
+    description: "A sophisticated computer terminal displaying star charts and navigation data."
+    type: "device"
+    is_portable: false
+    is_interactive: true
+    weight: 30
+    size: "medium"
+    power_state: "offline"  # Can be offline, emergency, main_power, or torch_light
+    requires_power: true
+    is_locked: false
+    lock_type: null  # Can be key, code, or biometric
+    lock_code: null
+    lock_key_id: null
+    is_operational: true
+    is_hackable: true
+    is_activatable: true
+    is_networked: true
+    storage_category: "digital_files"
+    commands: ["Type", "Read", "Enter", "Insert", "Login", "Logout"]
+    synonyms: ["console", "nav console", "control panel"]
+
+  - id: "nav_officer_log"
+    name: "Navigation Officer's Log"
+    description: "A digital logbook containing the navigation officer's entries."
+    type: "item"
+    is_portable: true
+    is_interactive: true
+    weight: 1
+    size: "small"
+    power_state: "offline"
+    requires_power: true
+    is_locked: false
+    lock_type: null
+    lock_code: null
+    lock_key_id: null
+    is_takeable: true
+    is_stored: true
+    is_transferable: true
+
+  - id: "nav_compartment"
+    name: "Hidden Storage Compartment"
+    description: "A small, almost invisible compartment is nestled within the structure of the navigation station. Its edges blend seamlessly with the console's sleek surface. The subtle craftsmanship makes it look like part of the design, an elegant mystery waiting to be noticed."
+    type: "structure"
+    is_portable: false
+    is_interactive: true
+    weight: 10
+    size: "medium"
+    power_state: "offline"
+    requires_power: false
+    is_locked: true
+    lock_type: "code"
+    lock_code: "1234"  # Example code
+    lock_key_id: null
+    is_operational: true
+    is_storage: true
+    is_lockable: true
+    is_hidden: true
+    is_takeable: false
+    storage_contents:
+      - "nav_torch"
+      - "nav_security_pass"
+    commands: ["Open", "Close", "Lock", "Unlock"]
+    synonyms: ["Panel", "Drawer", "Locker"]
+
+  - id: "nav_fish_delivery_log"
+    name: "Fish Delivery Log"
+    description: "A log detailing the delivery of fish to various parts of the ship."
+    type: "item"
+    is_portable: true
+    is_interactive: true
+    weight: 1
+    size: "small"
+    power_state: "offline"
+    requires_power: true
+    is_locked: false
+    lock_type: null
+    lock_code: null
+    lock_key_id: null
+    is_takeable: true
+    is_stored: true
+    is_transferable: true
+
+  - id: "nav_fish_photo"
+    name: "Fish Photo"
+    description: "A photograph showing various fish species."
+    type: "item"
+    is_portable: true
+    is_interactive: false
+    weight: 0.5
+    size: "small"
+    power_state: "offline"
+    requires_power: false
+    is_locked: false
+    lock_type: null
+    lock_code: null
+    lock_key_id: null 
