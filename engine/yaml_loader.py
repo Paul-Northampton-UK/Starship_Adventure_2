@@ -60,7 +60,8 @@ class YAMLLoader:
         Raises:
             ValueError: If validation fails
         """
-        required_fields = ['id', 'name', 'description', 'exits']
+        required_fields = ['room_id', 'name', 'first_visit_description', 'exits']
+        required_power_states = ['offline', 'emergency', 'main_power', 'torch_light']
         
         # Check required fields
         for field in required_fields:
@@ -70,20 +71,106 @@ class YAMLLoader:
                 raise ValueError(msg)
         
         # Validate data types
-        if not isinstance(data['id'], str):
+        if not isinstance(data['room_id'], str):
             raise ValueError("Room id must be a string")
         if not isinstance(data['name'], str):
             raise ValueError("Room name must be a string")
-        if not isinstance(data['description'], str):
-            raise ValueError("Room description must be a string")
-        if not isinstance(data['exits'], dict):
-            raise ValueError("Exits must be a dictionary")
-        if 'objects' in data and not isinstance(data['objects'], list):
-            raise ValueError("Objects must be a list")
-        if 'accessible' in data and not isinstance(data['accessible'], bool):
-            raise ValueError("Accessible must be a boolean")
+        if not isinstance(data['first_visit_description'], dict):
+            raise ValueError("First visit description must be a dictionary")
+        if not isinstance(data['exits'], list):
+            raise ValueError("Exits must be a list")
+        
+        # Validate power states
+        for state in required_power_states:
+            if state not in data['first_visit_description']:
+                raise ValueError(f"Missing required power state '{state}' in first_visit_description")
+        for state in data['first_visit_description']:
+            if state not in required_power_states:
+                raise ValueError(f"Invalid power state '{state}' in first_visit_description")
+        
+        # Validate areas if present
+        if 'areas' in data:
+            if not isinstance(data['areas'], list):
+                raise ValueError("Areas must be a list")
+            for area in data['areas']:
+                self._validate_area(area)
+        
+        # Validate exits
+        for exit_data in data['exits']:
+            self._validate_exit(exit_data)
             
         return True
+    
+    def _validate_area(self, area: Dict[str, Any]) -> None:
+        """Validate area data structure.
+        
+        Args:
+            area (Dict[str, Any]): Area data to validate
+            
+        Raises:
+            ValueError: If validation fails
+        """
+        required_fields = ['area_id', 'name', 'command_aliases', 'area_count', 'first_visit_description']
+        required_power_states = ['offline', 'emergency', 'main_power', 'torch_light']
+        
+        # Check required fields
+        for field in required_fields:
+            if field not in area:
+                msg = f"Missing required field '{field}' in area data"
+                logger.error(msg)
+                raise ValueError(msg)
+        
+        # Validate data types
+        if not isinstance(area['area_id'], str):
+            raise ValueError("Area id must be a string")
+        if not isinstance(area['name'], str):
+            raise ValueError("Area name must be a string")
+        if not isinstance(area['command_aliases'], list):
+            raise ValueError("Area command aliases must be a list")
+        if not isinstance(area['area_count'], int):
+            raise ValueError("Area count must be an integer")
+        if not isinstance(area['first_visit_description'], dict):
+            raise ValueError("Area first visit description must be a dictionary")
+        
+        # Validate power states
+        for state in required_power_states:
+            if state not in area['first_visit_description']:
+                raise ValueError(f"Missing required power state '{state}' in area first_visit_description")
+        for state in area['first_visit_description']:
+            if state not in required_power_states:
+                raise ValueError(f"Invalid power state '{state}' in area first_visit_description")
+    
+    def _validate_exit(self, exit_data: Dict[str, Any]) -> None:
+        """Validate exit data structure.
+        
+        Args:
+            exit_data (Dict[str, Any]): Exit data to validate
+            
+        Raises:
+            ValueError: If validation fails
+        """
+        required_fields = ['direction', 'destination', 'dynamic_description']
+        
+        # Check required fields
+        for field in required_fields:
+            if field not in exit_data:
+                msg = f"Missing required field '{field}' in exit data"
+                logger.error(msg)
+                raise ValueError(msg)
+        
+        # Validate data types
+        if not isinstance(exit_data['direction'], str):
+            raise ValueError("Exit direction must be a string")
+        if not isinstance(exit_data['destination'], str):
+            raise ValueError("Exit destination must be a string")
+        if not isinstance(exit_data['dynamic_description'], dict):
+            raise ValueError("Exit dynamic description must be a dictionary")
+        
+        # Validate dynamic description
+        if 'unvisited' not in exit_data['dynamic_description']:
+            raise ValueError("Exit dynamic description must contain 'unvisited' state")
+        if 'visited' not in exit_data['dynamic_description']:
+            raise ValueError("Exit dynamic description must contain 'visited' state")
     
     def validate_object_data(self, data: Dict[str, Any]) -> bool:
         """Validate object data structure.

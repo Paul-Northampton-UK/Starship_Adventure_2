@@ -23,11 +23,11 @@ def test_load_rooms():
     
     # Check first room
     bridge = data["rooms"][0]
-    assert bridge["id"] == "bridge"
-    assert bridge["name"] == "Bridge"
-    assert "description" in bridge
+    assert bridge["room_id"] == "ship_bridge"
+    assert bridge["name"] == "Ship Bridge"
+    assert "first_visit_description" in bridge
     assert "exits" in bridge
-    assert "objects" in bridge
+    assert "areas" in bridge
     
     # Validate room data
     assert loader.validate_room_data(bridge)
@@ -74,21 +74,25 @@ def test_room_validation_failures():
     
     # Missing required fields
     invalid_room = {
-        "name": "Invalid Room"  # Missing id and other required fields
+        "name": "Invalid Room"  # Missing room_id and other required fields
     }
     with pytest.raises(ValueError, match="Missing required field"):
         loader.validate_room_data(invalid_room)
     
     # Invalid exit format
     invalid_room = {
-        "id": "test_room",
+        "room_id": "test_room",
         "name": "Test Room",
-        "description": "A test room",
-        "exits": "not_a_dict",  # Should be a dictionary
-        "objects": [],
-        "accessible": True
+        "first_visit_description": {
+            "offline": "A test room in offline state",
+            "emergency": "A test room in emergency state",
+            "main_power": "A test room in main power state",
+            "torch_light": "A test room in torch light state"
+        },
+        "exits": "not_a_list",  # Should be a list
+        "areas": []
     }
-    with pytest.raises(ValueError, match="Exits must be a dictionary"):
+    with pytest.raises(ValueError, match="Exits must be a list"):
         loader.validate_room_data(invalid_room)
 
 def test_object_validation_failures():
@@ -167,12 +171,11 @@ def test_data_type_validation():
     
     # Test room with invalid data types
     invalid_room = {
-        "id": 123,  # Should be string
+        "room_id": 123,  # Should be string
         "name": ["Not", "A", "String"],  # Should be string
-        "description": "Valid description",
-        "exits": {},
-        "objects": "not_a_list",  # Should be list
-        "accessible": "not_a_boolean"  # Should be boolean
+        "first_visit_description": "not_a_dict",  # Should be a dictionary
+        "exits": {},  # Should be a list
+        "areas": "not_a_list"  # Should be list
     }
     with pytest.raises(ValueError, match="Room id must be a string"):
         loader.validate_room_data(invalid_room)
@@ -189,4 +192,141 @@ def test_data_type_validation():
         "size": 42  # Should be string
     }
     with pytest.raises(ValueError, match="Object description must be a string"):
-        loader.validate_object_data(invalid_object) 
+        loader.validate_object_data(invalid_object)
+
+def test_power_state_validation():
+    """Test validation of power states in room descriptions."""
+    loader = YAMLLoader()
+    
+    # Missing power states
+    invalid_room = {
+        "room_id": "test_room",
+        "name": "Test Room",
+        "first_visit_description": {
+            "offline": "Room is offline",
+            "emergency": "Room is in emergency power"
+            # Missing main_power and torch_light
+        },
+        "exits": [],
+        "areas": []
+    }
+    with pytest.raises(ValueError, match="Missing required power state"):
+        loader.validate_room_data(invalid_room)
+    
+    # Invalid power state
+    invalid_room = {
+        "room_id": "test_room",
+        "name": "Test Room",
+        "first_visit_description": {
+            "offline": "Room is offline",
+            "emergency": "Room is in emergency power",
+            "main_power": "Room has main power",
+            "torch_light": "Room in torch light",
+            "invalid_state": "Invalid power state"  # Extra invalid state
+        },
+        "exits": [],
+        "areas": []
+    }
+    with pytest.raises(ValueError, match="Invalid power state"):
+        loader.validate_room_data(invalid_room)
+
+def test_area_validation():
+    """Test validation of areas within rooms."""
+    loader = YAMLLoader()
+    
+    # Invalid area structure
+    invalid_room = {
+        "room_id": "test_room",
+        "name": "Test Room",
+        "first_visit_description": {
+            "offline": "Room is offline",
+            "emergency": "Room is in emergency power",
+            "main_power": "Room has main power",
+            "torch_light": "Room in torch light"
+        },
+        "exits": [],
+        "areas": [
+            {
+                # Missing required area fields
+                "name": "Test Area"
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="Missing required field 'area_id' in area data"):
+        loader.validate_room_data(invalid_room)
+    
+    # Invalid area command aliases
+    invalid_room = {
+        "room_id": "test_room",
+        "name": "Test Room",
+        "first_visit_description": {
+            "offline": "Room is offline",
+            "emergency": "Room is in emergency power",
+            "main_power": "Room has main power",
+            "torch_light": "Room in torch light"
+        },
+        "exits": [],
+        "areas": [
+            {
+                "area_id": "test_area",
+                "name": "Test Area",
+                "command_aliases": "not_a_list",  # Should be a list
+                "area_count": 1,
+                "first_visit_description": {
+                    "offline": "Area is offline",
+                    "emergency": "Area is in emergency power",
+                    "main_power": "Area has main power",
+                    "torch_light": "Area in torch light"
+                }
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="Area command aliases must be a list"):
+        loader.validate_room_data(invalid_room)
+
+def test_exit_validation():
+    """Test validation of room exits."""
+    loader = YAMLLoader()
+    
+    # Invalid exit structure
+    invalid_room = {
+        "room_id": "test_room",
+        "name": "Test Room",
+        "first_visit_description": {
+            "offline": "Room is offline",
+            "emergency": "Room is in emergency power",
+            "main_power": "Room has main power",
+            "torch_light": "Room in torch light"
+        },
+        "exits": [
+            {
+                # Missing required exit fields
+                "direction": "north"
+            }
+        ],
+        "areas": []
+    }
+    with pytest.raises(ValueError, match="Missing required field 'destination' in exit data"):
+        loader.validate_room_data(invalid_room)
+    
+    # Invalid dynamic description
+    invalid_room = {
+        "room_id": "test_room",
+        "name": "Test Room",
+        "first_visit_description": {
+            "offline": "Room is offline",
+            "emergency": "Room is in emergency power",
+            "main_power": "Room has main power",
+            "torch_light": "Room in torch light"
+        },
+        "exits": [
+            {
+                "direction": "north",
+                "destination": "corridor",
+                "dynamic_description": "not_a_dict"  # Should be a dictionary
+            }
+        ],
+        "areas": []
+    }
+    with pytest.raises(ValueError, match="Exit dynamic description must be a dictionary"):
+        loader.validate_room_data(invalid_room) 
