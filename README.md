@@ -12,6 +12,25 @@ A sci-fi text adventure game with a GUI interface, featuring a sarcastic AI narr
 - Multiple puzzle types
 - Save/Load system
 
+## Current Status (April 2024)
+
+**Implemented:**
+- Basic project structure and setup
+- Core data loading from YAML files (`engine/yaml_loader.py`)
+- Schema validation for YAML data (`engine/schemas.py`)
+- Natural Language command parsing using spaCy (`engine/nlp_command_parser.py`)
+- Basic game state tracking (`engine/game_state.py`)
+- Logging setup using Loguru
+- Initial testing framework for core components
+
+**Planned / In Progress:**
+- Central Game Loop (`engine/game_loop.py`)
+- Graphical User Interface (GUI) using Pygame (`ui/`)
+- Detailed gameplay mechanics (inventory, environment, puzzles)
+- Narrator logic and interaction
+- Save/Load functionality
+- Audio/Visual elements
+
 ## Setup
 
 1. Clone the repository:

@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Starship Adventure rule content
+
+- Use classes for core game entities (like Player, Room, Object) and functions for utility tasks.
+- Use clear, descriptive names for variables and functions.
+- Follow standard Python naming conventions: snake_case for variables, functions, files, and folders; PascalCase for classes.
+- Handle potential problems (edge cases, invalid input) early in functions, often using 'guard clauses'.
+- Prefer simpler logic flows; avoid deeply nested if/else statements where possible (e.g., using early returns).
+- Use try/except blocks to handle potential errors when dealing with external resources like files.
+- Log important actions and errors that occur during program execution.
+- Write documentation strings (docstrings) for all classes and functions to explain their purpose, arguments, and what they return.
+- Use inline comments only to explain non-obvious parts of the code (the 'why', not the 'what').
+- Keep functions short and focused, aiming for each function to do one specific thing well.

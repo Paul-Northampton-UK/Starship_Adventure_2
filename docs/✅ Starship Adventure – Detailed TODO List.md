@@ -95,8 +95,8 @@
 
 📜 Logging
 
-✅ Player log (all typed input + system output)
-✅ System log (functions triggered, errors, game state changes)
+🔄 Player log (all typed input + system output)
+🔄 System log (functions triggered, errors, game state changes)
 ✅ Use loguru with rotating log files and timestamps
 
 🧩 Expandability
