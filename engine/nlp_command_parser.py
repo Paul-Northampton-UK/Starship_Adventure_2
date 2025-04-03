@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import spacy
 from spacy.pipeline import EntityRuler
 from fuzzywuzzy import fuzz
-from .command_parser import CommandIntent, ParsedIntent
+from .command_defs import CommandIntent, ParsedIntent
 from .game_state import GameState, PowerState
 
 class NLPCommandParser:

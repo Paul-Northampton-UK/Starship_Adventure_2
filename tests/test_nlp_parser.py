@@ -8,7 +8,7 @@ project_root = str(Path(__file__).parent.parent)
 sys.path.insert(0, project_root)
 
 from engine.nlp_command_parser import NLPCommandParser
-from engine.command_parser import CommandIntent
+from engine.command_defs import CommandIntent
 from engine.game_state import GameState
 
 class TestNLPCommandParser:
