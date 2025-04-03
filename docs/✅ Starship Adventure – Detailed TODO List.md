@@ -39,6 +39,10 @@
 🔄 Add player-to-narrator interactions (e.g. help, insult, ask, hint)
 🔄 Handle invalid/gibberish commands with unique narrator responses
 ✅ Ensure command vocabulary is easily expandable via YAML
+🔄 Improve target extraction (handle prepositions like "with", "on")
+🔄 Refine HELP intent logic (avoid misinterpreting "?" in questions)
+🔄 Implement profanity filtering for player input
+🔄 Implement fuzzy matching/typo tolerance (using fuzzywuzzy)
 
 🎮 Gameplay Mechanics
 
