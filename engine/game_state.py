@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import json
@@ -27,8 +27,9 @@ class PlayerStatus:
 class GameState:
     """Manages the current state of the game."""
     current_room_id: str
+    rooms_data: Dict[str, Any]  # Added to store loaded room definitions
+    power_state: PowerState
     current_area_id: Optional[str] = None
-    power_state: PowerState = PowerState.OFFLINE
     inventory: List[str] = None  # List of object IDs
     visited_rooms: Set[str] = None  # Set of room IDs
     visited_areas: Set[str] = None  # Set of area IDs
@@ -98,16 +99,16 @@ class GameState:
         return self.game_flags.get(flag, False)
 
     def move_to_room(self, room_id: str) -> None:
-        """Move the player to a new room."""
+        """Move the player to a new room and clears the current area."""
         self.current_room_id = room_id
-        self.visit_room(room_id)
+        # self.visit_room(room_id) # Removed: Visiting is handled by description logic
         # Clear current area when changing rooms
         self.current_area_id = None
 
     def move_to_area(self, area_id: str) -> None:
         """Move the player to a new area within the current room."""
         self.current_area_id = area_id
-        self.visit_area(area_id)
+        # self.visit_area(area_id) # Removed: Visiting is handled by description logic
 
     def get_current_location(self) -> tuple[str, Optional[str]]:
         """Get the current room and area IDs."""
@@ -139,9 +140,8 @@ class GameState:
         with open(filename, 'r') as f:
             save_data = json.load(f)
         
-        game_state = cls(current_room_id=save_data['current_room_id'])
+        game_state = cls(current_room_id=save_data['current_room_id'], power_state=PowerState(save_data['power_state']))
         game_state.current_area_id = save_data['current_area_id']
-        game_state.power_state = PowerState(save_data['power_state'])
         game_state.inventory = save_data['inventory']
         game_state.visited_rooms = set(save_data['visited_rooms'])
         game_state.visited_areas = set(save_data['visited_areas'])

@@ -4,6 +4,8 @@ Starship Adventure Game - Product Requirements Document (PRD)
 
 Title: Starship AdventureGenre: Sci-fi Text Adventure with GUI InterfacePlatform: Windows (standalone .exe installer)Audience: General audience, suitable for all agesGoal: Create a professional, interactive text adventure game with a custom GUI, logical puzzles, a central mystery, and a sarcastic AI narrator.
 
+Initial State: The game begins according to settings defined in `game_config.yaml`, specifying the starting room (e.g., Player Cabin) and initial power state (e.g., Emergency Power).
+
 2. Core Gameplay Features
 
 Players awaken aboard an abandoned spaceship with no memory of events.
@@ -21,6 +23,8 @@ Primary storyline: discover why the ship is abandoned and rescue the crew.
 3. Game Structure & Flow
 
 Semi-linear progression with interconnected puzzles.
+
+Players explore the ship room by room. Some larger rooms (e.g., Bridge) are further divided into distinct Areas (e.g., Navigation Station, Helm) which function like sub-locations. Players can move between these Areas within a room, and interact with objects specific to an Area. Room exits are accessible from both the main room level and any Area within that room.
 
 Multiple puzzle difficulty tiers:
 

@@ -1,0 +1,6 @@
+# game_config.yaml
+# Initial game state settings
+
+start_room_id: player_cabin
+start_power_state: emergency # Options: offline, emergency, main_power
+# Add other initial settings here later (e.g., starting inventory, flags) 

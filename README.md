@@ -22,14 +22,17 @@ A sci-fi text adventure game with a GUI interface, featuring a sarcastic AI narr
 - Basic game state tracking (`engine/game_state.py`)
 - Logging setup using Loguru
 - Initial testing framework for core components
+- Central Game Loop (`engine/game_loop.py`) with basic command handling (Move, Look, Quit)
+- Movement between rooms and areas
+- Room/Area descriptions with `first_visit_description` and `short_description` logic
 
 **Planned / In Progress:**
-- Central Game Loop (`engine/game_loop.py`)
 - Graphical User Interface (GUI) using Pygame (`ui/`)
-- Detailed gameplay mechanics (inventory, environment, puzzles)
+- Detailed gameplay mechanics (inventory management (Take/Drop), object interaction (Use/Examine), environment, puzzles)
 - Narrator logic and interaction
 - Save/Load functionality
 - Audio/Visual elements
+- Expanded testing
 
 ## Setup
 
@@ -51,9 +54,9 @@ source venv/bin/activate  # On Unix/MacOS
 pip install -r requirements.txt
 ```
 
-4. Run the game:
+4. Run the game (basic text loop):
 ```bash
-python main.py
+python -m engine.game_loop
 ```
 
 ## Project Structure

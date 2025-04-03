@@ -223,7 +223,8 @@ class NLPCommandParser:
             "north", "south", "east", "west", "up", "down", 
             "n", "s", "e", "w", "u", "d", 
             "ne", "nw", "se", "sw",
-            "northeast", "northwest", "southeast", "southwest"
+            "northeast", "northwest", "southeast", "southwest",
+            "north-east", "north-west", "south-east", "south-west"
         ]
         object_list = [
             "key", "door", "button", "lever", "card", "torch", "computer",
