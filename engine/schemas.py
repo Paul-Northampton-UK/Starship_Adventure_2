@@ -119,9 +119,11 @@ class ObjectCategory(str, Enum):
     DECORATIVE = "decorative"
     READABLE = "readable"
     EQUIPMENT = "equipment"
+    CLOTHING = "clothing"
     FURNITURE = "furniture"
     DEVICE = "device"
     LIGHTING = "lighting"
+    FIXTURE = "fixture"
     STRUCTURE = "structure"
     ITEM = "item"
 
