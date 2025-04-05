@@ -3,6 +3,18 @@ from pydantic import BaseModel, Field, field_validator, constr
 from enum import Enum
 import re
 
+class WearArea(str, Enum):
+    """Defines areas on the body where items can be worn."""
+    HEAD = "head"
+    FACE = "face" # For masks, visors
+    NECK = "neck"
+    TORSO = "torso" # ADDED Single torso area
+    BACK = "back" # Backpacks, tanks
+    ARMS = "arms"
+    HANDS = "hands" # Gloves
+    LEGS = "legs" # Trousers
+    FEET = "feet" # Boots, socks
+
 class LocationMode(str, Enum):
     MAIN_SHIP = "main_ship"
     YACHT = "yacht"
@@ -145,6 +157,8 @@ class ObjectProperties(BaseModel):
     size: float = 1.0
     is_movable: bool = False
     is_wearable: bool = False
+    wear_area: Optional[WearArea] = None
+    wear_layer: Optional[int] = None
     is_flammable: bool = False
     is_toxic: bool = False
     is_food: bool = False
@@ -183,11 +197,11 @@ class ObjectProperties(BaseModel):
     durability: Optional[int] = None
     range: Optional[float] = None
     
-    @field_validator('weight', 'size', 'storage_capacity', 'damage', 'durability', 'range')
+    @field_validator('weight', 'size', 'storage_capacity', 'damage', 'durability', 'range', 'wear_layer')
     @classmethod
-    def validate_non_negative(cls, v: Optional[float]) -> Optional[float]:
+    def validate_non_negative(cls, v: Optional[Union[float, int]]) -> Optional[Union[float, int]]:
         if v is not None and v < 0:
-            raise ValueError("Value must be non-negative")
+            raise ValueError("Numeric value must be non-negative")
         return v
 
 class ObjectInteraction(BaseModel):

@@ -533,4 +533,26 @@ This frame holds miscellaneous but important details, particularly for container
         broken:Sparks flicker from a cracked panel on the console.
         ```
     *   **Do:** Define state names consistently (e.g., `on`, `off`, `open`, `closed`, `broken`, `repaired`, `active`, `inactive`) and provide the description text for each state on a new line, separated by a colon (`:`).
-    *   **Don't:** Forget the colon separator. Don't define states here unless your game logic actually tracks and uses these internal object states. 
+    *   **Don't:** Forget the colon separator. Don't define states here unless your game logic actually tracks and uses these internal object states.
+
+## Section 7: Notes on Output Formatting
+
+This section details some aspects of the YAML files (`objects.yaml`, `rooms.yaml`) generated or modified by the Object Editor.
+
+### 7.1 Object Separation in `objects.yaml`
+
+*   **Current Behavior:** When saving, the editor uses the `ruamel.yaml` library to preserve comments and indentation. Objects in the main `objects:` list are output sequentially without an extra blank line between the end of one object and the `- id:` line of the next.
+*   **Reasoning:** While a blank line might enhance visual separation slightly, achieving this reliably with `ruamel.yaml` without potentially breaking formatting or comments is complex. The standard YAML list indentation (the `-` at the start of each object ID) serves as the primary structural separator.
+*   **TODO:** Investigate future `ruamel.yaml` updates or alternative safe methods to potentially introduce a single blank line between top-level object entries for improved manual readability, if feasible without compromising the library's formatting strengths.
+
+### 7.2 Property Formatting (`properties:` Block)
+
+*   **Current Behavior:** Object characteristics within the `properties:` block are saved using YAML's "block style" (one `key: value` pair per line).
+    ```yaml
+    properties:
+      is_takeable: true
+      is_interactive: true
+      # ... etc
+    ```
+*   **Reasoning:** While YAML also supports a more compact "flow style" (`properties: {is_takeable: true, is_interactive: true, ...}`), the block style was chosen for significantly better readability and ease of manual editing, especially given the large number of boolean flags. Finding and changing a specific property is much easier with the block style.
+*   **TODO:** (Low Priority) Re-evaluate the use of flow style only if the line count of `objects.yaml` becomes a critical issue, keeping in mind the negative impact it would likely have on readability and manual editing. 
