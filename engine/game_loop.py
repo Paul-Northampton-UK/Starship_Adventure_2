@@ -1,7 +1,7 @@
 # engine/game_loop.py
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 from .game_state import GameState, PowerState
 from .nlp_command_parser import NLPCommandParser
 from .command_defs import CommandIntent, ParsedIntent
@@ -51,12 +51,18 @@ class GameLoop:
         # Initialize game state, passing processed room data and initial power state
         self.game_state = GameState(current_room_id=start_room_id, 
                                     rooms_data=self.rooms_data,
+                                    objects_data=self.objects_data,
                                     power_state=start_power_state) # Use loaded power state
         logging.info(f"GameState initialized. Starting room: {self.game_state.current_room_id}, Power State: {self.game_state.power_state.value}")
 
         # Initialize command parser, passing the game state
         self.command_parser = NLPCommandParser(self.game_state)
         logging.info("NLPCommandParser initialized.")
+        
+        # --- Initialize and setup the intent map --- 
+        self.intent_map: Dict[CommandIntent, Callable[[ParsedIntent], str]] = {} # Type hint
+        self._setup_intent_map()
+        # -------------------------------------------
         
         logging.info("Game Loop initialized.")
 
@@ -172,95 +178,234 @@ class GameLoop:
         print("Goodbye!")
 
     def process_command(self, parsed_intent: ParsedIntent) -> str:
-        """Processes the parsed command intent and updates the game state.
-
-        Args:
-            parsed_intent: The ParsedIntent object from the command parser.
-
-        Returns:
-            A message string to display to the player.
-        """
+        """Processes the parsed command intent by dispatching to the appropriate handler via intent_map."""
         intent = parsed_intent.intent
         logging.debug(f"Processing intent: {intent} with data: {parsed_intent}")
 
-        # --- Handle different command intents ---
-        if intent == CommandIntent.MOVE:
-            return self._handle_move(parsed_intent)
-        elif intent == CommandIntent.LOOK:
-            return self._handle_look(parsed_intent)
-        elif intent == CommandIntent.TAKE:
-            # TODO: Implement _handle_take(parsed_intent)
-            return f"TAKE command recognized. Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.DROP:
-            # TODO: Implement _handle_drop(parsed_intent)
-            return f"DROP command recognized. Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.INVENTORY:
-            # TODO: Implement _handle_inventory()
-            return "INVENTORY command recognized. (Not implemented)"
-        elif intent == CommandIntent.HELP:
-            # TODO: Implement _handle_help()
-            return "HELP command recognized. (Not implemented)"
-        elif intent == CommandIntent.USE:
-            # TODO: Implement _handle_use(parsed_intent)
-             return f"USE command recognized. Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.COMBAT:
-            # TODO: Implement _handle_combat(parsed_intent)
-             return f"COMBAT command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.COMMUNICATE:
-            # TODO: Implement _handle_communicate(parsed_intent)
-             return f"COMMUNICATE command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        # --- Add branches for remaining intents ---
-        elif intent == CommandIntent.SEARCH:
-            # TODO: Implement _handle_search(parsed_intent)
-            return f"SEARCH command recognized. Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.MANIPULATE:
-            # TODO: Implement _handle_manipulate(parsed_intent)
-            return f"MANIPULATE command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.CLIMB:
-            # TODO: Implement _handle_climb(parsed_intent)
-            return f"CLIMB command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.SOCIAL:
-            # TODO: Implement _handle_social(parsed_intent)
-            return f"SOCIAL command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.ENVIRONMENT:
-            # TODO: Implement _handle_environment(parsed_intent)
-            return f"ENVIRONMENT command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.GATHER_INFO:
-            # TODO: Implement _handle_gather_info(parsed_intent)
-            return f"GATHER_INFO command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.EQUIP:
-            # TODO: Implement _handle_equip(parsed_intent)
-            return f"EQUIP command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.TIME:
-            # TODO: Implement _handle_time(parsed_intent)
-            return f"TIME command recognized. Action: {parsed_intent.action}. (Not implemented)"
-        elif intent == CommandIntent.COMPLEX:
-            # TODO: Implement _handle_complex(parsed_intent)
-            return f"COMPLEX command recognized. Action: {parsed_intent.action}, Target: {parsed_intent.target}. (Not implemented)"
-        elif intent == CommandIntent.SAVE:
-            # TODO: Implement _handle_save()
-            return "SAVE command recognized. (Not implemented)"
-        elif intent == CommandIntent.LOAD:
-            # TODO: Implement _handle_load()
-            return "LOAD command recognized. (Not implemented)"
-        # --- End of added branches ---
-        elif intent == CommandIntent.UNKNOWN:
-            return "I don't understand that command."
+        handler = self.intent_map.get(intent)
+
+        if handler:
+            try:
+                # Call the handler associated with the intent
+                # Pass the whole ParsedIntent object
+                message = handler(parsed_intent)
+                return message # Return the message from the handler
+            except Exception as e:
+                logging.exception(f"Error executing handler for intent: {intent}")
+                return "An internal error occurred while processing your command."
         else:
-            # Handle any other recognized intents that don't have logic yet
-            return f"{intent.name} command recognized, but not implemented yet."
+            # Default handling if no specific handler is mapped for a recognized intent
+            # or handle CommandIntent.UNKNOWN explicitly in the map
+            logging.warning(f"No handler found for intent: {intent}")
+            # Check if it was UNKNOWN or just unhandled
+            if intent == CommandIntent.UNKNOWN:
+                return "I don't understand that command."
+            else:
+                 return f"I understand you want to '{intent.name.lower()}', but that action isn't fully implemented yet."
 
-    # --- Placeholder helper methods (to be implemented later) ---
-    # def _handle_move(self, parsed_intent: ParsedIntent) -> str:
-    #     pass
-    # def _handle_look(self, parsed_intent: ParsedIntent) -> str:
-    #     pass
-    # def _handle_take(self, parsed_intent: ParsedIntent) -> str:
-    #     pass
-    # ... etc ...
+    # --- NEW method to setup the intent map --- 
+    def _setup_intent_map(self):
+        """Initializes the mapping from CommandIntent to handler methods."""
+        self.intent_map = {
+            CommandIntent.MOVE: self._handle_move,
+            CommandIntent.LOOK: self._handle_look,
+            # --- Add placeholders for handlers we need to implement/fix ---
+            CommandIntent.TAKE: self._handle_take, # Needs implementation
+            CommandIntent.DROP: self._handle_drop, # Needs implementation
+            CommandIntent.INVENTORY: self._handle_inventory, # Needs implementation
+            CommandIntent.EQUIP: self._handle_equip, # Needs implementation
+            CommandIntent.QUIT: self._handle_quit, # Needs implementation/verification
+            CommandIntent.UNKNOWN: self._handle_unknown, # Add explicit unknown handler
+            # Add other intents here as needed, mapping to placeholder handlers initially
+            # e.g., CommandIntent.USE: self._handle_use_placeholder, 
+        }
+        logging.info(f"Intent map initialized with {len(self.intent_map)} handlers.")
 
-    # --- Command Handler Methods ---
+    # --- Placeholder Handlers (To be replaced/implemented) ---
+    # Need implementations for TAKE, DROP, INVENTORY, EQUIP, QUIT, UNKNOWN
+    # Ensure method signatures accept ParsedIntent
 
+    def _handle_take(self, parsed_intent: ParsedIntent) -> str:
+        """Handles the TAKE command intent, checking hand slot first."""
+        target_object_name = parsed_intent.target
+        logging.debug(f"[_handle_take] Handling TAKE for target name: '{target_object_name}'")
+
+        if not target_object_name:
+            return "What do you want to take?"
+
+        # Check if hands are full FIRST
+        if self.game_state.hand_slot is not None:
+            held_object_name = self.game_state._get_object_name(self.game_state.hand_slot)
+            logging.debug(f"[_handle_take] Hand slot occupied by '{self.game_state.hand_slot}'. Cannot take '{target_object_name}'")
+            # Try to find the target name for a better message even if hands are full
+            target_object_id_if_exists = self.game_state._find_object_id_by_name_in_location(target_object_name)
+            target_object_name_display = self.game_state._get_object_name(target_object_id_if_exists) if target_object_id_if_exists else target_object_name
+            return f"Your hands are full (holding the {held_object_name}). You need to drop it or put it away before taking the {target_object_name_display}."
+
+        # If hands are empty, find the object ID in the location
+        logging.debug(f"[_handle_take] Calling _find_object_id_by_name_in_location for '{target_object_name}'...")
+        found_object_id = self.game_state._find_object_id_by_name_in_location(target_object_name)
+        logging.debug(f"[_handle_take] _find_object_id_by_name_in_location returned: '{found_object_id}'")
+
+        if not found_object_id:
+            logging.debug(f"[_handle_take] No object ID found for name '{target_object_name}'. Returning 'not seen' message.")
+            return f"You don't see a {target_object_name} here."
+        
+        # Call GameState.take_object
+        logging.debug(f"[_handle_take] Calling take_object with ID: '{found_object_id}'")
+        result = self.game_state.take_object(found_object_id)
+        logging.debug(f"[_handle_take] take_object returned: {result}")
+        
+        # The take_object method now returns a message string directly
+        return result 
+         
+    def _handle_drop(self, parsed_intent: ParsedIntent) -> str:
+        """Handles the DROP command intent, checking hand slot."""
+        target_object_name = parsed_intent.target
+        logging.debug(f"[_handle_drop] Handling DROP for target name: '{target_object_name}'")
+
+        if not target_object_name:
+            return "What do you want to drop?"
+
+        held_object_id = self.game_state.hand_slot
+        if held_object_id is None:
+            return "You aren't holding anything to drop."
+
+        # Use _item_matches_name helper to check if the held item matches the target name
+        if not self._item_matches_name(held_object_id, target_object_name):
+             held_object_name = self.game_state._get_object_name(held_object_id)
+             return f"You aren't holding a {target_object_name}. You're holding the {held_object_name}."
+
+        # If it matches, proceed to drop the item in hand
+        object_id_to_drop = held_object_id 
+        logging.debug(f"[_handle_drop] Calling drop_object with ID: '{object_id_to_drop}'")
+        result = self.game_state.drop_object(object_id_to_drop)
+        logging.debug(f"[_handle_drop] drop_object returned: {result}")
+        
+        # drop_object returns a dictionary {"success": bool, "message": str}
+        return result.get("message", "An unknown error occurred while trying to drop the object.")
+         
+    def _handle_inventory(self, parsed_intent: ParsedIntent) -> str:
+        """Handles the INVENTORY command intent by displaying status."""
+        inventory = self.game_state.inventory or [] 
+        hand_slot = self.game_state.hand_slot
+        worn_items = self.game_state.worn_items or []
+
+        output = "You check your belongings.\n"
+
+        # Display item in hand
+        if hand_slot:
+            hand_item_name = self.game_state._get_object_name(hand_slot)
+            output += f"  Holding: {hand_item_name}\n"
+        else:
+            output += "  Holding: Nothing\n"
+
+        # Display worn items
+        output += "  Wearing:\n"
+        if worn_items:
+            worn_item_details = []
+            for item_id in sorted(worn_items): 
+                item_name = self.game_state._get_object_name(item_id)
+                item_data = self.game_state.get_object_by_id(item_id)
+                if item_data:
+                    area = item_data.get('properties',{}).get('wear_area', 'Unknown Area')
+                    layer = item_data.get('properties',{}).get('wear_layer', '?')
+                    worn_item_details.append(f"    - {item_name} (Area: {area}, Layer: {layer})")
+                else:
+                    worn_item_details.append(f"    - {item_id} (Data missing!)") 
+            if worn_item_details:
+                output += "\n".join(worn_item_details) + "\n"
+            else:
+                output += "    Nothing\n"
+        else:
+            output += "    Nothing\n"
+
+        # Display inventory items
+        output += "  Carrying in Inventory:\n"
+        if inventory:
+            inventory_names = []
+            for item_id in sorted(inventory):
+                 inventory_names.append(f"    - {self.game_state._get_object_name(item_id)}")
+            if inventory_names:
+                output += "\n".join(inventory_names) + "\n"
+            else:
+                output += "    Nothing\n"
+        else:
+            output += "    Nothing\n"
+
+        # Handler should display output directly and return empty string or confirmation?
+        # Let's display directly for now.
+        self.display_output(output.strip())
+        return "" # Return empty string as message is already displayed
+
+    def _handle_equip(self, parsed_intent: ParsedIntent) -> str:
+        """Handles EQUIP/UNEQUIP intents by calling wear_item or remove_item."""
+        target_item_name = parsed_intent.target
+        action_verb = parsed_intent.action or "" # Get action from intent
+        # Define verbs that mean 'wear' vs 'remove'
+        wear_verbs = {"wear", "equip", "don", "puton", "put"} # Added "put"
+        remove_verbs = {"remove", "unequip", "doff", "takeoff", "take"} # Added "take"
+
+        logging.debug(f"[_handle_equip] Handling EQUIP. Target: '{target_item_name}', Action: '{action_verb}'")
+
+        if not target_item_name:
+            return "What do you want to wear or remove?"
+
+        # Determine if the action is WEAR or REMOVE based on the verb
+        is_wearing = action_verb.lower() in wear_verbs
+        is_removing = action_verb.lower() in remove_verbs
+
+        if is_wearing:
+            object_id_to_wear = None
+            # Check hand slot FIRST
+            held_item_id = self.game_state.hand_slot
+            if held_item_id and self._item_matches_name(held_item_id, target_item_name):
+                object_id_to_wear = held_item_id
+                logging.debug(f"[_handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) in hand slot.")
+            
+            # If not in hand, check inventory
+            if not object_id_to_wear:
+                inventory_item_id = self.game_state._find_object_id_by_name_in_inventory(target_item_name)
+                if inventory_item_id:
+                    object_id_to_wear = inventory_item_id
+                    logging.debug(f"[_handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) in inventory.")
+
+            # Now, attempt to wear if we found an ID
+            if object_id_to_wear:
+                return self.game_state.wear_item(object_id_to_wear)
+            else:
+                # If not found in hands or inventory, check if already worn
+                if self.game_state._find_object_id_by_name_worn(target_item_name):
+                     return f"You are already wearing the {target_item_name}."
+                else:
+                     # Only reach here if not in hands, inventory, or worn
+                     return f"You don't have a '{target_item_name}' to wear (checked hands and inventory)."
+
+        elif is_removing:
+            # Find the item in worn items first
+            object_id_to_remove = self.game_state._find_object_id_by_name_worn(target_item_name)
+            if not object_id_to_remove:
+                 if self.game_state._find_object_id_by_name_in_inventory(target_item_name):
+                     return f"You have the {target_item_name}, but you aren't wearing it."
+                 else:
+                    return f"You aren't wearing a '{target_item_name}'."
+            # Attempt to remove
+            return self.game_state.remove_item(object_id_to_remove)
+
+        else:
+            # If the NLP parser returned EQUIP intent but the action wasn't recognized
+            logging.warning(f"_handle_equip received EQUIP intent but unclear action verb: '{action_verb}'")
+            return f"Do you want to wear or remove the {target_item_name}?" 
+         
+    def _handle_quit(self, parsed_intent: ParsedIntent) -> str:
+         self.is_running = False # Set flag to stop the loop
+         # Don't print directly here, let the calling code handle final message
+         return "Quitting game. Goodbye!"
+         
+    def _handle_unknown(self, parsed_intent: ParsedIntent) -> str:
+         return "I don't understand that command."
+
+    # --- Existing Implemented Handlers (Verify signature) ---
     def _handle_move(self, parsed_intent: ParsedIntent) -> str:
         """Handles the MOVE command intent.
         
@@ -465,9 +610,32 @@ class GameLoop:
             #       and return its description.
             return f"You look closely at the {target}. (Description not implemented)"
 
-    # def _handle_take(self, parsed_intent: ParsedIntent) -> str:
-    #     pass
-    # ... etc ...
+    # --- ADD MISSING HELPER for item matching ---
+    def _item_matches_name(self, item_id: str, name_to_match: str) -> bool:
+         """Checks if the item ID matches the name/synonym/ID provided."""
+         if not item_id or not name_to_match:
+             return False
+
+         name_lower = name_to_match.lower().strip()
+
+         # Direct ID match (case-insensitive)
+         if item_id.lower() == name_lower:
+             return True
+
+         # Name/Synonym match - use game_state's object data
+         object_data = self.game_state.get_object_by_id(item_id) # Use get_object_by_id
+         if object_data:
+             if object_data.get("name", "").lower() == name_lower:
+                 return True
+             synonyms = object_data.get("synonyms", [])
+             if isinstance(synonyms, list):
+                 if name_lower in [str(syn).lower().strip() for syn in synonyms if isinstance(syn, (str, int, float))]:
+                     return True
+         return False
+
+    def display_output(self, message: str):
+        """Prints output to the console (can be overridden for GUI)."""
+        print(f"\n{message}\n") # Add blank lines for readability
 
 # Example of how it might be run (likely from main.py later)
 if __name__ == '__main__':
