@@ -33,6 +33,7 @@ class ParsedIntent:
     intent: CommandIntent
     action: Optional[str] = None
     target: Optional[str] = None
+    target_object_id: Optional[str] = None
     direction: Optional[str] = None
     confidence: float = 0.0
-    raw_input: str = "" 
+    original_input: str = "" 

@@ -1,0 +1,211 @@
+# Stores lists of response variations for game actions and feedback.
+# Placeholders like {item_name}, {direction}, {container_name}, {location_name} 
+# will be replaced by the game engine.
+
+# --- Movement ---
+move_fail_direction:
+  - "You can't go {direction} from here."
+  - "There's no exit in that direction ({direction})."
+  - "Going {direction} doesn't seem possible right now."
+  - "So... you can walk through walls now!"
+  - "You attempt to exit {direction} and bang your forehead against the wall!"
+  - "Do you think you can go {direction}? I'm willing to try again if you are!"
+  - "Nice try, but the {direction} exit leads nowhere!"
+  - "I suggest you actually 'read' the available exits first, before attempting to move {direction}!"
+  - "You're trying to take a shortcut {direction}, aren't you? Best of luck with that!"
+  - "It's not safe to go {direction}. If you make it through, you might end up in space, and in space... 'nobody can hear your scream!'"
+  - "I'm really trying to help you here! I display the exits for you and everything! You just don't try do you? Going {direction}?"
+  - "You're not quite ready for this game, are you? The lights are on but it appears nobody's home! Trying to go {direction}?"
+  - "That way ({direction}) leads to eternal damnation! Personally, I'd take another exit if I were you!"
+  - "That {direction} exit only exists in a different dimension! You'd better look for another one."
+  - "Computer says 'No' to going {direction}!"
+  - "I'm sorry, Dave. I'm afraid I can't let you go {direction}."
+  - "Your attempt to navigate this ship {direction} is futile!"
+  - "I have a bad feeling about going {direction}... you can't go that way kid!"
+
+move_fail_area:
+  - "You can't move to '{target_name}' like that."
+  - "There doesn't seem to be a place called '{target_name}' accessible from here."
+
+move_fail_invalid_direction:
+  - "You can't go that way."
+  - "There's no exit in that direction."
+
+# TODO: Add more specific failure reasons (e.g., locked door)
+
+move_success: # Placeholder - Needs integration with showing room description
+  - "You move {direction}."
+  - "Okay, moving {direction}."
+
+# --- Item Handling ---
+take_success_singular:
+  - "You take the {item_name}."
+  - "You pick up the {item_name}."
+  - "The {item_name} is now in your hands."
+
+take_success_plural:
+  - "You take the {item_name}."
+  - "You pick up the {item_name}."
+  - "The {item_name} are now in your hands." # Corrected grammar
+
+take_fail_no_item:
+  - "You don't see a {item_name} here."
+  - "There isn't a {item_name} here to take."
+
+take_fail_not_takeable_singular:
+  - "You can't take the {item_name}."
+  - "The {item_name} seems fixed in place."
+
+take_fail_not_takeable_plural:
+  - "You can't take the {item_name}."
+  - "The {item_name} seem fixed in place." # Corrected grammar
+
+take_fail_hands_full:
+  - "Your hands are full (holding the {held_item_name}). You need to drop it or put it away first."
+  - "You can't take the {item_name} while holding the {held_item_name}."
+  - "You'll need free hands to pick up the {item_name}."
+
+drop_success_singular:
+  - "You drop the {item_name}."
+  - "The {item_name} falls to the floor."
+  - "You let go of the {item_name}."
+
+drop_success_plural:
+  - "You drop the {item_name}."
+  - "The {item_name} fall to the floor." # Corrected grammar
+  - "You let go of the {item_name}."
+
+drop_fail_not_holding:
+  - "You aren't holding anything to drop."
+  - "What do you want to drop? You're not holding {item_name}."
+
+drop_fail_target_mismatch_singular:
+    - "You aren't holding the {item_name}. You're holding the {held_item_name}."
+    - "You try to drop the {item_name}, but you're actually holding the {held_item_name}."
+
+drop_fail_target_mismatch_plural: # Note: item_name is the target, held_item_name is what's held
+    - "You aren't holding the {item_name}. You're holding the {held_item_name}."
+    - "You try to drop the {item_name}, but you're actually holding the {held_item_name}."
+
+wear_success_singular:
+  - "You put on the {item_name}."
+  - "You slip into the {item_name}."
+  - "The {item_name} fits well. You're now wearing it."
+  - "You equip the {item_name}."
+
+wear_success_plural:
+  - "You put on the {item_name}."
+  - "You slip into the {item_name}."
+  - "The {item_name} fit well. You're now wearing them." # Corrected grammar and typo
+  - "You equip the {item_name}."
+
+wear_fail_not_have:
+  - "You don't have a {item_name} to wear (checked hands and inventory)."
+  - "You can't find a {item_name} to put on."
+
+wear_fail_not_wearable_singular:
+  - "You cannot wear the {item_name}."
+  - "That {item_name} doesn't seem like something you can wear."
+
+wear_fail_not_wearable_plural:
+  - "You cannot wear the {item_name}."
+  - "Those {item_name} don't seem like something you can wear."
+
+wear_fail_already_wearing_singular:
+  - "You are already wearing the {item_name}."
+
+wear_fail_already_wearing_plural:
+  - "You are already wearing the {item_name}."
+
+wear_fail_conflict_singular:
+  - "You cannot wear the {item_name} there; you are already wearing the {other_item_name} which occupies that space/layer."
+  - "The {other_item_name} you're wearing prevents you from putting on the {item_name}."
+
+wear_fail_conflict_plural:
+  - "You cannot wear the {item_name} there; you are already wearing the {other_item_name} which occupies that space/layer."
+  - "The {other_item_name} you're wearing prevents you from putting on the {item_name}."
+
+remove_success_singular:
+  - "You take off the {item_name} and hold it."
+  - "You remove the {item_name}."
+
+remove_success_plural:
+  - "You take off the {item_name} and hold them." # Corrected grammar
+  - "You remove the {item_name}."
+
+remove_fail_not_wearing:
+  - "You aren't wearing a {item_name}."
+  - "You check, but you're not wearing a {item_name}."
+
+remove_fail_hands_full_singular:
+  - "Your hands are full (holding the {held_item_name}). You need to drop it or put it away before taking off the {item_name}."
+  - "You need empty hands to take off the {item_name}."
+
+remove_fail_hands_full_plural:
+  - "Your hands are full (holding the {held_item_name}). You need to drop it or put it away before taking off the {item_name}."
+  - "You need empty hands to take off the {item_name}."
+
+# --- Containers (Placeholders) ---
+store_success:
+  - "You put the {item_name} in the {container_name}."
+  - "Stored."
+
+store_fail_not_container:
+  - "You can't store things in the {container_name}."
+
+store_fail_container_closed:
+  - "The {container_name} is closed."
+
+store_fail_container_full:
+  - "The {container_name} is full."
+  - "There's no more room in the {container_name}."
+  
+get_from_success:
+   - "You get the {item_name} from the {container_name}."
+
+get_from_fail_not_in_container:
+   - "You don't find a {item_name} in the {container_name}."
+
+get_from_fail_container_closed:
+   - "You can't get anything from the {container_name} while it's closed."
+
+# --- Look / Examine ---
+look_success_room: # Placeholder for detailed room look
+  - "{description}"
+
+look_success_item: # Placeholder for detailed item look
+  - "{description}"
+
+look_fail_not_found:
+  - "You don't see any '{item_name}' here to look at."
+  - "There is no '{item_name}' nearby."
+  - "Hmm, can't find a '{item_name}' around here."
+
+# --- General / System ---
+invalid_command: # Copied from Starship_plan.yaml
+  - "I'm sorry, but I have absolutely no idea what you're talking about!"
+  - "I've passed that statement through my universal translator and I got nothing!"
+  - "Your words are like static in deep space — I can't make any sense of them."
+  - "That command defies the laws of physics... and my programming!"
+  - "Error: Command not recognized. Perhaps you should try speaking ENGLISH!!"
+  - "Your input seems lost in translation — could you rephrase that?"
+  - "I'm sorry! What did you just call me?"
+  - "What in hell's name have you been smoking!"
+  - "That doesn't compute." # Added one more generic
+
+profanity_response: # Responses when player swears (English only)
+  - "Do you kiss your mother with that mouth?"
+  - "My, what a colourful repertoire you have! Your mother must be so proud!"
+  - "Somewhere out there, a tree is tirelessly producing oxygen for you. I think you owe it an apology!"
+  - "If only we got a dollar for every bad word, we'd be rich by now!"
+  - "Your words just bounced off me and hit the 'I don't care' wall."
+  - "I'd give that insult a C-. Creativity counts, you know?"
+  - "Oops, your verbal filter must be on vacation."
+  - "I'm allergic to negativity. Bless me!"
+  - "If this were a battle of wits, I'd feel bad for you. I'm clearly armed." 
+  - "Congratulations! You've won the 'Sailor Mouth of the Year' award."
+  - "Someday you'll go far—and I really hope you stay there."
+  - "Beauty is only skin deep, but ugly goes clean to the bone."
+  - "Oh, I'm sorry. Did the middle of my sentence interrupt the beginning of yours?"
+  - "You bring everyone a lot of joy... when you leave the room."
+  - "I believe in lifting people, not tearing them down. Let's find a way to understand each other."

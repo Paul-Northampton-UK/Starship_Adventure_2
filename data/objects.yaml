@@ -3,6 +3,7 @@ objects:
   name: "Captain's Chair"
   description: "A large, comfortable chair with multiple control panels built into
     the armrests."
+  is_plural: false
   type: "furniture"
   is_portable: false
   is_interactive: true
@@ -15,8 +16,17 @@ objects:
   count: 1
   weight: 0.5
   size: 2.0
-  description: A torch mounted on the wall of the bridge.
-  synonyms: []
+  description: A standard-issue shipboard torch, compact and rugged. Its brushed metal
+    casing is scuffed from years of service, and a faint amber glow surrounds the
+    standby switch. Designed for zero-G handling, the grip is textured for gloved
+    fingers. A side panel on the rear unscrews to reveal the battery compartment,
+    sealed tight against moisture and vacuum.
+  is_plural: false
+  synonyms:
+  - torch
+  - lamp
+  - light
+  - lantern
   initial_state: true
   is_locked: false
   power_state:
@@ -24,14 +34,14 @@ objects:
   lock_code:
   lock_key_id:
   properties:
-    is_takeable: false
+    is_takeable: true
     is_interactive: true
     is_dangerous: false
-    is_destroyable: false
+    is_destroyable: true
     is_storage: false
     is_operational: false
     is_edible: false
-    is_weapon: false
+    is_weapon: true
     is_movable: false
     is_wearable: false
     is_flammable: false
@@ -42,13 +52,13 @@ objects:
     has_durability: false
     is_hackable: false
     is_hidden: false
-    is_rechargeable: false
+    is_rechargeable: true
     is_fuel_source: false
     regenerates: false
     is_modular: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
+    is_activatable: true
     is_networked: false
     requires_power: false
     requires_item: false
@@ -58,9 +68,11 @@ objects:
     is_secret: false
     can_store_liquids: false
     storage_capacity:
-    damage:
-    durability:
-    range:
+    damage: 1.0
+    durability: 10
+    range: 1.0
+    wear_area:
+    wear_layer:
   interaction:
     required_state: []
     required_items: []
@@ -72,8 +84,8 @@ objects:
   state_descriptions: {}
 - id: "nav_console"
   name: "Navigation Console"
-  description: "A sophisticated computer terminal displaying star charts and navigation
-    data."
+  description: "A sophisticated computer terminal displaying star charts and navigation data."
+  is_plural: false
   type: "device"
   is_portable: false
   is_interactive: true
@@ -96,6 +108,7 @@ objects:
 - id: "nav_officer_log"
   name: "Navigation Officer's Log"
   description: "A digital logbook containing the navigation officer's entries."
+  is_plural: false
   type: "item"
   is_portable: true
   is_interactive: true
@@ -117,6 +130,7 @@ objects:
     of the navigation station. Its edges blend seamlessly with the console's sleek
     surface. The subtle craftsmanship makes it look like part of the design, an elegant
     mystery waiting to be noticed."
+  is_plural: false
   type: "structure"
   is_portable: false
   is_interactive: true
@@ -141,6 +155,7 @@ objects:
 - id: "nav_fish_delivery_log"
   name: "Fish Delivery Log"
   description: "A log detailing the delivery of fish to various parts of the ship."
+  is_plural: false
   type: "item"
   is_portable: true
   is_interactive: true
@@ -159,6 +174,7 @@ objects:
 - id: "nav_fish_photo"
   name: "Fish Photo"
   description: "A photograph showing various fish species."
+  is_plural: false
   type: "item"
   is_portable: true
   is_interactive: false
@@ -182,6 +198,7 @@ objects:
     for comfort during long hauls, with a magnetic chest clasp for extra stability.
     A faded emblem on the top flap hints at a well known organization. It’s light,
     practical, and clearly designed for survival in space.
+  is_plural: false
   synonyms:
   - rucksack
   - knapsack
@@ -253,6 +270,7 @@ objects:
     its once-polished frame now dulled by time and fine particles of dust. The surface
     is mottled with age—tiny blooms of corrosion creep in from the edges, silver backing
     flaking away like a slow rot, leaving cloudy patches that distort any reflection.
+  is_plural: false
   synonyms:
   - mirror
   - looking glass
@@ -329,6 +347,7 @@ objects:
     The inner band is lined with soft mesh for comfort and grip. Stitched into the
     side is a worn patch—just a symbol now, the meaning currently lost on you. It’s
     the kind of cap made to be worn, not admired.
+  is_plural: false
   synonyms:
   - coif
   - hat
@@ -400,6 +419,7 @@ objects:
     of its last occupant. A pair of buckled restraint straps dangle limply at the
     sides, swaying ever so slightly as if disturbed moments ago, though the air is
     still and stale.
+  is_plural: false
   synonyms:
   - bed
   - cot
@@ -467,11 +487,13 @@ objects:
     synthetic fabric designed to withstand life aboard a starship. Its muted grey-blue
     color is functional and unobtrusive, with reinforced stitching at the seams and
     subtle padding at the joints for comfort during long shifts.
+  is_plural: false
   synonyms:
   - jump suit
   - overalls
   - coveralls
   - utility suit
+  - suit
   initial_state: true
   is_locked: false
   power_state:
@@ -539,6 +561,7 @@ objects:
     to grated service tunnels. Along the inner heel, a faint engraving reads: "E.V.
     Ready – Class II", suggesting they were rated for vacuum use, or at least long
     hours near exposed hull sections.'
+  is_plural: true
   synonyms:
   - boots
   - footwear
@@ -610,6 +633,7 @@ objects:
     discoloration marks the insides, shaped by repeated use. A small, faded label
     stitched inside reads “Deck Standard – Rest Use Only.” Despite their plainness,
     there's a quiet familiarity to them—functional, personal, and utterly unremarkable.
+  is_plural: true
   synonyms:
   - slippers
   - slipper

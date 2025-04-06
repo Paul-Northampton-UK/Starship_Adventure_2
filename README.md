@@ -79,4 +79,11 @@ python -m engine.game_loop
 
 ## License
 
-This project is open source and available under the MIT License. 
+This project is open source and available under the MIT License.
+
+## Future Considerations
+
+*   **Game Engine Framework:** If the project grows significantly in complexity, especially towards multiplayer features, consider investigating the [Evennia](https://www.evennia.com/) Python MUD/MUX/MU* framework as an alternative to the custom engine. It provides built-in networking, persistence, command parsing, and other features but comes with its own learning curve.
+*   **Advanced NLP:** Explore more sophisticated NLP techniques for command parsing if needed (e.g., handling more complex sentence structures, coreference resolution).
+*   **GUI:** Potentially add a graphical user interface (GUI) instead of the pure text interface.
+*   **Detailed Exits:** Enhance the location descriptions to include more dynamic or flavorful text for exits based on visited status or other conditions (using potentially existing `rooms.yaml` structure or defining a new one). 

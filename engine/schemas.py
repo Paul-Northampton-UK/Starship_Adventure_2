@@ -222,6 +222,7 @@ class Object(BaseModel):
     weight: float = Field(..., ge=0)
     size: float = Field(..., ge=0)
     description: str = Field(..., max_length=1000)
+    is_plural: bool = False # Added flag for singular/plural distinction
     
     # Optional fields
     synonyms: List[str] = []

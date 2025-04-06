@@ -1,7 +1,7 @@
 # engine/game_loop.py
 
 import logging
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 from .game_state import GameState, PowerState
 from .nlp_command_parser import NLPCommandParser
 from .command_defs import CommandIntent, ParsedIntent
@@ -40,13 +40,14 @@ class GameLoop:
         self.config_data: Dict[str, Any] = {}
         self.rooms_data: Dict[str, Any] = {}
         self.objects_data: Dict[str, Any] = {}
+        self.responses_data: Dict[str, List[str]] = {} # Added for responses
         self.is_running = False
 
         # Load config first
         self.load_config(config_yaml_path)
 
-        # Load and process game data
-        self.load_game_data(rooms_yaml_path, objects_yaml_path)
+        # Load game data (rooms, objects, responses)
+        self.load_game_data(rooms_yaml_path, objects_yaml_path, "data/responses.yaml")
 
         # Determine starting conditions from config (with defaults)
         start_room_id = self.config_data.get("start_room_id", "player_cabin") # Default to player_cabin
@@ -98,13 +99,15 @@ class GameLoop:
             logging.error(f"Error loading config from {config_yaml_path}: {e}", exc_info=True)
             self.config_data = {}
 
-    def load_game_data(self, rooms_yaml_path: str, objects_yaml_path: str):
-        """Loads room and object data from YAML files and processes them into dictionaries keyed by ID."""
-        logging.info(f"Loading game data from {rooms_yaml_path} and {objects_yaml_path}")
+    def load_game_data(self, rooms_yaml_path: str, objects_yaml_path: str, responses_yaml_path: str):
+        """Loads room, object, and response data from YAML files."""
+        logging.info(f"Loading game data from {rooms_yaml_path}, {objects_yaml_path}, and {responses_yaml_path}")
         loader = YAMLLoader() # Uses default data_dir='data'
         self.rooms_data = {}
         self.objects_data = {}
+        self.responses_data = {} # Initialize responses_data
 
+        # --- Load Rooms --- 
         try:
             rooms_filename = Path(rooms_yaml_path).name
             loaded_room_structure = loader.load_file(rooms_filename)
@@ -116,9 +119,11 @@ class GameLoop:
                 logging.error(f"Unexpected structure in {rooms_filename}. Expected dict with 'rooms' list.")
         except FileNotFoundError:
             logging.error(f"Rooms file not found: {rooms_yaml_path}. Cannot load rooms.")
+            # Consider raising an error here if rooms are essential
         except Exception as e:
             logging.error(f"Error loading/processing rooms from {rooms_yaml_path}: {e}", exc_info=True)
             
+        # --- Load Objects --- 
         try:
             objects_filename = Path(objects_yaml_path).name
             loaded_object_structure = loader.load_file(objects_filename)
@@ -132,6 +137,21 @@ class GameLoop:
             logging.warning(f"Objects file not found: {objects_yaml_path}. Proceeding without objects.")
         except Exception as e:
             logging.error(f"Error loading/processing objects from {objects_yaml_path}: {e}", exc_info=True)
+            
+        # --- Load Responses --- 
+        try:
+            responses_filename = Path(responses_yaml_path).name
+            loaded_responses = loader.load_file(responses_filename)
+            if isinstance(loaded_responses, dict):
+                 self.responses_data = loaded_responses
+                 logging.info(f"Loaded {len(self.responses_data)} response categories.")
+            else:
+                 logging.warning(f"Unexpected structure in {responses_filename}. Expected a dictionary.")
+        except FileNotFoundError:
+            logging.warning(f"Responses file not found: {responses_yaml_path}. Using default responses.")
+            # We might want default hardcoded responses here as a fallback
+        except Exception as e:
+            logging.error(f"Error loading responses from {responses_yaml_path}: {e}", exc_info=True)
 
     def run(self):
         """Starts and runs the main game loop."""
@@ -172,7 +192,10 @@ class GameLoop:
         # Final goodbye is now handled within the loop
 
     def process_command(self, parsed_intent: ParsedIntent) -> Optional[str]:
-        """Processes the parsed command intent by dispatching to the appropriate handler."""
+        """Processes the parsed command intent, calls the handler,
+           and formats the response using get_formatted_response.
+           Returns the final message string or None (for quit).
+        """
         intent = parsed_intent.intent
         logging.debug(f"Processing intent: {intent} with data: {parsed_intent}")
 
@@ -180,22 +203,44 @@ class GameLoop:
 
         if handler:
             try:
-                # Pass game_state and parsed_intent to all handlers
-                # Special case for handle_inventory to pass display_output callback
+                # Special case for handle_inventory which uses a display callback
                 if handler == handle_inventory:
-                    # handle_inventory returns "", output is via callback
-                    return handler(self.game_state, parsed_intent, self.display_output)
+                    handler_result = handler(self.game_state, parsed_intent, self.display_output)
+                    # It returns () on success, handle if it raises an error instead?
+                    return "" # Indicate no further message needed
+
+                # Call other handlers
+                handler_result = handler(self.game_state, parsed_intent)
+
+                # Check handler result type
+                if handler_result is None:
+                    # Signal to quit the game loop (handled in run method)
+                    return None
+                elif isinstance(handler_result, tuple) and len(handler_result) == 2:
+                    # Expected result: (response_key, kwargs_dict)
+                    key, kwargs = handler_result
+
+                    # Handle direct description returns (from move or look)
+                    if key in ["move_success_description", "look_success_room", "look_success_item"]:
+                        return kwargs.get("description", "(Description missing)") # Return pre-formatted description
+                    else:
+                         # Format other responses using the key and kwargs
+                         return self.get_formatted_response(key, **kwargs)
                 else:
-                    # Other handlers return a message string or None (for quit)
-                    return handler(self.game_state, parsed_intent)
-                    
+                    # Handler returned something unexpected
+                    logging.error(f"Handler for {intent} returned unexpected result type: {handler_result}")
+                    # Pass action as a keyword argument
+                    return self.get_formatted_response("error_internal", action=f"handle_{intent.name.lower()}")
+
             except Exception as e:
                 logging.exception(f"Error executing handler for intent: {intent}")
-                return "An internal error occurred while processing your command."
+                # Use generic error key
+                # TODO: Add error_internal key to responses.yaml
+                return self.get_formatted_response("invalid_command", **{})
         else:
-            # This case should ideally be handled by handle_unknown, but as a fallback:
+            # No handler mapped for this intent (should be caught by UNKNOWN mapping)
             logging.warning(f"No handler explicitly mapped for intent: {intent}")
-            return "I don't understand that command or it hasn't been implemented yet."
+            return self.get_formatted_response("invalid_command", **{})
 
     def _setup_intent_map(self):
         """Initializes the mapping from CommandIntent to imported handler functions."""
@@ -212,6 +257,27 @@ class GameLoop:
             # (e.g., handle_use, handle_interact, etc.) when implemented.
         }
         logging.info(f"Intent map initialized with {len(self.intent_map)} handlers pointing to imported functions.")
+
+    def get_formatted_response(self, key: str, **kwargs) -> str:
+        """Gets a random response for the key, formats it, and returns it."""
+        response_list = self.responses_data.get(key, [])
+        if not response_list:
+            logging.warning(f"No responses found for key: '{key}'")
+            # Provide a generic fallback if a specific key is missing
+            return f"(Action '{key}' occurred, but response text is missing.)"
+            
+        import random
+        chosen_template = random.choice(response_list)
+        
+        try:
+            return chosen_template.format(**kwargs)
+        except KeyError as e:
+            logging.error(f"Missing placeholder '{e}' in response template for key '{key}': '{chosen_template}'")
+            # Return the template with a warning if formatting fails
+            return f"(Response formatting error for '{key}': {chosen_template})"
+        except Exception as e:
+            logging.error(f"Unexpected error formatting response for key '{key}': {e}", exc_info=True)
+            return f"(Response formatting error for '{key}')"
 
     def display_output(self, message: str):
         """Prints output to the console (can be overridden for GUI)."""

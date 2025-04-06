@@ -5,6 +5,7 @@ from spacy.pipeline import EntityRuler
 from fuzzywuzzy import fuzz
 from .command_defs import CommandIntent, ParsedIntent
 from .game_state import GameState, PowerState
+import logging
 
 class NLPCommandParser:
     """Handles parsing and processing of player commands using NLP."""
@@ -219,41 +220,43 @@ class NLPCommandParser:
         self.custom_patterns = [] # Start fresh
 
         # --- Define pattern lists --- 
+        # Include single letter, full names, hyphenated, and two-word variants
         direction_list = [
             "north", "south", "east", "west", "up", "down", 
             "n", "s", "e", "w", "u", "d", 
             "ne", "nw", "se", "sw",
             "northeast", "northwest", "southeast", "southwest",
             "north-east", "north-west", "south-east", "south-west",
-            # Add two-word directions
-            "north west", "south east", "north east", "south west"
+            "north east", "north west", "south east", "south west" # Added two-word variants
         ]
-        object_list = [
-            "key", "door", "button", "lever", "card", "torch", "computer",
-            "terminal", "screen", "panel", "tool", "device", "sword", "shield",
-            "potion", "book", "scroll", "map", "coin", "gem", "crystal",
-            "backpack", "chest", "box", "window", "gate", "rope", "ladder",
-            "datapad", "console", "pipe", "wire", "vent", "hatch", "airlock", # Added more common objects
-            "nav station", "power core", "access card" # Multi-word objects
-        ]
-        npc_list = [
-            "guard", "merchant", "captain", "soldier", "villager", "alien",
-            "robot", "scientist", "doctor", "engineer", "pilot", "crew", "android"
-        ]
-        location_list = [
-            "bridge", "engine room", "cargo bay", "medbay", "quarters",
-            "airlock", "corridor", "storage", "lab", "cafeteria", "hallway",
-            "cockpit", "observation deck" # Added more locations
-        ]
+        for direction in direction_list:
+            # Split potential multi-word directions
+            direction_parts = direction.lower().split()
+            # Create the pattern as a list of token matchers
+            pattern = [{spacy.symbols.LOWER: part} for part in direction_parts]
+            if pattern: # Ensure pattern is not empty
+                self.custom_patterns.append({"label": "DIRECTION", "pattern": pattern})
 
-        # --- Create patterns --- 
-        self.custom_patterns.extend([{"label": "DIRECTION", "pattern": d} for d in direction_list])
-        self.custom_patterns.extend([{"label": "OBJECT", "pattern": obj} for obj in object_list])
-        self.custom_patterns.extend([{"label": "NPC", "pattern": npc} for npc in npc_list])
-        self.custom_patterns.extend([{"label": "LOCATION", "pattern": loc} for loc in location_list])
+        # --- Add patterns for specific game objects/locations dynamically? ---
+        # Example: Add patterns for known room names or important objects
+        # known_locations = [room['name'] for room_id, room in self.game_state.rooms_data.items()]
+        # for loc_name in known_locations:
+        #      if loc_name: # Ensure name is not empty
+        #           # Simple pattern based on lower case name
+        #           pattern = [{spacy.symbols.LOWER: token.lower()} for token in loc_name.split()]
+        #           self.custom_patterns.append({"label": "LOCATION", "pattern": pattern})
+                      
+        # Example: Patterns for specific items using their names and synonyms
+        for obj_id, obj_data in self.game_state.objects_data.items():
+            names_to_pattern = [obj_data.get('name')] + obj_data.get('synonyms', [])
+            for name in names_to_pattern:
+                 if name and isinstance(name, str): # Check if name is a valid string
+                      # Create a case-insensitive pattern for multi-word names
+                      pattern = [{spacy.symbols.LOWER: token.lower()} for token in name.split()]
+                      if pattern: # Ensure pattern is not empty
+                           self.custom_patterns.append({"label": "GAME_OBJECT", "pattern": pattern, "id": obj_id})
 
-        # Example for multi-word patterns (alternative way)
-        # self.custom_patterns.append({"label": "OBJECT", "pattern": [{"LOWER": "nav"}, {"LOWER": "station"}]})
+        logging.debug(f"Initialized EntityRuler with {len(self.custom_patterns)} custom patterns.")
 
     def initialize_entity_ruler(self) -> None:
         """Creates the entity ruler and adds patterns to the pipeline."""
@@ -288,128 +291,136 @@ class NLPCommandParser:
         return best_match
     
     def parse_command(self, command: str) -> ParsedIntent:
-        """Parse a command string into a ParsedIntent object using spaCy entities."""
+        """Parse the raw command string into a ParsedIntent."""
+        command = command.strip().lower()
         if not command:
-            return ParsedIntent(intent=CommandIntent.UNKNOWN, raw_input=command)
+            return ParsedIntent(intent=CommandIntent.UNKNOWN, original_input=command)
 
-        # Normalize command
-        command = command.lower().strip()
-
-        # --- Handle simple, single-word commands first ---
-        if command in ["i", "inventory", "inv", "items", "cargo", "loadout"]:
-            return ParsedIntent(intent=CommandIntent.INVENTORY, action="inventory", confidence=1.0, raw_input=command)
-        if command in ["q", "quit", "exit", "bye", "logout", "disconnect"]:
-            return ParsedIntent(intent=CommandIntent.QUIT, action="quit", confidence=1.0, raw_input=command)
-        if command in ["h", "help", "?", "commands", "tutorial", "manual"]:
-            return ParsedIntent(intent=CommandIntent.HELP, action="help", confidence=1.0, raw_input=command)
-        if command in ["wait", "rest", "sleep", "pause", "meditate", "nap", "stop", "delay", "hold", "standby"]:
-            return ParsedIntent(intent=CommandIntent.TIME, action=command, confidence=1.0, raw_input=command)
-
-        # --- Process with spaCy ---
         doc = self.nlp(command)
+        logging.debug(f"Tokens: {[token.text for token in doc]}")
+        logging.debug(f"Entities: {[(ent.text, ent.label_) for ent in doc.ents]}")
 
-        # --- Initialize parse results ---
-        action: Optional[str] = None
-        intent: CommandIntent = CommandIntent.UNKNOWN
-        target: Optional[str] = None
-        direction: Optional[str] = None
-        confidence: float = 0.0
+        # --- Prioritize DIRECTION entity for MOVE intent --- 
+        parsed_direction: Optional[str] = None
+        for ent in doc.ents:
+            if ent.label_ == "DIRECTION":
+                # Normalize two-word directions
+                direction_text = ent.text
+                if ' ' in direction_text:
+                     parsed_direction = direction_text.replace(' ', '')
+                     logging.debug(f"Normalized two-word direction: '{direction_text}' -> '{parsed_direction}'")
+                else:
+                     parsed_direction = direction_text
+                     logging.debug(f"Found direction entity: {parsed_direction}")
+                # Found a direction, assume MOVE intent
+                return ParsedIntent(
+                    intent=CommandIntent.MOVE,
+                    direction=parsed_direction,
+                    original_input=command
+                )
 
-        # --- Extract Entities ---
-        extracted_entities = {ent.label_: ent.text for ent in doc.ents}
-        direction = extracted_entities.get("DIRECTION")
+        # --- If no DIRECTION entity, proceed with verb/entity analysis --- 
+        # (Keep existing logic for verb identification, entity extraction, intent scoring, etc.)
+        
+        # Extract potential verbs and nouns/entities
+        verbs = [token for token in doc if token.pos_ == "VERB"]
+        entities = doc.ents # Get named entities recognized by EntityRuler or NER
+        nouns = [token for token in doc if token.pos_ in ["NOUN", "PROPN"]] # Simple noun check as fallback
+        
+        logging.debug(f"Verbs: {[v.text for v in verbs]}")
+        logging.debug(f"Entities: {[(ent.text, ent.label_) for ent in entities]}")
+        logging.debug(f"Nouns: {[n.text for n in nouns]}")
 
-        # --- Handle single-word directions (identified by entity ruler) ---
-        if len(doc) == 1 and direction:
-             return ParsedIntent(intent=CommandIntent.MOVE, action="move", direction=direction, confidence=1.0, raw_input=command)
-
-        # --- Identify Verb ---
-        verb_token = None
+        # Determine Intent based on verbs, entities, and context
+        possible_intents: Dict[CommandIntent, float] = {}
+        
+        # --- Simple Verb Matching --- (Could be improved with lemmatization)
+        matched_verb_intents: Set[CommandIntent] = set()
         for token in doc:
-            # Find the first token that is a verb recognized in our patterns
-            if token.lemma_ in self.valid_words: # Check against known verbs/context words
-                 # Check if this lemma belongs to any verb list in VERB_PATTERNS
-                 for pattern_intent, pattern_data in self.VERB_PATTERNS.items():
-                     if token.lemma_ in pattern_data.get("verbs", []):
-                         verb_token = token
-                         action = token.lemma_ # Use lemma for consistency
-                         break
-            if verb_token:
-                 break # Stop after finding the first recognized verb
+            for intent, data in self.VERB_PATTERNS.items():
+                if token.lemma_ in data.get("verbs", []): # Use lemma for broader matching
+                    matched_verb_intents.add(intent)
+                    # Initial score based on verb match
+                    possible_intents[intent] = possible_intents.get(intent, 0) + 1.0 * self.intent_priorities.get(intent, 1)
+        logging.debug(f"Intents matched by verbs: {matched_verb_intents}")
 
-        # If no recognized verb found, intent is UNKNOWN
-        if not verb_token:
-             # Basic fallback: Check if first word is a known verb
-             first_word = doc[0].lemma_
-             for pattern_intent, pattern_data in self.VERB_PATTERNS.items():
-                 if first_word in pattern_data.get("verbs", []):
-                     action = first_word
-                     break
-             # If still no action identified, return UNKNOWN
-             if not action:
-                 return ParsedIntent(intent=CommandIntent.UNKNOWN, raw_input=command)
-
-
-        # --- Determine Intent based on Verb and Entities ---
-        possible_intents = []
-        for pattern_intent, pattern_data in self.VERB_PATTERNS.items():
-            if action in pattern_data.get("verbs", []):
-                possible_intents.append((pattern_intent, pattern_data.get("priority", 0)))
-
-        if possible_intents:
-            # Sort by priority (higher first)
-            possible_intents.sort(key=lambda x: x[1], reverse=True)
-            
-            # Simple logic: If a direction is present, strongly prefer MOVE if it's possible
-            if direction and any(pi[0] == CommandIntent.MOVE for pi in possible_intents):
-                 intent = CommandIntent.MOVE
-            else:
-                 # Otherwise, take the highest priority intent for the verb
-                 intent = possible_intents[0][0]
-            
-            confidence = 0.8 # Base confidence if intent found
+        # --- Entity Analysis --- 
+        primary_target: Optional[str] = None
+        target_object_id: Optional[str] = None
+        target_type: Optional[str] = None # e.g., GAME_OBJECT, LOCATION, NPC
+        
+        # Prioritize GAME_OBJECT entities found by EntityRuler
+        game_object_ents = [ent for ent in entities if ent.label_ == "GAME_OBJECT"]
+        if game_object_ents:
+             # Take the first recognized game object as the primary target
+             primary_target = game_object_ents[0].text
+             target_object_id = game_object_ents[0].ent_id_ # Get the ID stored in the pattern
+             target_type = "GAME_OBJECT"
+             logging.debug(f"Primary target identified as GAME_OBJECT: '{primary_target}' (ID: {target_object_id})")
         else:
-             # If verb wasn't in any pattern list (should be rare after fallback), keep UNKNOWN
-             intent = CommandIntent.UNKNOWN
+            # Fallback: Look for simple nouns if no specific GAME_OBJECT entity found
+            # Try to reconstruct a target from nouns following the verb
+            if verbs:
+                verb_index = verbs[0].i
+                potential_target_tokens = [token for token in doc if token.i > verb_index and token.pos_ in ["NOUN", "PROPN", "ADJ", "DET"]]
+                if potential_target_tokens:
+                     primary_target = " ".join([t.text for t in potential_target_tokens])
+                     logging.debug(f"Primary target guessed from nouns after verb: '{primary_target}'")
+            elif nouns: # If no verb, just take first noun chunk?
+                 primary_target = nouns[0].text # Simplistic fallback
+                 logging.debug(f"Primary target guessed from first noun: '{primary_target}'")
 
+        # --- Intent Scoring Refinement (Example) --- 
+        # Boost score if target object properties match intent context (e.g., wear + clothing)
+        if target_object_id:
+            obj_data = self.game_state.objects_data.get(target_object_id)
+            if obj_data:
+                 obj_category = obj_data.get('category')
+                 # Example boosts
+                 if CommandIntent.EQUIP in possible_intents and obj_category in ['clothing', 'equipment', 'weapon']:
+                      possible_intents[CommandIntent.EQUIP] = possible_intents.get(CommandIntent.EQUIP, 0) + 50 # Big boost
+                 if CommandIntent.TAKE in possible_intents and obj_data.get('properties', {}).get('is_takeable'):
+                      possible_intents[CommandIntent.TAKE] = possible_intents.get(CommandIntent.TAKE, 0) + 20
+                 # Add more boosting rules based on categories/properties
 
-        # --- Extract Target (Basic Approach) ---
-        # Use noun chunks after the verb, excluding the direction
-        target_parts = []
-        if verb_token:
-            for chunk in doc.noun_chunks:
-                 # Only consider chunks that start after the verb
-                 if chunk.start > verb_token.i:
-                      chunk_text = chunk.text
-                      # Exclude the direction if it was part of the chunk
-                      if direction and direction in chunk_text:
-                           chunk_text = chunk_text.replace(direction, "").strip()
-                      # Exclude common articles/prepositions (optional refinement)
-                      # chunk_words = [word for word in chunk.text.split() if word not in {"the", "a", "an"}]
-                      # chunk_text = " ".join(chunk_words)
-                      if chunk_text:
-                           target_parts.append(chunk_text)
+        # --- Determine Final Intent --- 
+        if not possible_intents:
+             logging.warning("No possible intents identified.")
+             final_intent = CommandIntent.UNKNOWN
+        else:
+             # Sort by score (highest first)
+             sorted_intents = sorted(possible_intents.items(), key=lambda item: item[1], reverse=True)
+             logging.debug(f"Intent scores: {sorted_intents}")
+             final_intent = sorted_intents[0][0]
 
-        if target_parts:
-            target = " ".join(target_parts)
-        # Fallback if no noun chunks found after verb, or no verb identified clearly
-        elif len(doc) > 1 and not direction:
-             # Use remaining words after the action word, basic fallback
-             remaining_text = command.split(action, 1)[-1].strip() if action else ""
-             if remaining_text:
-                  target = remaining_text
+        # --- Extract Action Verb --- 
+        action_verb = verbs[0].lemma_ if verbs else None # Use lemma of first verb
 
-        # Refine confidence (simple version)
-        if target: confidence += 0.1
-        if direction and intent == CommandIntent.MOVE: confidence += 0.1
+        # Handle specific cases / overrides
+        if final_intent == CommandIntent.MOVE and not parsed_direction: # Move verb but no direction entity
+             # Maybe try to extract direction from target? e.g., "go door" -> find door exit dir?
+             logging.warning("MOVE intent determined but no DIRECTION entity found.")
+             final_intent = CommandIntent.UNKNOWN # Fallback to unknown if direction unclear
 
+        # Correct Drop/Put interpretation
+        if action_verb == "put" and primary_target and "down" not in command: # Avoid conflict with "put X in Y"
+            # If the intent wasn't already DROP, check if it makes sense
+            if final_intent != CommandIntent.DROP:
+                # If context suggests putting something *somewhere else* (e.g., container), it's not DROP
+                # Simple check for now: if a location/container is mentioned, it's not DROP
+                has_location_context = any(ent.label_ in ["LOCATION", "CONTAINER"] for ent in entities) 
+                if not has_location_context: 
+                    final_intent = CommandIntent.DROP 
+                    logging.debug("Interpreting 'put' as DROP based on context.")
+        
+        # Build the final ParsedIntent
         return ParsedIntent(
-            intent=intent,
-            action=action,
-            target=target,
-            direction=direction,
-            confidence=min(confidence, 1.0), # Cap confidence at 1.0
-            raw_input=command
+            intent=final_intent,
+            action=action_verb, 
+            target=primary_target,
+            target_object_id=target_object_id,
+            # direction=parsed_direction, # This is now handled by the priority check above
+            original_input=command
         )
     
     def _determine_intent(self, verb: str, command: str, target: str) -> CommandIntent:
