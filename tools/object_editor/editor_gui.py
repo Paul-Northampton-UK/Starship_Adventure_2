@@ -31,6 +31,7 @@ KEY_NEW_BUTTON = "-NEW_BUTTON-"
 # Basic Info Frame
 KEY_OBJECT_ID = "-OBJECT_ID-"
 KEY_OBJECT_NAME = "-OBJECT_NAME-"
+KEY_OBJECT_IS_PLURAL = "-OBJECT_IS_PLURAL-"
 KEY_OBJECT_CATEGORY = "-OBJECT_CATEGORY-"
 KEY_OBJECT_LOCATION = "-OBJECT_LOCATION-" # Room ID dropdown
 KEY_OBJECT_AREA_LOCATION = "-OBJECT_AREA_LOCATION-"
@@ -134,6 +135,7 @@ def clear_fields(window):
     # Basic Info
     window[KEY_OBJECT_ID].update("", disabled=False) # Enable ID for new
     window[KEY_OBJECT_NAME].update("")
+    window[KEY_OBJECT_IS_PLURAL].update(False)
     window[KEY_OBJECT_CATEGORY].update("")
     window[KEY_OBJECT_LOCATION].update("")
     window[KEY_OBJECT_AREA_LOCATION].update(values=[], value=None)
@@ -197,18 +199,22 @@ def populate_fields(window, object_data: dict, manager: ObjectDataManager):
         clear_fields(window) # Clear fields if no data
         return
 
-    object_id = object_data.get('id') # Use 'id', not 'object_id'
+    object_id = object_data.get('id')
     logging.debug(f"Populating fields for object ID: {object_id}")
+
+    # --- Call clear_fields to reset everything before populating --- 
+    clear_fields(window)
 
     # --- Get nested dictionaries safely ---
     properties = object_data.get('properties', {})
     interaction = object_data.get('interaction', {})
 
     # --- Basic Info ---
-    # Try updating value then disabling separately
+    # Update ID and disable it *after* clearing
     window[KEY_OBJECT_ID].update(object_id)
     window[KEY_OBJECT_ID].update(disabled=True)
     window[KEY_OBJECT_NAME].update(object_data.get('name', ''))
+    window[KEY_OBJECT_IS_PLURAL].update(object_data.get('is_plural', False))
     window[KEY_OBJECT_CATEGORY].update(object_data.get('category', ''))
 
     # Find and set location
@@ -344,127 +350,85 @@ def _parse_multiline_to_dict(multiline_string: str) -> dict:
             data_dict[key.strip()] = value.strip()
     return data_dict
 
-def gather_data_from_fields(values: dict) -> tuple[dict, Optional[str]]:
-    """
-    Gathers data from GUI fields and constructs an object data dictionary.
-    Returns a tuple: (object_data_dict, error_message_or_None).
-    """
-    data = {}
-    props = {}
-    interact = {}
-    error = None
-
+def gather_data_from_fields(values: dict) -> tuple[dict, Optional[str], Optional[str]]:
+    """Gathers data from GUI fields into a dictionary matching YAML structure."""
     try:
-        # --- Basic Info --- (Handle type conversions)
-        data['id'] = values.get(KEY_OBJECT_ID, '').strip()
-        data['name'] = values.get(KEY_OBJECT_NAME, '').strip()
-        data['category'] = values.get(KEY_OBJECT_CATEGORY)
-        # Location needs separate handling during save
-        data['count'] = int(values.get(KEY_OBJECT_COUNT, 1))
-        data['weight'] = float(values.get(KEY_OBJECT_WEIGHT, 1.0))
-        data['size'] = float(values.get(KEY_OBJECT_SIZE, 1.0)) # Assuming size is numeric now?
-        data['description'] = values.get(KEY_OBJECT_DESCRIPTION, '').strip()
-        data['synonyms'] = _parse_csv_to_list(values.get(KEY_OBJECT_SYNONYMS, ''))
-
-        # --- State & Lock --- 
-        data['initial_state'] = values.get(KEY_OBJECT_INITIAL_STATE, True)
-        data['is_locked'] = values.get(KEY_OBJECT_IS_LOCKED, False)
-        data['power_state'] = values.get(KEY_OBJECT_POWER_STATE) or None # Store None if empty string
-        data['lock_type'] = values.get(KEY_OBJECT_LOCK_TYPE) or None
-        data['lock_code'] = values.get(KEY_OBJECT_LOCK_CODE) or None
-        data['lock_key_id'] = values.get(KEY_OBJECT_LOCK_KEY_ID) or None
-
-        # --- Properties --- (Booleans)
-        props['is_takeable'] = values.get(KEY_PROP_IS_TAKEABLE, False)
-        props['is_interactive'] = values.get(KEY_PROP_IS_INTERACTIVE, True)
-        props['is_dangerous'] = values.get(KEY_PROP_IS_DANGEROUS, False)
-        props['is_destroyable'] = values.get(KEY_PROP_IS_DESTROYABLE, False)
-        props['is_storage'] = values.get(KEY_PROP_IS_STORAGE, False)
-        props['is_operational'] = values.get(KEY_PROP_IS_OPERATIONAL, False)
-        props['is_edible'] = values.get(KEY_PROP_IS_EDIBLE, False)
-        props['is_weapon'] = values.get(KEY_PROP_IS_WEAPON, False)
-        props['is_movable'] = values.get(KEY_PROP_IS_MOVABLE, False)
-        props['is_wearable'] = values.get(KEY_PROP_IS_WEARABLE, False)
-        props['is_flammable'] = values.get(KEY_PROP_IS_FLAMMABLE, False)
-        props['is_toxic'] = values.get(KEY_PROP_IS_TOXIC, False)
-        props['is_food'] = values.get(KEY_PROP_IS_FOOD, False)
-        props['is_cookable'] = values.get(KEY_PROP_IS_COOKABLE, False)
-        props['is_consumable'] = values.get(KEY_PROP_IS_CONSUMABLE, False)
-        props['has_durability'] = values.get(KEY_PROP_HAS_DURABILITY, False)
-        props['is_hackable'] = values.get(KEY_PROP_IS_HACKABLE, False)
-        props['is_hidden'] = values.get(KEY_PROP_IS_HIDDEN, False)
-        props['is_rechargeable'] = values.get(KEY_PROP_IS_RECHARGEABLE, False)
-        props['is_fuel_source'] = values.get(KEY_PROP_IS_FUEL_SOURCE, False)
-        props['regenerates'] = values.get(KEY_PROP_REGENERATES, False)
-        props['is_modular'] = values.get(KEY_PROP_IS_MODULAR, False)
-        props['is_stored'] = values.get(KEY_PROP_IS_STORED, False)
-        props['is_transferable'] = values.get(KEY_PROP_IS_TRANSFERABLE, False)
-        props['is_activatable'] = values.get(KEY_PROP_IS_ACTIVATABLE, False)
-        props['is_networked'] = values.get(KEY_PROP_IS_NETWORKED, False)
-        props['requires_power'] = values.get(KEY_PROP_REQUIRES_POWER, False)
-        props['requires_item'] = values.get(KEY_PROP_REQUIRES_ITEM, False)
-        props['has_security'] = values.get(KEY_PROP_HAS_SECURITY, False)
-        props['is_sensitive'] = values.get(KEY_PROP_IS_SENSITIVE, False)
-        props['is_fragile'] = values.get(KEY_PROP_IS_FRAGILE, False)
-        props['is_secret'] = values.get(KEY_PROP_IS_SECRET, False)
-        props['can_store_liquids'] = values.get(KEY_PROP_CAN_STORE_LIQUIDS, False)
-        # --- Properties --- (Numeric/String, handle potential empty strings)
-        cap_str = values.get(KEY_PROP_STORAGE_CAPACITY, '').strip()
-        props['storage_capacity'] = float(cap_str) if cap_str else None
-        dam_str = values.get(KEY_PROP_DAMAGE, '').strip()
-        props['damage'] = float(dam_str) if dam_str else None
-        dur_str = values.get(KEY_PROP_DURABILITY, '').strip()
-        props['durability'] = int(dur_str) if dur_str else None
-        ran_str = values.get(KEY_PROP_RANGE, '').strip()
-        props['range'] = float(ran_str) if ran_str else None
-
-        # Handle Wearable separately
-        is_wearable_checked = values.get(KEY_PROP_IS_WEARABLE, False)
-        props['is_wearable'] = is_wearable_checked
-
-        # --- Properties --- (Wearability - gather ONLY if wearable is checked)
-        if is_wearable_checked:
-            props['wear_area'] = values.get(KEY_WEAR_AREA) or None
-            # Get value from Combo box (will be '1', '2', etc., or '')
-            wear_layer_str = values.get(KEY_WEAR_LAYER, '').strip()
-            if wear_layer_str:
-                try:
-                    # Convert selected string ('1'-'5') to integer
-                    props['wear_layer'] = int(wear_layer_str)
-                except ValueError:
-                    # This shouldn't happen with readonly Combo, but keep for safety
-                    raise ValueError(f"Wear Layer ('{wear_layer_str}') must be a whole number.")
-            else:
-                props['wear_layer'] = None # Store None if empty/nothing selected
-        else:
-            props['wear_area'] = None
-            props['wear_layer'] = None
-
-        # Assign nested properties dict
-        data['properties'] = props
-
+        # --- Basic Info --- (Get is_plural early)
+        is_plural_value = values[KEY_OBJECT_IS_PLURAL]
+        
+        # --- Properties --- (Gather nested properties)
+        properties = {
+            # Booleans
+            'is_takeable': values[KEY_PROP_IS_TAKEABLE],
+            'is_interactive': values[KEY_PROP_IS_INTERACTIVE],
+            # ... (Gather all other boolean properties from KEY_PROP_... keys) ...
+            'is_wearable': values[KEY_PROP_IS_WEARABLE],
+            'is_flammable': values[KEY_PROP_IS_FLAMMABLE],
+            # ... etc ...
+            'can_store_liquids': values[KEY_PROP_CAN_STORE_LIQUIDS],
+            
+            # Numerics (handle potential empty strings -> None)
+            'storage_capacity': float(values[KEY_PROP_STORAGE_CAPACITY]) if values[KEY_PROP_STORAGE_CAPACITY] else None,
+            'damage': float(values[KEY_PROP_DAMAGE]) if values[KEY_PROP_DAMAGE] else None,
+            'durability': int(values[KEY_PROP_DURABILITY]) if values[KEY_PROP_DURABILITY] else None,
+            'range': float(values[KEY_PROP_RANGE]) if values[KEY_PROP_RANGE] else None,
+            
+            # Wearability fields BELONG INSIDE properties
+            'wear_area': values[KEY_WEAR_AREA] if values[KEY_WEAR_AREA] else None, 
+            'wear_layer': int(values[KEY_WEAR_LAYER]) if values[KEY_WEAR_LAYER] else None, 
+        }
+        
         # --- Interaction --- 
-        interact['required_state'] = _parse_csv_to_list(values.get(KEY_INTERACTION_REQUIRED_STATE, ''))
-        interact['required_items'] = _parse_csv_to_list(values.get(KEY_INTERACTION_REQUIRED_ITEMS, ''))
-        interact['primary_actions'] = _parse_csv_to_list(values.get(KEY_INTERACTION_PRIMARY_ACTIONS, ''))
-        interact['effects'] = _parse_csv_to_list(values.get(KEY_INTERACTION_EFFECTS, ''))
-        interact['success_message'] = values.get(KEY_INTERACTION_SUCCESS, '').strip() or None
-        interact['failure_message'] = values.get(KEY_INTERACTION_FAILURE, '').strip() or None
-        # Assign nested interaction dict
-        data['interaction'] = interact
+        interaction = {
+            'required_state': _parse_csv_to_list(values[KEY_INTERACTION_REQUIRED_STATE]),
+            'required_items': _parse_csv_to_list(values[KEY_INTERACTION_REQUIRED_ITEMS]),
+            'primary_actions': _parse_csv_to_list(values[KEY_INTERACTION_PRIMARY_ACTIONS]),
+            'effects': _parse_csv_to_list(values[KEY_INTERACTION_EFFECTS]),
+            'success_message': values[KEY_INTERACTION_SUCCESS] or None,
+            'failure_message': values[KEY_INTERACTION_FAILURE] or None,
+        }
 
         # --- Other --- 
-        data['storage_contents'] = _parse_csv_to_list(values.get(KEY_OBJECT_STORAGE_CONTENTS, ''))
-        data['state_descriptions'] = _parse_multiline_to_dict(values.get(KEY_OBJECT_STATE_DESCRIPTIONS, ''))
+        storage_contents = _parse_csv_to_list(values[KEY_OBJECT_STORAGE_CONTENTS])
+        state_descriptions = _parse_multiline_to_dict(values[KEY_OBJECT_STATE_DESCRIPTIONS])
+        
+        # --- Construct Top-Level Object Dictionary --- 
+        obj_data = {
+            'id': values[KEY_OBJECT_ID].strip().lower(),
+            'name': values[KEY_OBJECT_NAME].strip(),
+            'category': values[KEY_OBJECT_CATEGORY],
+            'count': int(values.get(KEY_OBJECT_COUNT) or 1), 
+            'weight': float(values.get(KEY_OBJECT_WEIGHT) or 1.0),
+            'size': float(values.get(KEY_OBJECT_SIZE) or 1.0),
+            'description': values[KEY_OBJECT_DESCRIPTION].strip(),
+            'is_plural': is_plural_value, # Top level
+            'synonyms': _parse_csv_to_list(values[KEY_OBJECT_SYNONYMS]),
+            'initial_state': values[KEY_OBJECT_INITIAL_STATE],
+            'is_locked': values[KEY_OBJECT_IS_LOCKED],
+            'power_state': values[KEY_OBJECT_POWER_STATE] or None,
+            'lock_type': values[KEY_OBJECT_LOCK_TYPE] or None,
+            'lock_code': values[KEY_OBJECT_LOCK_CODE] or None,
+            'lock_key_id': values[KEY_OBJECT_LOCK_KEY_ID] or None,
+            'properties': properties, # Nested properties
+            'interaction': interaction, # Nested interaction
+            'storage_contents': storage_contents,
+            'state_descriptions': state_descriptions,
+        }
+        
+        # --- Location Data (Handled separately by manager) ---
+        location_room_id = values.get(KEY_OBJECT_LOCATION)
+        location_area_id = values.get(KEY_OBJECT_AREA_LOCATION)
+
+        return obj_data, location_room_id, location_area_id
 
     except ValueError as e:
         error = f"Invalid numeric value: {e}"
         logging.error(f"Error gathering data: {error}")
+        return None, None, None
     except Exception as e:
         error = f"Unexpected error gathering data: {e}"
         logging.exception("Error in gather_data_from_fields")
-
-    return data, error
+        return None, None, None
 
 def validate_object_data(object_data: dict, is_new: bool, manager: ObjectDataManager) -> list[str]:
     """Performs validation checks. Returns list of errors."""
@@ -568,6 +532,7 @@ def main():
     basic_info_frame = sg.Frame("Basic Information", [
         [sg.Text("Object ID:", size=(12,1)), sg.Input(key=KEY_OBJECT_ID, size=(30,1), readonly=True)],
         [sg.Text("Name:", size=(12,1)), sg.Input(key=KEY_OBJECT_NAME, size=(40,1))],
+        [sg.Text("Is Plural?", size=(12,1)), sg.Checkbox('', key=KEY_OBJECT_IS_PLURAL, default=False)],
         [sg.Text("Category:", size=(12,1)), sg.Combo(get_object_categories(), key=KEY_OBJECT_CATEGORY, readonly=True, size=(20,1))],
         [sg.Text("Room Location:", size=(12,1)), sg.Combo(room_ids, key=KEY_OBJECT_LOCATION, readonly=True, size=(30,1), enable_events=True)],
         [sg.Text("Area Location:", size=(12,1)), sg.Combo([], key=KEY_OBJECT_AREA_LOCATION, readonly=True, size=(30,1))], # REMOVED value=None
@@ -673,11 +638,11 @@ def main():
     ])
 
     # --- Wearability Frame definition ---
-    wear_area_values = [area.value for area in WearArea]
-    wear_layer_values = ['1', '2', '3', '4', '5']
+    wear_area_values = [''] + [area.value for area in WearArea]
+    wear_layer_values = [''] + ['1', '2', '3', '4', '5'] # Add blank option
     wearability_frame = sg.Frame("Wearability", [
-        [sg.Text("Area:", size=(6,1)), sg.Combo(wear_area_values, key=KEY_WEAR_AREA, size=(15, 1), readonly=True, tooltip="Body area where item is worn")],
-        [sg.Text("Layer:", size=(6,1)), sg.Combo(wear_layer_values, key=KEY_WEAR_LAYER, size=(5, 1), readonly=True, tooltip="Layer order (1=base, 5=outermost)")]
+        [sg.Text("Area:", size=(6,1)), sg.Combo(wear_area_values, key=KEY_WEAR_AREA, size=(15, 1), readonly=True, tooltip="Body area where item is worn (blank for none)")], # Updated tooltip
+        [sg.Text("Layer:", size=(6,1)), sg.Combo(wear_layer_values, key=KEY_WEAR_LAYER, size=(5, 1), readonly=True, tooltip="Layer order (blank for none)")] # Updated tooltip
     ], vertical_alignment='top')
 
     # --- RE-ADD Bottom Controls Definition ---
@@ -780,11 +745,13 @@ def main():
 
         elif event == KEY_VALIDATE_BUTTON:
             logging.info("Validate button clicked.")
-            gathered_data, gather_error = gather_data_from_fields(values)
+            # Unpack all 3 return values
+            gathered_data, selected_room_id, selected_area_id = gather_data_from_fields(values)
 
-            if gather_error:
+            # Check if gather_data failed (returned None for data)
+            if gathered_data is None:
                 window[KEY_VALIDATE_INDICATOR].update('❌', text_color='red')
-                window[KEY_STATUS_BAR].update(f"Validation Error: {gather_error}")
+                window[KEY_STATUS_BAR].update("Validation Error: Failed to gather data from fields. Check logs.")
                 update_yaml_preview(window, None, manager) # Clear preview on error
                 continue # Stop processing this event
 
@@ -802,7 +769,6 @@ def main():
                 error_message = "Validation Failed: " + "; ".join(validation_errors)
                 window[KEY_STATUS_BAR].update(error_message)
                 logging.warning(error_message)
-                # Optionally update preview even on validation error to see structure?
                 update_yaml_preview(window, gathered_data, manager)
 
         elif event == KEY_SAVE_BUTTON:
@@ -810,16 +776,17 @@ def main():
             window[KEY_STATUS_BAR].update("Saving...")
             window.refresh()
 
-            gathered_data, gather_error = gather_data_from_fields(values)
-            if gather_error:
-                sg.popup_error(f"Cannot save: Error gathering data.\n{gather_error}", title="Save Error")
+            # Unpack all 3 return values
+            gathered_data, selected_room_id, selected_area_id = gather_data_from_fields(values)
+            
+            # Check if gather_data failed
+            if gathered_data is None:
+                sg.popup_error("Cannot save: Error gathering data from form. Check logs.", title="Save Error")
                 window[KEY_STATUS_BAR].update("Save failed: Invalid data.")
                 continue
 
-            # Get selected location for saving
-            selected_room_id = values.get(KEY_OBJECT_LOCATION)
-            selected_area_id = values.get(KEY_OBJECT_AREA_LOCATION) # Will be None or empty if not selected
-
+            # Location is now checked within gather_data, but re-check here for clarity?
+            # selected_room_id is now returned by gather_data
             if not selected_room_id:
                  sg.popup_error("Cannot save: Please select a Room Location.", title="Save Error")
                  window[KEY_STATUS_BAR].update("Save failed: Room Location required.")
