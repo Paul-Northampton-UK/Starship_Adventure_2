@@ -421,17 +421,23 @@ class GameLoop:
             logging.error(f"Move failed: Current room '{current_room_id}' not found in rooms_data!")
             return "An internal error occurred: current room data missing."
 
-        # Normalize player input direction
+        # --- Direction Normalization --- 
         normalized_direction_map = {
             "n": "north", "s": "south", "e": "east", "w": "west",
             "u": "up", "d": "down", 
             "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest",
-            # Added hyphenated forms
             "north-east": "northeast", "north-west": "northwest", 
             "south-east": "southeast", "south-west": "southwest"
         }
-        # Use lowercase for consistent matching with YAML
-        normalized_player_direction = normalized_direction_map.get(direction, direction).lower()
+        # Normalize player input direction ONLY if a direction was parsed
+        player_direction_normalized = None # Initialize
+        if direction: # Check if direction is not None
+            processed_direction = normalized_direction_map.get(direction, direction).lower()
+            # Also remove spaces from player input to match YAML processing
+            player_direction_normalized = processed_direction.replace(" ", "") 
+        else:
+             logging.debug("[_handle_move] No direction provided by parser.")
+        # --- End Direction Normalization --- 
 
         # --- Check for Area Movement FIRST ---
         if target:
@@ -442,12 +448,14 @@ class GameLoop:
                     area_id = area_data.get("area_id")
                     area_aliases = area_data.get("command_aliases", [])
                     
-                    if area_id and (target_lower == area_id.lower() or target_lower in area_aliases):
+                    # Match area ID or any of its aliases
+                    if area_id and (target_lower == area_id.lower() or target_lower in [str(a).lower() for a in area_aliases]):
                         # Check if already in this area
                         if self.game_state.current_area_id == area_id:
                              return f"You are already at the {area_data.get('name', area_id)}."
                              
                         # Successfully moving to a new area
+                        logging.info(f"Moving player to area: {area_id} in room {current_room_id}")
                         self.game_state.move_to_area(area_id)
                         # Return description based on visit status
                         return self._get_location_description(current_room_id, area_id)
@@ -455,50 +463,57 @@ class GameLoop:
                  logging.warning(f"Areas data for room '{current_room_id}' is not a list! Skipping area check.")
 
         # --- If not moving to an area, check for Directional Room Exit ---
-        if not direction:
-            # Only return this if no area movement was attempted/found
-            if not target: 
-                 return "Which direction or area do you want to move to? (e.g., north, n, nav station)"
+        # Only check exits if a direction *was* actually processed
+        if player_direction_normalized:
+            exits_list = current_room_data.get("exits", [])
+            if not isinstance(exits_list, list):
+                 logging.error(f"Exits data for room '{current_room_id}' is not a list!")
+                 return "An internal error occurred: room exits data malformed."
+
+            # Find the matching exit in the list
+            found_exit = None
+            for exit_data in exits_list:
+                # Ensure direction key exists and is a string before comparing
+                exit_direction_yaml = exit_data.get("direction")
+                # Compare lowercase versions after removing spaces for flexibility
+                if isinstance(exit_direction_yaml, str):
+                    yaml_direction_normalized = exit_direction_yaml.replace(" ", "").lower()
+                    # player_direction_normalized is already processed
+                    if yaml_direction_normalized == player_direction_normalized:
+                        found_exit = exit_data
+                        break # Found the matching exit
+
+            if found_exit:
+                next_room_id = found_exit.get("destination")
+                if not next_room_id:
+                     logging.error(f"Exit '{player_direction_normalized}' in room '{current_room_id}' has no destination.")
+                     # Use original direction input for message if available
+                     return f"You try to go {direction or 'that way'}, but the destination seems undefined."
+
+                # Check if the destination room exists
+                if next_room_id in self.game_state.rooms_data:
+                    logging.info(f"Moving player via exit '{player_direction_normalized}' from {current_room_id} to {next_room_id}")
+                    self.game_state.move_to_room(next_room_id)
+                    # Return description based on visit status
+                    return self._get_location_description(next_room_id, None) # Area is None when entering a room
+                else:
+                    logging.warning(f"Exit '{player_direction_normalized}' leads to non-existent room '{next_room_id}' from '{current_room_id}'")
+                    return f"You try to go {direction or 'that way'}, but the way seems blocked or leads nowhere defined."
             else:
-                # Target was specified but didn't match an area
-                return f"You can't move to '{target}' like that. Try a direction (e.g. north) or a known area name."
+                # Direction was given, but no matching exit found
+                return f"You can't go {direction} from here."
+                
+        # --- Fallback Messages if No Action Was Taken --- 
+        elif not target: # No direction AND no target was given (and area move didn't happen)
+             return "Which direction or area do you want to move to? (e.g., north, n, nav station)"
+             
+        elif target: # Target was given but didn't match an area (and no direction given)
+             # The area search loop above didn't find a match and didn't return.
+             return f"You can't move to '{target}' like that. Try a direction (e.g. north) or a known area name."
 
-        # Exits data is a LIST of dictionaries, not a dictionary itself
-        exits_list = current_room_data.get("exits", [])
-        if not isinstance(exits_list, list):
-             logging.error(f"Exits data for room '{current_room_id}' is not a list!")
-             return "An internal error occurred: room exits data malformed."
-
-        # Find the matching exit in the list
-        found_exit = None
-        for exit_data in exits_list:
-            # Ensure direction key exists and is a string before comparing
-            exit_direction = exit_data.get("direction")
-            # Compare lowercase versions after removing spaces for flexibility
-            if isinstance(exit_direction, str):
-                yaml_direction_normalized = exit_direction.replace(" ", "").lower()
-                player_direction_normalized = normalized_player_direction # Already lowercase via map
-                if yaml_direction_normalized == player_direction_normalized:
-                    found_exit = exit_data
-                    break # Found the matching exit
-
-        if found_exit:
-            next_room_id = found_exit.get("destination")
-            if not next_room_id:
-                 logging.error(f"Exit '{normalized_player_direction}' in room '{current_room_id}' has no destination.")
-                 return f"You try to go {normalized_player_direction}, but the destination seems undefined."
-
-            # Check if the destination room exists
-            if next_room_id in self.game_state.rooms_data:
-                self.game_state.move_to_room(next_room_id)
-                # Return description based on visit status
-                return self._get_location_description(next_room_id, None) # Area is None when entering a room
-            else:
-                logging.warning(f"Exit '{normalized_player_direction}' leads to non-existent room '{next_room_id}' from '{current_room_id}'")
-                return f"You try to go {normalized_player_direction}, but the way seems blocked or leads nowhere defined."
-        else:
-            # Use the player's input direction in the failure message
-            return f"You can't go {direction} from here."
+        # Default fallback if something truly unexpected occurs (should be rare)
+        logging.warning("[_handle_move] Reached unexpected fallback return.")
+        return "You can't move that way."
 
     def _get_location_description(self, room_id: str, area_id: Optional[str]) -> str:
         """Gets the appropriate description (first visit or short) for a room or area."""
@@ -515,7 +530,8 @@ class GameLoop:
                     if ad.get("area_id") == area_id:
                         location_data = ad
                         is_first_visit = not self.game_state.has_visited_area(area_id)
-                        self.game_state.visit_area(area_id) # Mark as visited
+                        # Pass room_id when marking area visited
+                        self.game_state.visit_area(area_id, room_id) 
                         location_name_for_fallback = location_data.get("name", "area")
                         break
             if not location_data:

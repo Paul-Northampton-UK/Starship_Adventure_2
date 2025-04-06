@@ -66,11 +66,16 @@ class GameState:
         """Mark a room as visited."""
         self.visited_rooms.add(room_id)
 
-    def visit_area(self, area_id: str) -> None:
-        """Mark an area as visited."""
+    def visit_area(self, area_id: str, room_id: str) -> None:
+        """Mark an area within a specific room as visited."""
         if area_id not in self.visited_areas:
             self.visited_areas[area_id] = []
-        self.visited_areas[area_id].append(room_id)
+        # Store the room_id to know which room this area visit was in
+        # (Prevents marking area X in room A as visited when entering area X in room B)
+        # For simplicity now, let's just record the visit. A more complex structure
+        # might store (room_id, area_id) tuples or similar.
+        if room_id not in self.visited_areas[area_id]: # Avoid duplicates if re-entering
+             self.visited_areas[area_id].append(room_id)
 
     def has_visited_room(self, room_id: str) -> bool:
         """Check if a room has been visited."""
