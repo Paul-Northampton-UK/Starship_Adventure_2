@@ -78,39 +78,39 @@ Support for UI skinning/personalization (future optional)
 
 Primary input: typed commands
 
-Support for natural language variations (e.g. "go north", "move n", "n")
+Support for natural language variations (e.g. "go north", "move n", "n", "north west") - Handled via NLP and custom patterns.
 
-NLP engine: spaCy (installed and tested)
+NLP engine: spaCy (installed and tested) with custom EntityRuler patterns for directions and game objects.
 
-Expandable command vocabulary via YAML
+Expandable command vocabulary via YAML (objects, synonyms).
 
-Alias and abbreviation support
+Alias and abbreviation support (partially handled via NLP verb/pattern matching).
 
-Narrator responds to unknown commands, gibberish, or swearing
+Narrator responds to unknown commands, gibberish, or swearing - Handled via configurable responses in `responses.yaml`. (Profanity filter logic pending).
+
+Response variations for actions and feedback managed via `responses.yaml`.
+
+Handles plural items correctly in responses (e.g., "wear boots" vs "wear hat").
 
 6. Gameplay Systems
 
 Inventory system with:
 
-Carrying limits by weight and size
+Carrying limits by weight and size (Pending implementation)
 
-Containers (e.g., backpack) to expand capacity
+Containers (e.g., backpack) to expand capacity (Pending implementation)
+
+Basic item handling (take, drop, wear, remove) implemented.
 
 Environmental mechanics:
 
-Gravity, oxygen, temperature, radiation, pressure
-
-Some areas may require suits or tools
-
-Hazards may be time-sensitive (e.g. rising heat, dropping oxygen)
-
-Death is possible
-
-Narrator provides humorous warnings beforehand
+(Pending implementation)
 
 Object properties:
 
-Weight, size, power requirements, visibility (based on light), etc.
+Weight, size, power requirements, visibility (based on light), wearability (area/layer), takeability, etc.
+
+Includes `is_plural` flag for correct grammatical handling.
 
 7. Puzzles & Lore
 
@@ -126,21 +126,21 @@ Logs, terminals, and discovered files build the story
 
 8. Narrator System
 
-Persistent sarcastic AI personality
+Persistent sarcastic AI personality, driven by responses defined in `responses.yaml`.
 
 Offers:
 
-Commentary
+Commentary (via responses)
 
-Reactions to events
+Reactions to events (via responses)
 
-Insults, jokes, and breaking the fourth wall
+Insults, jokes, and breaking the fourth wall (via responses)
 
-Optional hints/help with point deduction
+Optional hints/help with point deduction (Pending implementation)
 
-Narrator tied into tutorial/help system
+Narrator tied into tutorial/help system (Pending implementation)
 
-May reference past actions, choices, or item usage
+May reference past actions, choices, or item usage (Future enhancement)
 
 9. Save & Load System
 

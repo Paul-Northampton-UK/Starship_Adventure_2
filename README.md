@@ -18,18 +18,21 @@ A sci-fi text adventure game with a GUI interface, featuring a sarcastic AI narr
 - Basic project structure and setup
 - Core data loading from YAML files (`engine/yaml_loader.py`)
 - Schema validation for YAML data (`engine/schemas.py`)
-- Natural Language command parsing using spaCy (`engine/nlp_command_parser.py`)
+- Natural Language command parsing using spaCy (`engine/nlp_command_parser.py`) including custom patterns and two-word direction handling.
 - Basic game state tracking (`engine/game_state.py`)
 - Logging setup using Loguru
-- Initial testing framework for core components
-- Central Game Loop (`engine/game_loop.py`) with basic command handling (Move, Look, Quit)
-- Movement between rooms and areas
-- Room/Area descriptions with `first_visit_description` and `short_description` logic
+- Initial testing framework for core components (Refinement needed)
+- Central Game Loop (`engine/game_loop.py`) with modular command handling (Move, Look, Take, Drop, Equip, Inventory, Quit).
+- Movement between rooms and automatic display of location descriptions.
+- Room/Area descriptions with `first_visit_description` and `short_description` logic.
+- Response variation system using `responses.yaml`.
+- Grammatically correct handling of singular vs. plural items.
 
 **Planned / In Progress:**
 - Graphical User Interface (GUI) using Pygame (`ui/`)
-- Detailed gameplay mechanics (inventory management (Take/Drop), object interaction (Use/Examine), environment, puzzles)
-- Narrator logic and interaction
+- Advanced gameplay mechanics (containers, weight/size limits, environment interaction, puzzles, stats)
+- Narrator logic refinement (hints, context awareness)
+- Profanity filtering logic.
 - Save/Load functionality
 - Audio/Visual elements
 - Expanded testing
