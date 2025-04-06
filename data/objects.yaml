@@ -611,7 +611,8 @@ objects:
     stitched inside reads “Deck Standard – Rest Use Only.” Despite their plainness,
     there's a quiet familiarity to them—functional, personal, and utterly unremarkable.
   synonyms:
-  - shoes
+  - slippers
+  - slipper
   - house shoes
   - cabin shoes
   initial_state: true
@@ -621,7 +622,7 @@ objects:
   lock_code:
   lock_key_id:
   properties:
-    is_takeable: false
+    is_takeable: true
     is_interactive: true
     is_dangerous: false
     is_destroyable: false
