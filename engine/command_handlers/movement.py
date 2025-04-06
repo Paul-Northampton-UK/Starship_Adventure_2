@@ -5,38 +5,108 @@ from typing import Optional, Dict, Any
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
 
+def _format_object_list(game_state: GameState, object_ids: list) -> str:
+    """Formats a list of object IDs (or dicts with 'id') into a readable sentence."""
+    if not object_ids:
+        return ""
+
+    # Process input list to extract only valid string IDs
+    processed_ids = []
+    for item in object_ids:
+        if isinstance(item, str):
+            processed_ids.append(item)
+        elif isinstance(item, dict) and 'id' in item:
+            processed_ids.append(item['id'])
+        else:
+            logging.warning(f"_format_object_list: Skipping unknown item format in object list: {item}")
+            
+    if not processed_ids:
+        return ""
+        
+    object_names = [game_state._get_object_name(pid) for pid in processed_ids]
+    
+    # Filter out names that are likely just the IDs (because data was missing)
+    # This assumes object IDs don't usually look like proper names.
+    valid_object_names = [
+        name for name in object_names 
+        if name and name not in processed_ids # Check if the retrieved name is just the ID itself
+    ]
+    
+    if not valid_object_names:
+        return "" # Nothing nameable found
+        
+    # Simple formatting for now, can be improved (a/an, singular/plural)
+    if len(valid_object_names) == 1:
+        return f"You see a {valid_object_names[0]} here."
+    elif len(valid_object_names) == 2:
+        return f"You see a {valid_object_names[0]} and a {valid_object_names[1]} here."
+    else:
+        # Oxford comma for lists of 3+
+        # Apply 'a'/'an' logic simply based on first letter (can be improved)
+        formatted_names = []
+        for name in valid_object_names:
+            prefix = "an" if name.lower().startswith(('a', 'e', 'i', 'o', 'u')) else "a"
+            formatted_names.append(f"{prefix} {name}")
+            
+        all_but_last = ", ".join(formatted_names[:-1])
+        last = formatted_names[-1]
+        return f"You see {all_but_last}, and {last} here."
+
+def _format_exit_list(exit_data_list: list[dict]) -> str:
+    """Formats a list of exit data into a readable sentence."""
+    if not exit_data_list:
+        return "There are no obvious exits."
+    
+    directions = [exit_data.get("direction", "an unknown way") for exit_data in exit_data_list]
+    
+    if len(directions) == 1:
+        return f"The only obvious exit is {directions[0]}."
+    elif len(directions) == 2:
+        return f"Obvious exits are {directions[0]} and {directions[1]}."
+    else:
+        all_but_last = ", ".join(directions[:-1])
+        last = directions[-1]
+        return f"Obvious exits are {all_but_last}, and {last}."
+
 def get_location_description(game_state: GameState, room_id: str, area_id: Optional[str]) -> str:
-    """Gets the appropriate description (first visit or short) for a room or area."""
+    """Gets the appropriate description (first visit or short) for a room or area,
+       including objects and exits."""
     location_data: Optional[Dict[str, Any]] = None
     is_first_visit = True
     description_key = "first_visit_description"
     location_name_for_fallback = "location"
+    objects_present_ids = []
+    exits_list = []
+    room_data = game_state.rooms_data.get(room_id)
+
+    if not room_data:
+        logging.error(f"get_location_description: Cannot find room data for {room_id}")
+        return "You are somewhere undefined... which is strange."
+
+    # Always get exits from the main room data
+    exits_list = room_data.get("exits", [])
 
     if area_id:
         # Get Area Data
-        room_data = game_state.rooms_data.get(room_id)
-        if room_data and isinstance(room_data.get("areas"), list):
+        if isinstance(room_data.get("areas"), list):
             for ad in room_data["areas"]:
                 if ad.get("area_id") == area_id:
                     location_data = ad
                     is_first_visit = not game_state.has_visited_area(area_id)
-                    # Pass room_id when marking area visited
                     game_state.visit_area(area_id, room_id) 
                     location_name_for_fallback = location_data.get("name", "area")
+                    objects_present_ids = location_data.get("area_objects", [])
                     break
         if not location_data:
-             logging.error(f"_get_location_description: Cannot find area data for {area_id} in {room_id}")
+             logging.error(f"get_location_description: Cannot find area data for {area_id} in {room_id}")
              return "You arrive, but the details of this area are unclear."
     else:
         # Get Room Data
-        location_data = game_state.rooms_data.get(room_id)
-        if location_data:
-            is_first_visit = not game_state.has_visited_room(room_id)
-            game_state.visit_room(room_id) # Mark as visited
-            location_name_for_fallback = location_data.get("name", "room")
-        else:
-            logging.error(f"_get_location_description: Cannot find room data for {room_id}")
-            return "You arrive, but the details of this room are unclear."
+        location_data = room_data # Use the main room data
+        is_first_visit = not game_state.has_visited_room(room_id)
+        game_state.visit_room(room_id) 
+        location_name_for_fallback = location_data.get("name", "room")
+        objects_present_ids = location_data.get("objects_present", [])
     
     # Determine which description to use
     if not is_first_visit:
@@ -45,21 +115,41 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
     else:
          logging.debug(f"First visit to location {area_id or room_id}. Using first_visit_description.")
 
-    # Get description based on power state
+    # Get base description based on power state
     power_state = game_state.power_state.value
     descriptions = location_data.get(description_key, {})
     if not isinstance(descriptions, dict):
         logging.error(f"{description_key} data for {area_id or room_id} is not a dictionary!")
-        # Fallback to the other description type if possible
         fallback_key = "short_description" if description_key == "first_visit_description" else "first_visit_description"
         descriptions = location_data.get(fallback_key, {})
         if not isinstance(descriptions, dict):
-             return f"The description for the {location_name_for_fallback} seems to be missing or malformed."
-    
-    description = descriptions.get(power_state, descriptions.get("offline", f"It's too dark to see the {location_name_for_fallback} clearly."))
+             # If both fail, provide a minimal fallback
+             base_description = f"You are in the {location_name_for_fallback}. The description seems missing."
+        else:
+             base_description = descriptions.get(power_state, descriptions.get("offline", f"It's too dark to see the {location_name_for_fallback} clearly."))
+    else:
+        base_description = descriptions.get(power_state, descriptions.get("offline", f"It's too dark to see the {location_name_for_fallback} clearly."))
 
-    # TODO: Append exit/object info?
-    return description
+    # Format and append object list
+    # Filter objects? For now, list all in objects_present_ids
+    # Ensure it's a list before passing
+    if not isinstance(objects_present_ids, list):
+         logging.warning(f"Object list for {area_id or room_id} is not a list: {objects_present_ids}")
+         object_list_str = ""
+    else:
+         object_list_str = _format_object_list(game_state, objects_present_ids)
+
+    # Format and append exit list
+    if not isinstance(exits_list, list):
+        logging.warning(f"Exit list for {room_id} is not a list: {exits_list}")
+        exit_list_str = "It's unclear how to leave."
+    else:
+        exit_list_str = _format_exit_list(exits_list)
+
+    # Combine the parts
+    full_description = f"{base_description}\n\n{object_list_str}\n{exit_list_str}"
+    # Clean up potential leading/trailing whitespace or multiple newlines
+    return "\n".join(line.strip() for line in full_description.splitlines() if line.strip())
 
 def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> str:
     """Handles the MOVE command intent.

@@ -18,7 +18,7 @@ class NLPCommandParser:
             "priority": 70
         },
         CommandIntent.LOOK: {
-            "verbs": ["look", "l", "examine", "inspect", "check", "survey"],
+            "verbs": ["look", "l", "examine", "ex", "inspect", "check", "survey"],
             "context_words": ["at", "around", "room", "area", "location", "object", "item", "person", "creature",
                             "console", "panel", "display", "screen", "monitor", "hologram", "terminal", "device"],
             "priority": 65

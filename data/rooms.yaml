@@ -182,7 +182,7 @@ rooms:
       torch_light: "The torch reveals darkened screens and flickering holographic
         remains."
 
-    objects_present:
+    objects_present: []
 
       # End of Area 2: Science Station
 
@@ -228,7 +228,7 @@ rooms:
       torch_light: "The torch reveals static-filled **Signal Interface** screens and
         a looping, unreadable log."
 
-    objects_present:
+    objects_present: []
 
       # End of Area 3: Communication Station
 
@@ -271,7 +271,7 @@ rooms:
       main_power: "A fully operational navigation center, controlling the ship's movement."
       torch_light: "The torch flickers over dark screens and frozen **Navigation Panels**."
 
-    objects_present:
+    objects_present: []
 
       # End of Area 4: Helm Station
 
@@ -315,7 +315,7 @@ rooms:
       main_power: "A fully operational weapon control station."
       torch_light: "The torch illuminates silent, inactive targeting panels."
 
-    objects_present:
+    objects_present: []
 
       # End of Area 5: Weapons Station
 
@@ -360,7 +360,7 @@ rooms:
       main_power: "A fully active command station for ship diagnostics."
       torch_light: "Dark screens faintly illuminated by your torch."
 
-    objects_present:
+    objects_present: []
 
       # End of Area 6: Engineering Station
 
@@ -457,7 +457,7 @@ rooms:
         and sensor readings."
       torch_light: "A dark screen, unresponsive to your torch's faint glow."
 
-    objects_present:
+    objects_present: []
 
       # End of Area 8: Bridge Viewer
 
@@ -525,7 +525,7 @@ rooms:
     torch_light: "Dimly illuminated by your torch, glimpses of history come and go
       in the shadows."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "north"
@@ -620,7 +620,7 @@ rooms:
     torch_light: "Your torch reveals a curved hallway with massive observation windows
       overlooking deep space."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "south"
@@ -775,7 +775,7 @@ rooms:
     torch_light: "Faint light reveals the contours of a widened viewport and a distant
       doorway."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "north"
@@ -837,7 +837,7 @@ rooms:
     main_power: "A well-lit corridor curving along the port side of the bridge."
     torch_light: "Your torchlight faintly illuminates the curved corridor."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "south"
@@ -903,7 +903,7 @@ rooms:
     torch_light: "The dim glow of your torch highlights a maintenance panel on the
       wall."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "north"
@@ -978,7 +978,7 @@ rooms:
     main_power: "A brightly lit section of the corridor with an observation alcove."
     torch_light: "A faintly illuminated passage leading to an open crew area."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "north"
@@ -1058,7 +1058,7 @@ rooms:
     torch_light: "The lounge is dark, but your torch highlights scattered seating
       and silent game consoles."
 
-  objects_present:
+  objects_present: []
 
 
   exits:
@@ -1135,7 +1135,7 @@ rooms:
     torch_light: "A dormant command space, its details only visible in brief flickers
       of light."
 
-  objects_present:
+  objects_present: []
 
 
   exits:
@@ -1204,7 +1204,7 @@ rooms:
       data streams."
     torch_light: "A silent chamber of broken data streams, waiting for power to return."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "east"
@@ -1291,10 +1291,10 @@ rooms:
 
   objects_present:
   - id: cab_bed
-  - id: cab_jumpsuit
   - id: cab_boots
-  - id: cab_slippers
   - id: cab_backpack
+  - id: cab_slippers
+  - id: cab_jumpsuit
 - room_id: player_cabin_small_kitchen
   name: "Small Kitchen"
   room_count: 13
@@ -1464,7 +1464,7 @@ rooms:
       panels."
     torch_light: "A narrow, industrial alcove, illuminated only by your torch."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "west"
@@ -1525,7 +1525,7 @@ rooms:
     torch_light: "Your torch highlights a desk, a mission archive, and a flickering
       console."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "west"
@@ -1586,7 +1586,7 @@ rooms:
     main_power: "A warm, inviting retreat filled with soft lighting and luxury."
     torch_light: "Your torch flickers across plush seats and a quiet bar."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "east"
@@ -1660,7 +1660,7 @@ rooms:
     main_power: "The Captain's private retreat, fully illuminated and efficient."
     torch_light: "A torch-lit space with a bed, desk, and reinforced locker."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "north"
@@ -1734,7 +1734,7 @@ rooms:
     main_power: "Fully functional, with a food synthesizer and preserved rations."
     torch_light: "Your torch reveals inactive appliances and food storage."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "east"
@@ -1797,7 +1797,7 @@ rooms:
     main_power: "Fully functional, with biometric displays and active water systems."
     torch_light: "A bathroom revealed by torchlight, its hygiene pod inactive."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "west"
@@ -1859,7 +1859,7 @@ rooms:
       **telescope**."
     torch_light: "Your torch illuminates the **telescope** and the **observation panel**"
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "down"
@@ -1958,7 +1958,7 @@ rooms:
       A gnarled wreck where the Yacht once was, the blackened metal and torn wiring
       tell a grim tale of destruction.
 
-  objects_present:
+  objects_present: []
 
 
   exits:
@@ -2050,7 +2050,7 @@ rooms:
     undocked: >
       The yacht is drifting free from the mothership.
 
-  objects_present:
+  objects_present: []
 
 
   exits:
@@ -2121,7 +2121,7 @@ rooms:
     main_power: "A bright, functional yacht cabin with fold-away bedding and storage."
     torch_light: "A small living area partially revealed by your flashlight."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "north"
@@ -2180,7 +2180,7 @@ rooms:
     main_power: "Fully operational, with consoles humming around a healthy drive core."
     torch_light: "A tight engine bay illuminated only by your torch."
 
-  objects_present:
+  objects_present: []
 
   exits:
   - direction: "up"
@@ -2248,7 +2248,8 @@ rooms:
     torch_light: "Your torch casts flickering light over the sloped approach and the
       locked door."
 
-  objects_present:
+  objects_present: []
+
   exits:
   - direction: "south"
     destination: "captains_corridor"

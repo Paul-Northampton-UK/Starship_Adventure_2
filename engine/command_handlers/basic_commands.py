@@ -8,54 +8,66 @@ from ..command_defs import ParsedIntent
 # or reconsider if _handle_look belongs here or requires its own module/utils.
 # For now, let's assume GameLoop might pass the display_output function if needed.
 
+# Import the enhanced description function
+from .movement import get_location_description 
+
 def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> str:
     """Handles the LOOK command intent.
 
-    Provides a detailed description of the current room or area, 
-    or looks at a specific target (placeholder).
+    Provides a detailed description of the current room or area by calling
+    get_location_description, or looks at a specific target (placeholder).
     """
     target = parsed_intent.target
     current_room_id = game_state.current_room_id
-    current_area_id = game_state.current_area_id # Check area first
-    current_room_data = game_state.rooms_data.get(current_room_id)
-
-    if not current_room_data:
-        logging.error(f"Look failed: Current room '{current_room_id}' not found in rooms_data!")
-        return "An internal error occurred: you seem to be nowhere defined."
+    current_area_id = game_state.current_area_id 
 
     # Simple check if player is looking at the location vs. a specific object
-    if not target or target in ["room", "around", "area"]:
-        # --- Always show detailed description on explicit LOOK --- 
-        # This requires the get_location_description logic. 
-        # TODO: Refactor to call get_location_description from movement.py or move it to utils?
-        # For now, duplicate minimal logic or return placeholder:
-        
-        # Let's try getting the description using the existing GameState method temporarily
-        # We need a way to force the detailed description.
-        # Maybe the GameLoop calls get_location_description directly in this case?
-        # For this refactor, let's just return a simplified message.
-        # We can refine LOOK later.
-        
-        loc_name = "current location"
-        if current_area_id:
-             room_data = game_state.rooms_data.get(current_room_id)
-             if room_data and isinstance(room_data.get("areas"), list):
-                  for ad in room_data["areas"]:
-                       if ad.get("area_id") == current_area_id:
-                            loc_name = ad.get("name", current_area_id)
-                            break
-        elif current_room_data:
-            loc_name = current_room_data.get("name", current_room_id)
-            
-        # Simplified output - Does not handle power state or detailed descriptions yet
-        base_desc = f"You look around the {loc_name}."
-        # TODO: Add object listing and exit listing here
-        return base_desc 
+    if not target or target.lower() in ["room", "around", "area", "here"]:
+        # Always show detailed description on explicit LOOK
+        # Call the main description function from movement handler
+        return get_location_description(game_state, current_room_id, current_area_id)
     else:
         # Look at a specific target (placeholder)
-        # TODO: Implement logic to find the target (object/NPC/feature) in the room 
+        # TODO: Implement logic to find the target (object/NPC/feature) in the room/area 
         #       and return its description.
-        return f"You look closely at the {target}. (Description not implemented)"
+        target_object_id = game_state._find_object_id_by_name_in_location(target)
+        if target_object_id:
+             target_data = game_state.get_object_by_id(target_object_id)
+             if target_data:
+                 # Use detailed description if available, else default
+                 # TODO: Add state-dependent descriptions?
+                 obj_desc = target_data.get("description", f"You see nothing special about the {target_data.get('name', target)}.")
+                 return obj_desc
+             else:
+                 return f"You see the {target}, but details are missing."
+        else:
+             # Check inventory/worn/held
+             inv_id = game_state._find_object_id_by_name_in_inventory(target)
+             worn_id = game_state._find_object_id_by_name_worn(target)
+             
+             # Check hand slot using item_matches_name
+             held_id = None
+             # We need the item_matches_name function here!
+             # It was moved to utils.py, need to import it.
+             from .utils import item_matches_name 
+             if game_state.hand_slot and item_matches_name(game_state, game_state.hand_slot, target):
+                 held_id = game_state.hand_slot
+
+             obj_id_to_describe = inv_id or worn_id or held_id # Prioritize inv/worn if ambiguous? Or handle ambiguity?
+             
+             if obj_id_to_describe:
+                 target_data = game_state.get_object_by_id(obj_id_to_describe)
+                 if target_data:
+                     # Use detailed description if available, else default
+                     obj_desc = target_data.get("description", f"You examine your {target_data.get('name', target)}. Nothing seems out of the ordinary.")
+                     return obj_desc
+                 else:
+                     # This case means the ID exists in inv/worn/held but not in objects_data (shouldn't happen)
+                     logging.error(f"handle_look: Found ID {obj_id_to_describe} in player possession but missing from objects_data.")
+                     return f"You have the {target}, but its details seem corrupted."
+
+             # If not found anywhere
+             return f"You don't see a {target} here, nor are you carrying or wearing one."
 
 def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent, display_callback) -> str:
     """Handles the INVENTORY command intent by displaying status via callback."""
