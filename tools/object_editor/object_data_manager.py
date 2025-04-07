@@ -67,6 +67,10 @@ class ObjectDataManager:
             return None
 
     # --- Methods for accessing data will go here ---
+    def get_object_count(self) -> int:
+        """Returns the current number of loaded objects."""
+        return len(self.objects_data)
+
     def get_object_ids(self) -> List[str]:
         """Returns a sorted list of all object IDs from the loaded list."""
         if not self.objects_data or not isinstance(self.objects_data, list):

@@ -27,6 +27,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 KEY_OBJECT_DROPDOWN = "-OBJECT_ID_DROPDOWN-"
 KEY_LOAD_BUTTON = "-LOAD_BUTTON-"
 KEY_NEW_BUTTON = "-NEW_BUTTON-"
+KEY_TOTAL_OBJECT_COUNT = "-TOTAL_OBJECT_COUNT-"
 
 # Basic Info Frame
 KEY_OBJECT_ID = "-OBJECT_ID-"
@@ -130,20 +131,18 @@ def _parse_dict_to_multiline(data_dict: dict) -> str:
     return "\n".join(f"{k}:{v}" for k, v in data_dict.items()) if data_dict else ""
 
 def clear_fields(window):
-    """Clears all input fields and resets controls to default."""
-    logging.debug("Clearing all fields.")
+    """Clears all input fields and resets controls to default for a NEW object."""
+    logging.debug("Clearing all fields for new object.")
     # Basic Info
     window[KEY_OBJECT_ID].update("", disabled=False) # Enable ID for new
     window[KEY_OBJECT_NAME].update("")
     window[KEY_OBJECT_IS_PLURAL].update(False)
     window[KEY_OBJECT_CATEGORY].update("")
     window[KEY_OBJECT_LOCATION].update("")
-    window[KEY_OBJECT_AREA_LOCATION].update(values=[], value=None)
-    window[KEY_OBJECT_COUNT].update("1")
-    window[KEY_OBJECT_WEIGHT].update("1.0")
-    window[KEY_OBJECT_SIZE].update("1.0")
-    window[KEY_OBJECT_SYNONYMS].update("")
-    window[KEY_OBJECT_DESCRIPTION].update("")
+    window[KEY_OBJECT_AREA_LOCATION].update(values=[], value=None) # Clear area selection
+
+    # Set Count field to indicate automatic assignment for new objects
+    window[KEY_OBJECT_COUNT].update("(Auto)") # Indicate automatic count
 
     # State & Lock
     window[KEY_OBJECT_INITIAL_STATE].update(True)
@@ -191,6 +190,9 @@ def clear_fields(window):
 
     # Set focus to ID field for new object
     window[KEY_OBJECT_ID].set_focus(True)
+    # Reset validation indicator
+    window[KEY_VALIDATE_INDICATOR].update("❓", text_color='grey')
+    window[KEY_STATUS_BAR].update("Enter details for new object.")
 
 def populate_fields(window, object_data: dict, manager: ObjectDataManager):
     """Populates GUI fields from the loaded object_data dictionary."""
@@ -202,20 +204,21 @@ def populate_fields(window, object_data: dict, manager: ObjectDataManager):
     object_id = object_data.get('id')
     logging.debug(f"Populating fields for object ID: {object_id}")
 
-    # --- Call clear_fields to reset everything before populating --- 
-    clear_fields(window)
+    # --- No need to call clear_fields here anymore, clearing happens on NEW ---
 
     # --- Get nested dictionaries safely ---
-    properties = object_data.get('properties', {})
-    interaction = object_data.get('interaction', {})
+    properties = object_data.get('properties', {}) or {} # Ensure dict
+    interaction = object_data.get('interaction', {}) or {} # Ensure dict
 
     # --- Basic Info ---
-    # Update ID and disable it *after* clearing
     window[KEY_OBJECT_ID].update(object_id)
-    window[KEY_OBJECT_ID].update(disabled=True)
+    window[KEY_OBJECT_ID].update(disabled=True) # Disable ID for existing object
     window[KEY_OBJECT_NAME].update(object_data.get('name', ''))
     window[KEY_OBJECT_IS_PLURAL].update(object_data.get('is_plural', False))
     window[KEY_OBJECT_CATEGORY].update(object_data.get('category', ''))
+
+    # Populate Count field with the actual count from data for existing objects
+    window[KEY_OBJECT_COUNT].update(str(object_data.get('count', ''))) # Display existing count
 
     # Find and set location
     found_room_id, found_area_id = manager.find_object_location(object_id)
@@ -231,7 +234,6 @@ def populate_fields(window, object_data: dict, manager: ObjectDataManager):
     # Explicitly set readonly and size during update
     window[KEY_OBJECT_AREA_LOCATION].update(values=display_area_ids, value=found_area_id, readonly=True, size=(30,1))
 
-    window[KEY_OBJECT_COUNT].update(str(object_data.get('count', 1)))
     window[KEY_OBJECT_WEIGHT].update(str(object_data.get('weight', 1.0)))
     window[KEY_OBJECT_SIZE].update(str(object_data.get('size', 1.0)))
     window[KEY_OBJECT_DESCRIPTION].update(object_data.get('description', ''))
@@ -310,6 +312,8 @@ def populate_fields(window, object_data: dict, manager: ObjectDataManager):
     window[KEY_OBJECT_STATE_DESCRIPTIONS].update(_parse_dict_to_multiline(object_data.get('state_descriptions', {})))
 
     logging.debug("Finished populating fields.")
+    # Update the YAML preview after populating, passing the manager
+    update_yaml_preview(window, object_data, manager) # Pass manager here
 
 def update_yaml_preview(window, object_data: Optional[dict], manager: ObjectDataManager):
     """Updates the YAML preview pane with the object's data."""
@@ -350,85 +354,106 @@ def _parse_multiline_to_dict(multiline_string: str) -> dict:
             data_dict[key.strip()] = value.strip()
     return data_dict
 
-def gather_data_from_fields(values: dict) -> tuple[dict, Optional[str], Optional[str]]:
-    """Gathers data from GUI fields into a dictionary matching YAML structure."""
+def gather_data_from_fields(window: sg.Window, manager: ObjectDataManager) -> tuple[Optional[dict], Optional[str], Optional[str]]:
+    """Gathers data from GUI fields into a dictionary matching YAML structure, plus location."""
+    values = window.read(timeout=0)[1] # Get current values without blocking
+    gathered_data = {}
+    properties = {}
+    interaction = {}
+    error = None
+
     try:
-        # --- Basic Info --- (Get is_plural early)
-        is_plural_value = values[KEY_OBJECT_IS_PLURAL]
-        
-        # --- Properties --- (Gather nested properties)
-        properties = {
-            # Booleans
-            'is_takeable': values[KEY_PROP_IS_TAKEABLE],
-            'is_interactive': values[KEY_PROP_IS_INTERACTIVE],
-            # ... (Gather all other boolean properties from KEY_PROP_... keys) ...
-            'is_wearable': values[KEY_PROP_IS_WEARABLE],
-            'is_flammable': values[KEY_PROP_IS_FLAMMABLE],
-            # ... etc ...
-            'can_store_liquids': values[KEY_PROP_CAN_STORE_LIQUIDS],
-            
-            # Numerics (handle potential empty strings -> None)
-            'storage_capacity': float(values[KEY_PROP_STORAGE_CAPACITY]) if values[KEY_PROP_STORAGE_CAPACITY] else None,
-            'damage': float(values[KEY_PROP_DAMAGE]) if values[KEY_PROP_DAMAGE] else None,
-            'durability': int(values[KEY_PROP_DURABILITY]) if values[KEY_PROP_DURABILITY] else None,
-            'range': float(values[KEY_PROP_RANGE]) if values[KEY_PROP_RANGE] else None,
-            
-            # Wearability fields BELONG INSIDE properties
-            'wear_area': values[KEY_WEAR_AREA] if values[KEY_WEAR_AREA] else None, 
-            'wear_layer': int(values[KEY_WEAR_LAYER]) if values[KEY_WEAR_LAYER] else None, 
-        }
-        
-        # --- Interaction --- 
-        interaction = {
-            'required_state': _parse_csv_to_list(values[KEY_INTERACTION_REQUIRED_STATE]),
-            'required_items': _parse_csv_to_list(values[KEY_INTERACTION_REQUIRED_ITEMS]),
-            'primary_actions': _parse_csv_to_list(values[KEY_INTERACTION_PRIMARY_ACTIONS]),
-            'effects': _parse_csv_to_list(values[KEY_INTERACTION_EFFECTS]),
-            'success_message': values[KEY_INTERACTION_SUCCESS] or None,
-            'failure_message': values[KEY_INTERACTION_FAILURE] or None,
-        }
+        # --- Basic Info ---
+        object_id = values[KEY_OBJECT_ID].strip().lower()
+        if not object_id:
+            raise ValueError("Object ID cannot be empty.")
+        gathered_data['id'] = object_id
 
-        # --- Other --- 
-        storage_contents = _parse_csv_to_list(values[KEY_OBJECT_STORAGE_CONTENTS])
-        state_descriptions = _parse_multiline_to_dict(values[KEY_OBJECT_STATE_DESCRIPTIONS])
-        
-        # --- Construct Top-Level Object Dictionary --- 
-        obj_data = {
-            'id': values[KEY_OBJECT_ID].strip().lower(),
-            'name': values[KEY_OBJECT_NAME].strip(),
-            'category': values[KEY_OBJECT_CATEGORY],
-            'count': int(values.get(KEY_OBJECT_COUNT) or 1), 
-            'weight': float(values.get(KEY_OBJECT_WEIGHT) or 1.0),
-            'size': float(values.get(KEY_OBJECT_SIZE) or 1.0),
-            'description': values[KEY_OBJECT_DESCRIPTION].strip(),
-            'is_plural': is_plural_value, # Top level
-            'synonyms': _parse_csv_to_list(values[KEY_OBJECT_SYNONYMS]),
-            'initial_state': values[KEY_OBJECT_INITIAL_STATE],
-            'is_locked': values[KEY_OBJECT_IS_LOCKED],
-            'power_state': values[KEY_OBJECT_POWER_STATE] or None,
-            'lock_type': values[KEY_OBJECT_LOCK_TYPE] or None,
-            'lock_code': values[KEY_OBJECT_LOCK_CODE] or None,
-            'lock_key_id': values[KEY_OBJECT_LOCK_KEY_ID] or None,
-            'properties': properties, # Nested properties
-            'interaction': interaction, # Nested interaction
-            'storage_contents': storage_contents,
-            'state_descriptions': state_descriptions,
-        }
-        
-        # --- Location Data (Handled separately by manager) ---
-        location_room_id = values.get(KEY_OBJECT_LOCATION)
-        location_area_id = values.get(KEY_OBJECT_AREA_LOCATION)
+        is_new_object = not window[KEY_OBJECT_ID].Disabled # Check if ID field is enabled
 
-        return obj_data, location_room_id, location_area_id
+        # Handle Count based on whether it's new or existing
+        if is_new_object:
+            gathered_data['count'] = manager.get_object_count() + 1
+            logging.info(f"Assigning automatic count {gathered_data['count']} for new object '{object_id}'.")
+        else:
+            # For existing, read the value populated in the read-only field
+            count_str = window[KEY_OBJECT_COUNT].get()
+            gathered_data['count'] = int(count_str) if count_str and count_str.isdigit() else 0 # Use 0 if invalid
+
+        gathered_data['name'] = values[KEY_OBJECT_NAME].strip() or object_id
+        gathered_data['is_plural'] = values[KEY_OBJECT_IS_PLURAL]
+        gathered_data['category'] = values[KEY_OBJECT_CATEGORY] or None
+        gathered_data['weight'] = float(values[KEY_OBJECT_WEIGHT] or 1.0)
+        gathered_data['size'] = float(values[KEY_OBJECT_SIZE] or 1.0)
+        gathered_data['description'] = values[KEY_OBJECT_DESCRIPTION].strip()
+        gathered_data['synonyms'] = _parse_csv_to_list(values[KEY_OBJECT_SYNONYMS])
+
+        # --- State & Lock ---
+        gathered_data['initial_state'] = values[KEY_OBJECT_INITIAL_STATE]
+        gathered_data['is_locked'] = values[KEY_OBJECT_IS_LOCKED]
+        gathered_data['power_state'] = values[KEY_OBJECT_POWER_STATE] or None
+        gathered_data['lock_type'] = values[KEY_OBJECT_LOCK_TYPE] or None
+        gathered_data['lock_code'] = values[KEY_OBJECT_LOCK_CODE] or None
+        gathered_data['lock_key_id'] = values[KEY_OBJECT_LOCK_KEY_ID] or None
+
+        # --- Properties ---
+        # (Gather boolean properties)
+        properties['is_takeable'] = values[KEY_PROP_IS_TAKEABLE]
+        properties['is_interactive'] = values[KEY_PROP_IS_INTERACTIVE]
+        # ... gather ALL boolean props ...
+        properties['is_wearable'] = values[KEY_PROP_IS_WEARABLE]
+        # ... gather rest of boolean props ...
+        properties['can_store_liquids'] = values[KEY_PROP_CAN_STORE_LIQUIDS]
+
+        # (Gather numeric/string properties)
+        properties['storage_capacity'] = int(values[KEY_PROP_STORAGE_CAPACITY]) if values[KEY_PROP_STORAGE_CAPACITY] else None
+        properties['damage'] = int(values[KEY_PROP_DAMAGE]) if values[KEY_PROP_DAMAGE] else None
+        properties['durability'] = int(values[KEY_PROP_DURABILITY]) if values[KEY_PROP_DURABILITY] else None
+        properties['range'] = int(values[KEY_PROP_RANGE]) if values[KEY_PROP_RANGE] else None
+
+        # (Gather wearability properties)
+        if properties['is_wearable']:
+            properties['wear_area'] = values[KEY_WEAR_AREA] or None
+            properties['wear_layer'] = int(values[KEY_WEAR_LAYER]) if values[KEY_WEAR_LAYER] else None
+        else:
+            properties.pop('wear_area', None) # Remove if not wearable
+            properties.pop('wear_layer', None)
+
+        if properties: # Only add properties key if there's data
+             gathered_data['properties'] = properties
+
+        # --- Interaction ---
+        interaction['required_state'] = _parse_csv_to_list(values[KEY_INTERACTION_REQUIRED_STATE])
+        # ... gather rest of interaction fields ...
+        interaction['failure_message'] = values[KEY_INTERACTION_FAILURE] or None
+        if any(interaction.values()): # Only add interaction key if there's data
+             gathered_data['interaction'] = interaction
+
+        # --- Other --- (storage_contents, state_descriptions)
+        gathered_data['storage_contents'] = _parse_csv_to_list(values[KEY_OBJECT_STORAGE_CONTENTS])
+        gathered_data['state_descriptions'] = _parse_multiline_to_dict(values[KEY_OBJECT_STATE_DESCRIPTIONS])
+
+        # --- Location Data (Returned separately) ---
+        location_room_id = values.get(KEY_OBJECT_LOCATION) or None
+        location_area_id = values.get(KEY_OBJECT_AREA_LOCATION) or None
+
+        # Clean final data - remove keys with None value if desired
+        # Optional: Depends on schema strictness
+        # gathered_data = {k: v for k, v in gathered_data.items() if v is not None}
+        # if 'properties' in gathered_data: gathered_data['properties'] = {k: v for k, v in gathered_data['properties'].items() if v is not None}
+        # if 'interaction' in gathered_data: gathered_data['interaction'] = {k: v for k, v in gathered_data['interaction'].items() if v is not None}
+
+        return gathered_data, location_room_id, location_area_id
 
     except ValueError as e:
-        error = f"Invalid numeric value: {e}"
-        logging.error(f"Error gathering data: {error}")
-        return None, None, None
+        error = f"Invalid input value: {e}"
     except Exception as e:
         error = f"Unexpected error gathering data: {e}"
         logging.exception("Error in gather_data_from_fields")
-        return None, None, None
+
+    # If error occurred
+    sg.popup_error(error, title="Data Input Error")
+    return None, None, None # Indicate failure
 
 def validate_object_data(object_data: dict, is_new: bool, manager: ObjectDataManager) -> list[str]:
     """Performs validation checks. Returns list of errors."""
@@ -503,40 +528,37 @@ def validate_object_data(object_data: dict, is_new: bool, manager: ObjectDataMan
 
 # --- Main Application ---
 def main():
-    sg.theme("DarkBlue3") # Choose a theme
-
-    # Initialize the data manager
+    sg.theme("DarkBlue3")
     try:
-        # Adjust path based on where editor_gui.py is run from relative to data/
-        # Assuming running from project root: python tools/object_editor/editor_gui.py
-        # If running from tools/object_editor: Path("../../data")
         manager = ObjectDataManager(data_dir=Path("data"))
         object_ids = manager.get_object_ids()
         room_ids = manager.get_room_ids()
+        initial_total_objects = manager.get_object_count() # Get initial count
     except Exception as e:
         logging.error(f"Failed to initialize ObjectDataManager: {e}")
-        sg.popup_error(f"Failed to load data files.\\nError: {e}\\n\\nPlease ensure 'objects.yaml' and 'rooms.yaml' exist in the 'data' directory.", title="Initialization Error")
+        sg.popup_error(f"Failed to load data files.\nError: {e}", title="Initialization Error")
         return
 
     # --- Define Layout Sections ---
-
-    # Top controls
+    # Top controls - ADDED PUSH and TOTAL COUNT DISPLAY
     top_controls = [
         sg.Text("Select Object:"),
         sg.Combo(object_ids, key=KEY_OBJECT_DROPDOWN, readonly=True, size=(30, 1), enable_events=True),
-        sg.Button("Load", key=KEY_LOAD_BUTTON), # Maybe load automatically on dropdown change?
-        sg.Button("New Object", key=KEY_NEW_BUTTON)
+        sg.Button("Load", key=KEY_LOAD_BUTTON),
+        sg.Button("New Object", key=KEY_NEW_BUTTON),
+        sg.Push(), # Pushes subsequent elements to the right
+        sg.Text(f"Total Objects: {initial_total_objects}", key=KEY_TOTAL_OBJECT_COUNT) # Display total count
     ]
 
-    # Basic Info Frame (Remove value= from Area Combo)
+    # Basic Info Frame - Made Count READONLY and removed default_text
     basic_info_frame = sg.Frame("Basic Information", [
         [sg.Text("Object ID:", size=(12,1)), sg.Input(key=KEY_OBJECT_ID, size=(30,1), readonly=True)],
         [sg.Text("Name:", size=(12,1)), sg.Input(key=KEY_OBJECT_NAME, size=(40,1))],
         [sg.Text("Is Plural?", size=(12,1)), sg.Checkbox('', key=KEY_OBJECT_IS_PLURAL, default=False)],
         [sg.Text("Category:", size=(12,1)), sg.Combo(get_object_categories(), key=KEY_OBJECT_CATEGORY, readonly=True, size=(20,1))],
         [sg.Text("Room Location:", size=(12,1)), sg.Combo(room_ids, key=KEY_OBJECT_LOCATION, readonly=True, size=(30,1), enable_events=True)],
-        [sg.Text("Area Location:", size=(12,1)), sg.Combo([], key=KEY_OBJECT_AREA_LOCATION, readonly=True, size=(30,1))], # REMOVED value=None
-        [sg.Text("Count:", size=(12,1)), sg.Input(key=KEY_OBJECT_COUNT, size=(10,1), default_text="1")],
+        [sg.Text("Area Location:", size=(12,1)), sg.Combo([], key=KEY_OBJECT_AREA_LOCATION, readonly=True, size=(30,1))],
+        [sg.Text("Count:", size=(12,1)), sg.Input(key=KEY_OBJECT_COUNT, size=(10,1), readonly=True)], # READONLY, no default
         [sg.Text("Weight:", size=(12,1)), sg.Input(key=KEY_OBJECT_WEIGHT, size=(10,1), default_text="1.0")],
         [sg.Text("Size:", size=(12,1)), sg.Input(key=KEY_OBJECT_SIZE, size=(10,1), default_text="1.0")],
         [sg.Text("Synonyms (csv):", size=(12,1)), sg.Input(key=KEY_OBJECT_SYNONYMS, size=(40,1))],
@@ -746,7 +768,7 @@ def main():
         elif event == KEY_VALIDATE_BUTTON:
             logging.info("Validate button clicked.")
             # Unpack all 3 return values
-            gathered_data, selected_room_id, selected_area_id = gather_data_from_fields(values)
+            gathered_data, selected_room_id, selected_area_id = gather_data_from_fields(window, manager)
 
             # Check if gather_data failed (returned None for data)
             if gathered_data is None:
@@ -777,7 +799,7 @@ def main():
             window.refresh()
 
             # Unpack all 3 return values
-            gathered_data, selected_room_id, selected_area_id = gather_data_from_fields(values)
+            gathered_data, selected_room_id, selected_area_id = gather_data_from_fields(window, manager)
             
             # Check if gather_data failed
             if gathered_data is None:
@@ -826,7 +848,9 @@ def main():
                     window[KEY_STATUS_BAR].update("Changes saved successfully!")
                     # Refresh object list dropdown
                     new_object_ids = manager.get_object_ids()
+                    new_total_count = manager.get_object_count() # Get updated count
                     window[KEY_OBJECT_DROPDOWN].update(values=new_object_ids)
+                    window[KEY_TOTAL_OBJECT_COUNT].update(f"Total Objects: {new_total_count}") # Update display
                     # Optionally clear fields or reload the saved object? Reload might be best.
                     window[KEY_OBJECT_DROPDOWN].update(value=object_id_to_save) # Select the saved object
                     # Re-populate fields with the saved data (in case manager modified it slightly)
@@ -860,9 +884,11 @@ def main():
                      current_object_data = None
                      clear_fields(window)
                      update_yaml_preview(window, None, manager)
-                     # Refresh dropdown
+                     # Refresh dropdown AND total count
                      new_object_ids = manager.get_object_ids()
-                     window[KEY_OBJECT_DROPDOWN].update(values=new_object_ids, value='') # Clear selection
+                     new_total_count = manager.get_object_count()
+                     window[KEY_OBJECT_DROPDOWN].update(values=new_object_ids, value='')
+                     window[KEY_TOTAL_OBJECT_COUNT].update(f"Total Objects: {new_total_count}") # Update display
                  else:
                      window[KEY_STATUS_BAR].update(f"Delete failed for '{selected_id_to_delete}'. Check logs.")
                      sg.popup_error(f"Failed to delete object '{selected_id_to_delete}'. Check logs for details.", title="Delete Error")
