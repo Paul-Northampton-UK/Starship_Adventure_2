@@ -135,7 +135,8 @@ def handle_quit(game_state: GameState, parsed_intent: ParsedIntent) -> None:
     return None
 
 def handle_unknown(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
-    """Handles unrecognized commands. Returns key/kwargs tuple."""
-    logging.info(f"Unknown command received: '{parsed_intent.raw_input}'")
-    # Return key for invalid command response, no kwargs needed for this one
+    """Handles unrecognized commands."""
+    # Log the raw input for debugging
+    logging.info(f"Unknown command received: '{parsed_intent.original_input}'") # Corrected attribute name
+    # Return a key that maps to confused responses
     return ("invalid_command", {}) 

@@ -146,7 +146,7 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
 def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
     """Handles the MOVE command intent. Returns (key, kwargs) tuple."""
     target = parsed_intent.target
-    direction = parsed_intent.direction # Original player input direction
+    direction_input = parsed_intent.direction # Original player input direction
     current_room_id = game_state.current_room_id
     current_room_data = game_state.rooms_data.get(current_room_id)
 
@@ -160,12 +160,16 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
         "u": "up", "d": "down", 
         "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest",
         "north-east": "northeast", "north-west": "northwest", 
-        "south-east": "southeast", "south-west": "southwest"
+        "south-east": "southeast", "south-west": "southwest",
+        "north east": "northeast", "north west": "northwest", 
+        "south east": "southeast", "south west": "southwest",
     }
     player_direction_normalized = None # Initialize
-    if direction:
-        processed_direction = normalized_direction_map.get(direction, direction).lower()
-        player_direction_normalized = processed_direction.replace(" ", "") 
+    if direction_input:
+        # Normalize for internal logic, ensuring it handles upstream parser results correctly
+        processed_direction = normalized_direction_map.get(direction_input.lower(), direction_input.lower())
+        # Parser should already remove spaces/hyphens, but do it again just in case
+        player_direction_normalized = processed_direction.replace(" ", "").replace("-", "") 
     # --- End Direction Normalization ---
 
     # --- Check for Area Movement FIRST ---
@@ -208,19 +212,20 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
             if not next_room_id:
                  logging.error(f"Exit '{player_direction_normalized}' in room '{current_room_id}' has no destination.")
                  return ("error_internal", {"action": "move destination"})
+            # Use ONLY player_direction_normalized for logic checks from here
             if next_room_id in game_state.rooms_data:
                 logging.info(f"Moving player via exit '{player_direction_normalized}' from {current_room_id} to {next_room_id}")
                 game_state.move_to_room(next_room_id)
-                # Get description here so room visit is marked
                 desc_str = get_location_description(game_state, next_room_id, None)
-                # Return the description directly with a specific key
                 return ("move_success_description", {"description": desc_str})
             else:
                 logging.warning(f"Exit '{player_direction_normalized}' leads to non-existent room '{next_room_id}' from '{current_room_id}'")
-                # TODO: Add move_fail_blocked key to responses.yaml
-                return ("move_fail_direction", {"direction": direction or 'that way'}) # Placeholder
+                # Pass the normalized direction for the failure message
+                return ("move_fail_direction", {"direction": player_direction_normalized or 'that way'})
         else:
-            return ("move_fail_direction", {"direction": direction})
+            # No matching exit found
+            # Pass the normalized direction for the failure message
+            return ("move_fail_direction", {"direction": player_direction_normalized or 'that way'})
             
     # --- Fallback Messages if No Action Was Taken --- 
     elif not target: 

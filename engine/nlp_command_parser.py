@@ -188,8 +188,11 @@ class NLPCommandParser:
         # Add game-specific vocabulary (e.g., tokenizer exceptions)
         self.add_game_vocabulary()
         
-        # Initialize the Entity Ruler with custom patterns
-        self.custom_patterns = []
+        # Initialize the custom patterns list BEFORE initializing the ruler
+        self.custom_patterns = [] 
+        self._populate_custom_patterns() # Ensure patterns are generated first
+        
+        # Initialize the Entity Ruler with custom patterns AFTER they are populated
         self.initialize_entity_ruler()
     
     def add_game_vocabulary(self) -> None:
@@ -218,56 +221,107 @@ class NLPCommandParser:
     def _populate_custom_patterns(self) -> None:
         """Builds the list of custom entity patterns."""
         self.custom_patterns = [] # Start fresh
+        logging.debug("Populating custom entity patterns...")
 
         # --- Define pattern lists --- 
         # Include single letter, full names, hyphenated, and two-word variants
         direction_list = [
+            # Standard Directions
             "north", "south", "east", "west", "up", "down", 
             "n", "s", "e", "w", "u", "d", 
             "ne", "nw", "se", "sw",
             "northeast", "northwest", "southeast", "southwest",
-            "north-east", "north-west", "south-east", "south-west",
-            "north east", "north west", "south east", "south west" # Added two-word variants
+            # Hyphenated (will be handled specifically below)
+            "north-east", "north-west", "south-east", "south-west", 
+            # Two-word 
+            "north east", "north west", "south east", "south west" 
         ]
+        
+        # Define specific patterns for hyphenated directions first for clarity
+        hyphenated_patterns = {
+            "north-east": [{"LOWER": "north"}, {"IS_PUNCT": True, "ORTH": "-"}, {"LOWER": "east"}],
+            "north-west": [{"LOWER": "north"}, {"IS_PUNCT": True, "ORTH": "-"}, {"LOWER": "west"}],
+            "south-east": [{"LOWER": "south"}, {"IS_PUNCT": True, "ORTH": "-"}, {"LOWER": "east"}],
+            "south-west": [{"LOWER": "south"}, {"IS_PUNCT": True, "ORTH": "-"}, {"LOWER": "west"}],
+        }
+        for text, pattern in hyphenated_patterns.items():
+             logging.debug(f"Adding hyphenated DIRECTION pattern: {pattern}")
+             self.custom_patterns.append({"label": "DIRECTION", "pattern": pattern, "id": text.replace('-', '')}) # Store normalized ID
+
+        # Add patterns for other directions (single word, abbreviations, two-word)
         for direction in direction_list:
-            # Split potential multi-word directions
-            direction_parts = direction.lower().split()
-            # Create the pattern as a list of token matchers
-            pattern = [{spacy.symbols.LOWER: part} for part in direction_parts]
+            direction_lower = direction.lower()
+            
+            # Skip hyphenated ones, already handled
+            if '-' in direction_lower:
+                continue
+
+            # Handle two-word directions
+            if ' ' in direction_lower:
+                 parts = direction_lower.split()
+                 pattern = [{spacy.symbols.LOWER: part} for part in parts]
+                 normalized_id = direction_lower.replace(' ','')
+            # Handle single word/abbreviation
+            else:
+                 pattern = [{spacy.symbols.LOWER: direction_lower}]
+                 normalized_id = direction_lower
+            
             if pattern: # Ensure pattern is not empty
-                self.custom_patterns.append({"label": "DIRECTION", "pattern": pattern})
+                 logging.debug(f"Adding standard/multi-word DIRECTION pattern: {pattern}")
+                 self.custom_patterns.append({"label": "DIRECTION", "pattern": pattern, "id": normalized_id})
 
         # --- Add patterns for specific game objects/locations dynamically? ---
-        # Example: Add patterns for known room names or important objects
-        # known_locations = [room['name'] for room_id, room in self.game_state.rooms_data.items()]
-        # for loc_name in known_locations:
-        #      if loc_name: # Ensure name is not empty
-        #           # Simple pattern based on lower case name
-        #           pattern = [{spacy.symbols.LOWER: token.lower()} for token in loc_name.split()]
-        #           self.custom_patterns.append({"label": "LOCATION", "pattern": pattern})
-                      
         # Example: Patterns for specific items using their names and synonyms
+        logging.debug("Adding GAME_OBJECT patterns...")
         for obj_id, obj_data in self.game_state.objects_data.items():
-            names_to_pattern = [obj_data.get('name')] + obj_data.get('synonyms', [])
-            for name in names_to_pattern:
-                 if name and isinstance(name, str): # Check if name is a valid string
-                      # Create a case-insensitive pattern for multi-word names
-                      pattern = [{spacy.symbols.LOWER: token.lower()} for token in name.split()]
-                      if pattern: # Ensure pattern is not empty
-                           self.custom_patterns.append({"label": "GAME_OBJECT", "pattern": pattern, "id": obj_id})
+            names_to_pattern = set()
+            # Add the primary name
+            primary_name = obj_data.get('name')
+            if primary_name:
+                 names_to_pattern.add(primary_name.lower())
+            # Add command aliases
+            aliases = obj_data.get('command_aliases', [])
+            if isinstance(aliases, list):
+                 for alias in aliases:
+                      if isinstance(alias, str):
+                           names_to_pattern.add(alias.lower())
 
-        logging.debug(f"Initialized EntityRuler with {len(self.custom_patterns)} custom patterns.")
+            for name in names_to_pattern:
+                 if name: # Ensure name is not empty
+                     # Simple pattern based on lower case name tokens
+                     pattern = [{spacy.symbols.LOWER: token.lower()} for token in name.split()]
+                     if pattern:
+                          # Add the object ID to the pattern for easy retrieval later
+                          self.custom_patterns.append({
+                               "label": "GAME_OBJECT", 
+                               "pattern": pattern, 
+                               "id": obj_id # Store the actual object ID here
+                          })
+                          logging.debug(f"Added GAME_OBJECT pattern for ID '{obj_id}': {pattern}")
+        
+        logging.debug(f"Finished populating custom patterns. Total: {len(self.custom_patterns)}")
 
     def initialize_entity_ruler(self) -> None:
-        """Creates the entity ruler and adds patterns to the pipeline."""
-        # Populate self.custom_patterns first
-        self._populate_custom_patterns()
+        """Initializes the Entity Ruler with custom patterns and adds it to the pipeline."""
+        if not self.custom_patterns:
+             logging.warning("No custom patterns defined for Entity Ruler.")
+             return
 
-        # Create a new ruler instance with the patterns
-        # Set overwrite_ents=True to allow custom entities to win over spaCy's default NER
-        config = {"overwrite_ents": True}
-        ruler = self.nlp.add_pipe("entity_ruler", config=config, before="ner")
-        ruler.add_patterns(self.custom_patterns)
+        # Check if 'entity_ruler' already exists
+        if 'entity_ruler' in self.nlp.pipe_names:
+            logging.warning("Entity Ruler already exists in pipeline. Removing and re-adding.")
+            self.nlp.remove_pipe('entity_ruler')
+            
+        # Create the EntityRuler
+        # config={"overwrite_ents": True} ensures our patterns take precedence over spaCy's NER
+        ruler = self.nlp.add_pipe("entity_ruler", config={"overwrite_ents": True}, before="ner") 
+        
+        try:
+             # Add patterns to the ruler
+             ruler.add_patterns(self.custom_patterns)
+             logging.info(f"Entity Ruler added to pipeline with {len(self.custom_patterns)} patterns.")
+        except Exception as e:
+             logging.error(f"Error adding patterns to Entity Ruler: {e}", exc_info=True)
 
     def _find_closest_match(self, word: str, threshold: int = 80) -> Optional[str]:
         """Find the closest matching word using fuzzy string matching."""
@@ -304,18 +358,18 @@ class NLPCommandParser:
         parsed_direction: Optional[str] = None
         for ent in doc.ents:
             if ent.label_ == "DIRECTION":
-                # Normalize two-word directions
+                # Normalize multi-word/hyphenated directions (e.g., "north west" -> "northwest", "north-west" -> "northwest")
                 direction_text = ent.text
-                if ' ' in direction_text:
-                     parsed_direction = direction_text.replace(' ', '')
-                     logging.debug(f"Normalized two-word direction: '{direction_text}' -> '{parsed_direction}'")
-                else:
-                     parsed_direction = direction_text
-                     logging.debug(f"Found direction entity: {parsed_direction}")
-                # Found a direction, assume MOVE intent
+                normalized_direction = direction_text.replace(' ', '').replace('-', '') # Remove spaces AND hyphens
+                logging.debug(f"Normalized direction entity: '{direction_text}' -> '{normalized_direction}'")
+                
+                # !!! ADDED DEBUG LOGGING HERE !!!
+                logging.info(f"PARSER: Found DIRECTION entity '{direction_text}', normalized to '{normalized_direction}', returning MOVE intent.")
+
+                # Found a direction, assume MOVE intent and return immediately
                 return ParsedIntent(
                     intent=CommandIntent.MOVE,
-                    direction=parsed_direction,
+                    direction=normalized_direction, # Use the fully normalized direction
                     original_input=command
                 )
 
