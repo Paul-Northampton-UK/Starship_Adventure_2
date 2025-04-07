@@ -68,14 +68,20 @@ def _format_exit_list(exit_data_list: list[dict]) -> str:
         last = directions[-1]
         return f"Obvious exits are {all_but_last}, and {last}."
 
-def get_location_description(game_state: GameState, room_id: str, area_id: Optional[str]) -> str:
-    """Gets the appropriate description (first visit or short) for a room or area,
-       including objects and exits.
-       NOTE: Returns a pre-formatted string, unlike other handlers. Needs refactor if
-             base descriptions also need variation.
+def get_location_description(game_state: GameState, room_id: str, area_id: Optional[str], force_long_description: bool = False) -> str:
+    """Gets the appropriate description for a room or area, including objects and exits.
+
+    Args:
+        game_state: The current game state.
+        room_id: The ID of the room.
+        area_id: The ID of the area within the room (optional).
+        force_long_description: If True, always returns the first_visit_description.
+
+    Returns:
+        A formatted string containing the location description, objects, and exits.
     """
     location_data: Optional[Dict[str, Any]] = None
-    is_first_visit = True
+    is_first_visit = True # Assume first visit initially
     description_key = "first_visit_description"
     location_name_for_fallback = "location"
     objects_present_ids = []
@@ -88,36 +94,44 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
 
     exits_list = room_data.get("exits", [])
 
+    # Determine if we are looking at an area or the room itself
     if area_id:
         if isinstance(room_data.get("areas"), list):
             for ad in room_data["areas"]:
                 if ad.get("area_id") == area_id:
                     location_data = ad
                     is_first_visit = not game_state.has_visited_area(area_id)
-                    game_state.visit_area(area_id, room_id) 
+                    if is_first_visit: # Mark as visited only on actual first visit
+                        game_state.visit_area(area_id, room_id) 
                     location_name_for_fallback = location_data.get("name", "area")
                     objects_present_ids = location_data.get("area_objects", [])
-                    break
-        if not location_data:
+                    break # Found the area data
+        if not location_data: # Area ID provided but not found
              logging.error(f"get_location_description: Cannot find area data for {area_id} in {room_id}")
              return "You arrive, but the details of this area are unclear."
     else:
+        # Looking at the room itself
         location_data = room_data
         is_first_visit = not game_state.has_visited_room(room_id)
-        game_state.visit_room(room_id) 
+        if is_first_visit: # Mark as visited only on actual first visit
+            game_state.visit_room(room_id) 
         location_name_for_fallback = location_data.get("name", "room")
-        objects_present_ids = location_data.get("objects_present", [])
+        objects_present_ids = location_data.get("objects_present", []) # Use correct key for room objects
     
-    if not is_first_visit:
+    # Determine which description key to use (first_visit or short)
+    if not force_long_description and not is_first_visit:
         description_key = "short_description"
+    # Otherwise, it defaults to "first_visit_description"
     
+    # Get the base description based on power state
     power_state = game_state.power_state.value
     descriptions = location_data.get(description_key, {})
     if not isinstance(descriptions, dict):
-        logging.error(f"{description_key} data for {area_id or room_id} is not a dictionary!")
+        logging.warning(f"{description_key} data for {area_id or room_id} is not a dictionary! Trying fallback...")
         fallback_key = "short_description" if description_key == "first_visit_description" else "first_visit_description"
         descriptions = location_data.get(fallback_key, {})
         if not isinstance(descriptions, dict):
+             logging.error(f"Both description keys missing or invalid for {area_id or room_id}")
              base_description = f"You are in the {location_name_for_fallback}. The description seems missing."
         else:
              base_description = descriptions.get(power_state, descriptions.get("offline", f"It's too dark to see the {location_name_for_fallback} clearly."))

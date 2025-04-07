@@ -10,72 +10,55 @@ from ..command_defs import ParsedIntent
 
 # Import the enhanced description function
 from .movement import get_location_description 
-# Import utility for item matching
+# Import utility for item matching (correct relative path)
 from .utils import item_matches_name 
 
 def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
-    """Handles the LOOK command intent.
-
-    Returns a tuple: (response_key, format_kwargs).
-    For general look, calls get_location_description which now returns the formatted string directly.
-    For specific items, returns description string directly (needs refactor).
+    """Handles the LOOK command intent. 
+       Can look at the current location or a specific item/target.
     """
-    target = parsed_intent.target
+    target_name = parsed_intent.target # Get the target name from the parsed intent
     current_room_id = game_state.current_room_id
-    current_area_id = game_state.current_area_id 
+    current_area_id = game_state.current_area_id
 
-    # Simple check if player is looking at the location vs. a specific object
-    if not target or target.lower() in ["room", "around", "area", "here"]:
-        # Always show detailed description on explicit LOOK
-        # Call the main description function - IT ALREADY FORMATS!
-        # So, we just return this directly as a special case for now.
-        # TODO: Refactor get_location_description to return key/kwargs too?
-        full_description = get_location_description(game_state, current_room_id, current_area_id)
-        # Using a generic key - the value is the pre-formatted description
-        return ("look_success_location", {"description": full_description})
+    if not target_name or target_name.lower() in ["room", "area", "around", "here"]:
+        # Look at the current room/area - Force the long description
+        desc_str = get_location_description(game_state, current_room_id, current_area_id, force_long_description=True)
+        return ("look_success_room", {"description": desc_str})
     else:
-        # Look at a specific target
-        target_object_id = game_state._find_object_id_by_name_in_location(target)
-        obj_id_to_describe = None
-        description = None
-        item_name = target # Fallback name
+        # Look at a specific target (item, feature, etc.)
+        obj_id_to_describe: Optional[str] = None
+        
+        # 1. Check location (current room/area)
+        obj_id_to_describe = game_state._find_object_id_by_name_in_location(target_name)
+        
+        # 2. If not in location, check if held
+        if not obj_id_to_describe and game_state.hand_slot:
+            if item_matches_name(game_state, game_state.hand_slot, target_name): # Use utility function
+                 obj_id_to_describe = game_state.hand_slot
 
-        if target_object_id:
-            obj_id_to_describe = target_object_id
-            source = "location"
-        else: 
-             # Check inventory/worn/held
-             inv_id = game_state._find_object_id_by_name_in_inventory(target)
-             worn_id = game_state._find_object_id_by_name_worn(target)
-             held_id = None
-             if game_state.hand_slot and item_matches_name(game_state, game_state.hand_slot, target):
-                 held_id = game_state.hand_slot
+        # 3. If not held, check worn items
+        if not obj_id_to_describe:
+            obj_id_to_describe = game_state._find_object_id_by_name_worn(target_name)
 
-             if held_id:
-                 obj_id_to_describe = held_id
-                 source = "hand"
-             elif worn_id:
-                 obj_id_to_describe = worn_id
-                 source = "worn"
-             elif inv_id:
-                 obj_id_to_describe = inv_id
-                 source = "inventory"
-             
+        # 4. If not worn, check inventory
+        if not obj_id_to_describe:
+            obj_id_to_describe = game_state._find_object_id_by_name_in_inventory(target_name)
+
+        # Now check if we found the object ID
         if obj_id_to_describe:
-             target_data = game_state.get_object_by_id(obj_id_to_describe)
-             if target_data:
-                 item_name = target_data.get('name', target)
-                 # Use detailed description if available, else default
-                 # TODO: Make a specific response key for this?
-                 description = target_data.get("description", f"You examine your {item_name}. Nothing seems out of the ordinary.")
-                 # Returning pre-formatted string in description for now
-                 return ("look_success_item", {"description": description})
-             else:
-                 logging.error(f"handle_look: Found ID {obj_id_to_describe} in player possession but missing from objects_data.")
-                 return ("error_internal", {"action": "examine"}) # Generic error key
-
-        # If not found anywhere
-        return ("look_fail_not_found", {"target_name": target})
+            item_data = game_state.get_object_by_id(obj_id_to_describe)
+            if item_data:
+                # Use item's description, fallback to generic
+                item_description = item_data.get("description", f"You look closely at the {item_data.get('name', target_name)}.")
+                return ("look_success_item", {"description": item_description})
+            else:
+                # This case should ideally not happen if IDs are consistent
+                logging.error(f"Look target '{target_name}' resolved to ID '{obj_id_to_describe}' but no data found.")
+                return ("error_internal", {"action": f"look for {target_name}"})
+        else:
+            # Item not found anywhere
+            return ("look_fail_not_found", {"item_name": target_name})
 
 def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent, display_callback) -> Tuple:
     """Handles the INVENTORY command intent by displaying status via callback. Returns empty tuple."""
