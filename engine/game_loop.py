@@ -3,17 +3,23 @@
 import logging
 from typing import Dict, Any, Optional, Callable, List
 from .game_state import GameState, PowerState
-from .nlp_command_parser import NLPCommandParser
+from .nlp.parser import NLPCommandParser, ParsedIntent, CommandIntent
 from .command_defs import CommandIntent, ParsedIntent
 from .yaml_loader import YAMLLoader
 from pathlib import Path
+import importlib
+from .nlp import parser
 
 # --- Import the new handler functions ---
 from .command_handlers.movement import handle_move, get_location_description
-from .command_handlers.item_actions import handle_take, handle_drop
+from .command_handlers.item_actions import handle_take, handle_drop, handle_put
 from .command_handlers.equipment import handle_equip
 from .command_handlers.basic_commands import handle_look, handle_inventory, handle_quit, handle_unknown
 # --------------------------------------
+
+print("--- engine.game_loop module loading ---")
+import sys
+print(f"Python Path: {sys.path}")
 
 # Define default paths (can be overridden)
 DEFAULT_CONFIG_YAML = "game_config.yaml"
@@ -73,6 +79,13 @@ class GameLoop:
                                     objects_data=self.objects_data,
                                     power_state=start_power_state) # Use loaded power state
         logging.info(f"GameState initialized. Starting room: {self.game_state.current_room_id}, Power State: {self.game_state.power_state.value}")
+
+        # Force reload of the parser module to ensure latest code is used
+        try:
+            importlib.reload(parser)
+            logging.info("Explicitly reloaded engine.nlp.parser module.")
+        except Exception as e:
+            logging.error(f"Failed to explicitly reload parser module: {e}", exc_info=True)
 
         # Initialize command parser, passing the game state
         self.command_parser = NLPCommandParser(self.game_state)
@@ -249,6 +262,7 @@ class GameLoop:
             CommandIntent.LOOK: handle_look,
             CommandIntent.TAKE: handle_take,
             CommandIntent.DROP: handle_drop,
+            CommandIntent.PUT: handle_put,
             CommandIntent.INVENTORY: handle_inventory,
             CommandIntent.EQUIP: handle_equip,
             CommandIntent.QUIT: handle_quit,
@@ -288,7 +302,8 @@ class GameLoop:
 # Example of how it might be run (likely from main.py later)
 if __name__ == '__main__':
     # Setup basic logging for testing this module directly
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    # Change level to DEBUG to see detailed parser logs
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     
     try:
         game_loop = GameLoop()

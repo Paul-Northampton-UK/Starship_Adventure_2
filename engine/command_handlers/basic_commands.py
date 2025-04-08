@@ -82,12 +82,33 @@ def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent, display
         for item_id in sorted(worn_items):
             item_name = game_state._get_object_name(item_id)
             item_data = game_state.get_object_by_id(item_id)
+            detail_line = f"    - {item_name}"
             if item_data:
-                area = item_data.get('properties',{}).get('wear_area', 'Unknown Area')
-                layer = item_data.get('properties',{}).get('wear_layer', '?')
-                worn_item_details.append(f"    - {item_name} (Area: {area}, Layer: {layer})")
+                properties = item_data.get('properties', {})
+                area = properties.get('wear_area', 'Unknown Area')
+                layer = properties.get('wear_layer', '?')
+                detail_line += f" (Area: {area}, Layer: {layer})"
+                
+                # --- ADDED: Check if worn item is storage and display contents ---
+                if properties.get('is_storage'):
+                    container_state = game_state.get_object_state(item_id) or {}
+                    contents = container_state.get('storage_contents', [])
+                    if contents:
+                        detail_line += ":\n"
+                        for content_id in sorted(contents):
+                            content_name = game_state._get_object_name(content_id)
+                            detail_line += f"      - {content_name}\n" # Indent contents
+                    else:
+                        detail_line += " (empty)\n"
+                else:
+                     detail_line += "\n" # Add newline if not storage
+                # --- END ADDED --- 
+                    
             else:
-                worn_item_details.append(f"    - {item_id} (Data missing!)")
+                detail_line += " (Data missing!)\n"
+                
+            worn_item_details.append(detail_line.strip()) # Use strip() to remove trailing newline if added
+
         if worn_item_details:
             output += "\n".join(worn_item_details) + "\n"
         else:

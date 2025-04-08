@@ -400,9 +400,36 @@ def gather_data_from_fields(window: sg.Window, manager: ObjectDataManager) -> tu
         # (Gather boolean properties)
         properties['is_takeable'] = values[KEY_PROP_IS_TAKEABLE]
         properties['is_interactive'] = values[KEY_PROP_IS_INTERACTIVE]
-        # ... gather ALL boolean props ...
+        properties['is_dangerous'] = values.get(KEY_PROP_IS_DANGEROUS, False)
+        properties['is_destroyable'] = values.get(KEY_PROP_IS_DESTROYABLE, False)
+        properties['is_storage'] = values[KEY_PROP_IS_STORAGE]
+        properties['is_operational'] = values.get(KEY_PROP_IS_OPERATIONAL, False)
+        properties['is_edible'] = values.get(KEY_PROP_IS_EDIBLE, False)
+        properties['is_weapon'] = values.get(KEY_PROP_IS_WEAPON, False)
+        properties['is_movable'] = values.get(KEY_PROP_IS_MOVABLE, False)
         properties['is_wearable'] = values[KEY_PROP_IS_WEARABLE]
-        # ... gather rest of boolean props ...
+        properties['is_flammable'] = values.get(KEY_PROP_IS_FLAMMABLE, False)
+        properties['is_toxic'] = values.get(KEY_PROP_IS_TOXIC, False)
+        properties['is_food'] = values.get(KEY_PROP_IS_FOOD, False)
+        properties['is_cookable'] = values.get(KEY_PROP_IS_COOKABLE, False)
+        properties['is_consumable'] = values.get(KEY_PROP_IS_CONSUMABLE, False)
+        properties['has_durability'] = values.get(KEY_PROP_HAS_DURABILITY, False)
+        properties['is_hackable'] = values.get(KEY_PROP_IS_HACKABLE, False)
+        properties['is_hidden'] = values.get(KEY_PROP_IS_HIDDEN, False)
+        properties['is_rechargeable'] = values.get(KEY_PROP_IS_RECHARGEABLE, False)
+        properties['is_fuel_source'] = values.get(KEY_PROP_IS_FUEL_SOURCE, False)
+        properties['regenerates'] = values.get(KEY_PROP_REGENERATES, False)
+        properties['is_modular'] = values.get(KEY_PROP_IS_MODULAR, False)
+        properties['is_stored'] = values.get(KEY_PROP_IS_STORED, False)
+        properties['is_transferable'] = values.get(KEY_PROP_IS_TRANSFERABLE, False)
+        properties['is_activatable'] = values.get(KEY_PROP_IS_ACTIVATABLE, False)
+        properties['is_networked'] = values.get(KEY_PROP_IS_NETWORKED, False)
+        properties['requires_power'] = values.get(KEY_PROP_REQUIRES_POWER, False)
+        properties['requires_item'] = values.get(KEY_PROP_REQUIRES_ITEM, False)
+        properties['has_security'] = values.get(KEY_PROP_HAS_SECURITY, False)
+        properties['is_sensitive'] = values.get(KEY_PROP_IS_SENSITIVE, False)
+        properties['is_fragile'] = values.get(KEY_PROP_IS_FRAGILE, False)
+        properties['is_secret'] = values.get(KEY_PROP_IS_SECRET, False)
         properties['can_store_liquids'] = values[KEY_PROP_CAN_STORE_LIQUIDS]
 
         # (Gather numeric/string properties)

@@ -335,6 +335,32 @@ class GameState:
             
         return found_id
 
+    def find_container_id_by_name(self, container_name: str) -> Optional[str]:
+        """Finds a container object ID by name/synonym, searching location, worn items, and inventory."""
+        normalized_name = container_name.lower().strip()
+        logging.debug(f"Searching for container '{normalized_name}' in location, worn, and inventory.")
+
+        # 1. Search current location (room/area)
+        found_id = self._find_object_id_by_name_in_location(normalized_name)
+        if found_id:
+            logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in location.")
+            return found_id
+
+        # 2. Search worn items
+        found_id = self._find_object_id_by_name_worn(normalized_name)
+        if found_id:
+            logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in worn items.")
+            return found_id
+
+        # 3. Search inventory
+        found_id = self._find_object_id_by_name_in_inventory(normalized_name)
+        if found_id:
+            logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in inventory.")
+            return found_id
+        
+        logging.debug(f"Container '{normalized_name}' not found in location, worn, or inventory.")
+        return None
+
     def take_object(self, object_id: str) -> str:
         """Moves an object from the location to the player's hand slot."""
         if self.hand_slot is not None:
