@@ -48,18 +48,24 @@
 ✅ Handle plural items in responses
 ✅ Display location description automatically on move
 ✅ Parse two-word diagonal directions (e.g., "north west")
+   - TODO: Implement 'put_fail_incomplete' response/logic.
+   - TODO: Implement 'take_from_fail_incomplete' response/logic.
+   - TODO: Refine 'take_from_fail_ambiguous' logic/response.
+   - TODO: Refine wear/remove responses for different item types (e.g., "slip on" vs "wear" vs "put on").
 
 🎮 Gameplay Mechanics
 
 ✅ Define object structure (ID, name, description, size, weight, visibility, etc.)
-✅ Build inventory management system (Basic implementation: take, drop, wear, remove)
-🔄 Backpack system with size/weight constraints
+✅ Build inventory management system (Basic implementation: take, drop, wear, remove, put, take_from)
+✅ Backpack system with size/weight constraints -> (Partially addressed by container logic, capacity check TODO)
 ✅ Carried object tracking (In hand slot / worn items)
 🔄 Implement environmental mechanics:
   - Room-specific oxygen, temperature, gravity, pressure
   - Hazards (e.g. suffocation, overheating, radiation)
   - Handle death scenarios and narrator warnings
-🔄 Object container logic (e.g. batteries inside torch, items inside locker)
+✅ Object container logic (Core logic implemented: put items in, take items out, wear items from worn containers)
+   - TODO: Implement container capacity checks (size/weight/count).
+   - TODO: Implement container open/close states and check in commands.
 🔄 Enable object activation, assembly, disassembly
 
 🧩 Puzzle & Story System
@@ -124,6 +130,8 @@
 ✅ Docstrings and inline comments throughout
 ✅ Error handling for all I/O and YAML parsing (Basic handling implemented)
 ✅ Clean modular codebase with reusable components (Ongoing effort)
+   - TODO: Decide if wearing items directly from *held* containers should be allowed.
+   - TODO: Review necessity/usage of general GameState.inventory list.
 
 🛸 Future Features (Optional / Phase 2+)
 

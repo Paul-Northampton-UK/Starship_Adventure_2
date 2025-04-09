@@ -68,10 +68,35 @@ def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent, display
 
     output = "You check your belongings.\n"
 
-    # Display item in hand
+    # Display item(s) in hand
     if hand_slot:
-        hand_item_name = game_state._get_object_name(hand_slot)
-        output += f"  Holding: {hand_item_name}\n"
+        held_items_lines = []
+        for held_id in hand_slot:
+            item_name = game_state._get_object_name(held_id)
+            item_data = game_state.get_object_by_id(held_id)
+            detail_line = f"  Holding: {item_name}"
+            
+            # --- ADDED: Check if held item is storage and display contents ---
+            if item_data and item_data.get('properties', {}).get('is_storage'):
+                 container_state = game_state.get_object_state(held_id) or {}
+                 contents = container_state.get('contains', [])
+                 if contents:
+                     detail_line += ":"
+                     held_items_lines.append(detail_line) # Add the container line first
+                     for content_id in sorted(contents):
+                         content_name = game_state._get_object_name(content_id)
+                         held_items_lines.append(f"    - {content_name}") # Indent contents
+                 else:
+                     detail_line += " (empty)"
+                     held_items_lines.append(detail_line)
+            else:
+                 held_items_lines.append(detail_line) # Append non-container item line
+            # --- END ADDED --- 
+            
+        if held_items_lines:
+            output += "\n".join(held_items_lines) + "\n"
+        else: # Should not happen if hand_slot is not empty, but safety check
+            output += "  Holding: Nothing\n"
     else:
         output += "  Holding: Nothing\n"
 
@@ -92,22 +117,25 @@ def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent, display
                 # --- ADDED: Check if worn item is storage and display contents ---
                 if properties.get('is_storage'):
                     container_state = game_state.get_object_state(item_id) or {}
-                    contents = container_state.get('storage_contents', [])
+                    # Use the correct 'contains' key
+                    contents = container_state.get('contains', [])
                     if contents:
                         detail_line += ":\n"
                         for content_id in sorted(contents):
                             content_name = game_state._get_object_name(content_id)
-                            detail_line += f"      - {content_name}\n" # Indent contents
+                            # Make sure indentation is correct for nested display
+                            detail_line += f"        - {content_name}\n" # Adjusted indentation
+                        detail_line = detail_line.rstrip() # Remove trailing newline from last item
                     else:
-                        detail_line += " (empty)\n"
-                else:
-                     detail_line += "\n" # Add newline if not storage
+                        detail_line += " (empty)"
+                # No need for an explicit newline adding here, handled by join later
+                # else:
+                #      detail_line += "\n" # Add newline if not storage
                 # --- END ADDED --- 
-                    
             else:
-                detail_line += " (Data missing!)\n"
+                detail_line += " (Data missing!)"
                 
-            worn_item_details.append(detail_line.strip()) # Use strip() to remove trailing newline if added
+            worn_item_details.append(detail_line) # Append without extra newline
 
         if worn_item_details:
             output += "\n".join(worn_item_details) + "\n"
@@ -116,18 +144,19 @@ def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent, display
     else:
         output += "    Nothing\n"
 
-    # Display inventory items
-    output += "  Carrying in Inventory:\n"
-    if inventory:
-        inventory_names = []
-        for item_id in sorted(inventory):
-             inventory_names.append(f"    - {game_state._get_object_name(item_id)}")
-        if inventory_names:
-            output += "\n".join(inventory_names) + "\n"
-        else:
-            output += "    Nothing\n"
-    else:
-        output += "    Nothing\n"
+    # --- REMOVED Inventory Section ---
+    # output += "  Carrying in Inventory:\n"
+    # if inventory:
+    #     inventory_names = []
+    #     for item_id in sorted(inventory):
+    #          inventory_names.append(f"    - {game_state._get_object_name(item_id)}")
+    #     if inventory_names:
+    #         output += "\n".join(inventory_names) + "\n"
+    #     else:
+    #         output += "    Nothing\n"
+    # else:
+    #     output += "    Nothing\n"
+    # --- END REMOVED ---
 
     # Use the passed callback to display output
     display_callback(output.strip())

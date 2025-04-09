@@ -95,12 +95,12 @@ Handles plural items correctly in responses (e.g., "wear boots" vs "wear hat").
 6. Gameplay Systems
 
 Inventory system with:
-
-Carrying limits by weight and size (Pending implementation)
-
-Containers (e.g., backpack) to expand capacity (Pending implementation)
-
-Basic item handling (take, drop, wear, remove) implemented.
+   - Player manages items directly held (up to 2 via `hand_slot`) and items worn.
+   - Items can be stored in container objects (e.g., backpack, locker).
+   - Carrying limits by weight and size (Pending implementation).
+   - Containers (e.g., backpack) logic implemented for storing/retrieving items, but capacity limits/expansion are Pending implementation.
+   - Item handling commands implemented: `take`, `drop`, `wear`, `remove`, `put [item] in [container]`, `take [item] from [container]`.
+   - Note: A general `inventory` list exists in the code but is not currently used for core item interactions.
 
 Environmental mechanics:
 

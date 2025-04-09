@@ -171,17 +171,22 @@ class NLPCommandParser:
         preposition: Optional[str] = None
         preposition_token: Optional[spacy.tokens.Token] = None
         put_structure_success = False
+        take_from_structure_success = False # New flag
 
-        # 1. Attempt PUT Structure Parsing FIRST if PUT is likely
-        if CommandIntent.PUT in possible_intents and action_verb_token:
-            logging.debug("Attempting to parse PUT structure (verb obj1 prep obj2)")
-            # Find the first preposition after the verb
+        # Define prepositions to look for
+        target_prepositions = {"in", "on", "into", "onto", "from"}
+
+        # 1. Attempt Structure Parsing (PUT or TAKE_FROM) if verb suggests it
+        likely_intents = {CommandIntent.PUT, CommandIntent.TAKE_FROM}
+        if any(intent in possible_intents for intent in likely_intents) and action_verb_token:
+            logging.debug("Attempting to parse structured command (verb obj1 prep obj2)")
+            # Find the first relevant preposition after the verb
             for adp in adpositions:
-                if adp.i > action_verb_token.i:
+                if adp.i > action_verb_token.i and adp.text.lower() in target_prepositions:
                     preposition_token = adp
                     preposition = adp.text.lower()
-                    logging.debug(f"Preposition found: '{preposition}' at index {adp.i}")
-                    break # Use the first preposition found after the verb
+                    logging.debug(f"Relevant preposition found: '{preposition}' at index {adp.i}")
+                    break # Use the first relevant preposition
 
             if preposition_token:
                  # Extract primary target (tokens between verb and preposition)
@@ -204,21 +209,32 @@ class NLPCommandParser:
                            secondary_target_id = game_object_ents[secondary_target].ent_id_
                            logging.debug(f"PUT structure: Secondary target matched entity ID: {secondary_target_id}")
 
-                 # Check if we successfully got both targets for the PUT structure
+                 # Check if we successfully got both targets for the structure
                  if primary_target and secondary_target:
-                      put_structure_success = True
-                      logging.debug(f"PUT structure successfully parsed: T1='{primary_target}' (ID: {target_object_id}), P='{preposition}', T2='{secondary_target}' (ID: {secondary_target_id})")
-                 else:
-                      logging.warning("PUT structure parsing failed: Missing primary or secondary target after finding preposition.")
-                      # Reset targets if PUT structure failed despite finding a preposition
+                      structure_parsed = True # General flag
+                      # Determine intent based on verb and preposition
+                      verb_lemma = action_verb_token.lemma_
+                      if verb_lemma in ["put", "place", "insert", "store"] and preposition != "from":
+                           put_structure_success = True
+                           logging.debug(f"PUT structure successfully parsed: T1='{primary_target}', P='{preposition}', T2='{secondary_target}'")
+                      elif verb_lemma in ["take", "get", "retrieve"] and preposition == "from":
+                           take_from_structure_success = True
+                           logging.debug(f"TAKE_FROM structure successfully parsed: T1='{primary_target}', P='{preposition}', T2='{secondary_target}'")
+                      else:
+                           logging.warning(f"Parsed verb-prep structure ('{verb_lemma}' ... '{preposition}'), but combination doesn't match known PUT/TAKE_FROM patterns.")
+                           structure_parsed = False # Treat as failed structure
+
+                 if not structure_parsed:
+                      logging.warning("Structured command parsing failed: Missing primary or secondary target after finding preposition.")
+                      # Reset targets if structure failed despite finding a preposition
                       primary_target, target_object_id, secondary_target, secondary_target_id, preposition = None, None, None, None, None
             else:
-                 logging.debug("PUT intent likely, but no preposition found after verb. Will proceed to fallback target extraction.")
+                 logging.debug("PUT/TAKE_FROM intent likely, but no relevant preposition found after verb. Proceeding to fallback.")
         else:
-            logging.debug("Skipping PUT structure check (PUT not likely or no action verb).")
+            logging.debug("Skipping structured command check (PUT/TAKE_FROM not likely or no action verb).")
 
-        # 2. Fallback Target Extraction (Only run if PUT structure parsing did NOT succeed)
-        if not put_structure_success:
+        # 2. Fallback Target Extraction (Only run if structured parsing did NOT succeed)
+        if not put_structure_success and not take_from_structure_success:
             logging.debug("Using general fallback target extraction logic.")
             # Ensure targets are reset before fallback
             primary_target, target_object_id, secondary_target, secondary_target_id, preposition = None, None, None, None, None
@@ -245,32 +261,53 @@ class NLPCommandParser:
 
         # 3. Intent Scoring Refinement
         if put_structure_success:
-            possible_intents[CommandIntent.PUT] = possible_intents.get(CommandIntent.PUT, 0) + 100
+            possible_intents[CommandIntent.PUT] = possible_intents.get(CommandIntent.PUT, 0) + 1000 # Strong boost
+        elif take_from_structure_success:
+            possible_intents[CommandIntent.TAKE_FROM] = possible_intents.get(CommandIntent.TAKE_FROM, 0) + 1000 # Strong boost
         # Add other scoring refinements here...
 
         # 4. Determine Final Intent
         final_intent = CommandIntent.UNKNOWN
         if possible_intents:
-            # Give PUT a massive bonus if its structure was successfully parsed
-            if put_structure_success:
-                 possible_intents[CommandIntent.PUT] = possible_intents.get(CommandIntent.PUT, 0) + 1000 # Strong boost
-
             sorted_intents = sorted(possible_intents.items(), key=lambda item: item[1], reverse=True)
-            logging.debug(f"Intent scores after potential PUT boost: {sorted_intents}")
+            logging.debug(f"Intent scores after potential PUT/TAKE_FROM boost: {sorted_intents}")
 
             if sorted_intents:
-                 final_intent = sorted_intents[0][0]
-                 logging.debug(f"Highest scored intent: {final_intent}")
+                 highest_intent = sorted_intents[0][0]
+                 logging.debug(f"Highest scored intent initially: {highest_intent}")
 
-                 # Sanity check: If PUT is chosen but structure failed, maybe revert?
-                 # Or trust the scoring? Let's trust the scoring for now, the boost handles priority.
-                 # if final_intent == CommandIntent.PUT and not put_structure_success:
-                 #    logging.warning("PUT intent scored highest BUT structure parsing failed/skipped. Is this correct?")
-
-            else: # Should not happen if possible_intents was not empty, but defensive check
+                 # --- Override logic based on structure parsing success --- 
+                 if highest_intent == CommandIntent.TAKE_FROM and not take_from_structure_success:
+                     logging.debug("TAKE_FROM scored highest, but structure parsing failed. Overriding to TAKE.")
+                     # We should only override if TAKE was actually possible based on the verb
+                     if CommandIntent.TAKE in possible_intents:
+                          final_intent = CommandIntent.TAKE
+                     else: # If TAKE wasn't possible, TAKE_FROM was likely wrong anyway
+                          logging.warning("TAKE_FROM structure failed, and TAKE was not a possible intent. Setting to UNKNOWN.")
+                          final_intent = CommandIntent.UNKNOWN 
+                          
+                 elif highest_intent == CommandIntent.PUT and not put_structure_success:
+                     logging.debug("PUT scored highest, but structure parsing failed. Overriding to DROP.")
+                     # Override to DROP, assuming 'put X' without structure means 'drop X'
+                     # (The check for 'put down' is implicitly handled as structure would fail)
+                     if CommandIntent.DROP in possible_intents:
+                          final_intent = CommandIntent.DROP
+                     else: # If DROP wasn't possible, PUT was likely wrong anyway
+                          logging.warning("PUT structure failed, and DROP was not a possible intent. Setting to UNKNOWN.")
+                          final_intent = CommandIntent.UNKNOWN 
+                          
+                 else:
+                     # Structure parsing matched the highest intent, or it's a different intent
+                     final_intent = highest_intent 
+                     # Log the warning if structure failed but wasn't overridden (e.g., PUT won but DROP wasn't possible)
+                     if final_intent == CommandIntent.TAKE_FROM and not take_from_structure_success:
+                         logging.warning("TAKE_FROM intent chosen BUT structure parsing failed/skipped.")
+                     if final_intent == CommandIntent.PUT and not put_structure_success:
+                         logging.warning("PUT intent chosen BUT structure parsing failed/skipped.")
+                         
+            else: 
                  logging.warning("Intent scoring yielded no results despite initial possibilities.")
                  final_intent = CommandIntent.UNKNOWN
-
         else:
             logging.warning("No possible intents identified from verbs/keywords.")
             final_intent = CommandIntent.UNKNOWN
@@ -284,21 +321,6 @@ class NLPCommandParser:
                     action_verb = token.text.lower()
                     logging.debug(f"Guessed action verb '{action_verb}' from matched intent keyword.")
                     break
-
-        # 6. Handle Overrides (like put -> DROP) *AFTER* final intent is chosen
-        # Check if 'put' was used, the final intent is NOT PUT, and it wasn't 'put down'
-        if action_verb_token and action_verb_token.lemma_ == "put" and final_intent != CommandIntent.PUT and "down" not in command_lower:
-             # If the PUT structure was NOT successfully parsed (meaning no clear obj1 prep obj2)
-             # then re-interpret 'put X' as DROP.
-             if not put_structure_success:
-                  logging.debug("Re-interpreting 'put X' (without 'down' or clear container structure) as DROP.")
-                  final_intent = CommandIntent.DROP
-                  # Keep original targets from fallback, assuming it's 'drop [target]'
-             # else:
-                  # If PUT structure WAS successful but somehow PUT intent wasn't chosen (unlikely with boost),
-                  # it's ambiguous. Maybe leave as UNKNOWN or keep the scored intent? Let's stick with scored intent for now.
-                  # logging.debug("'put X in/on Y' structure parsed, but final intent wasn't PUT. Keeping scored intent.")
-                  # pass # Keep the final_intent decided by scoring
 
         # 7. Build the final ParsedIntent
         logging.info(f"Final Parsed Intent: {final_intent}, Action: {action_verb}, Target: '{primary_target}' (ID: {target_object_id}), Secondary: '{secondary_target}' (ID: {secondary_target_id}), Prep: {preposition}")

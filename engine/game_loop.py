@@ -12,7 +12,7 @@ from .nlp import parser
 
 # --- Import the new handler functions ---
 from .command_handlers.movement import handle_move, get_location_description
-from .command_handlers.item_actions import handle_take, handle_drop, handle_put
+from .command_handlers.item_actions import handle_take, handle_drop, handle_put, handle_take_from
 from .command_handlers.equipment import handle_equip
 from .command_handlers.basic_commands import handle_look, handle_inventory, handle_quit, handle_unknown
 # --------------------------------------
@@ -238,7 +238,10 @@ class GameLoop:
                         return kwargs.get("description", "(Description missing)") # Return pre-formatted description
                     else:
                          # Format other responses using the key and kwargs
-                         return self.get_formatted_response(key, **kwargs)
+                         logging.debug(f"Calling get_formatted_response with key='{key}', kwargs={kwargs}") # Log before call
+                         formatted_message = self.get_formatted_response(key, **kwargs)
+                         logging.debug(f"Received formatted message: '{formatted_message}'") # Log after call
+                         return formatted_message
                 else:
                     # Handler returned something unexpected
                     logging.error(f"Handler for {intent} returned unexpected result type: {handler_result}")
@@ -258,15 +261,16 @@ class GameLoop:
     def _setup_intent_map(self):
         """Initializes the mapping from CommandIntent to imported handler functions."""
         self.intent_map = {
+            CommandIntent.UNKNOWN: handle_unknown,
             CommandIntent.MOVE: handle_move,
             CommandIntent.LOOK: handle_look,
             CommandIntent.TAKE: handle_take,
             CommandIntent.DROP: handle_drop,
-            CommandIntent.PUT: handle_put,
             CommandIntent.INVENTORY: handle_inventory,
-            CommandIntent.EQUIP: handle_equip,
             CommandIntent.QUIT: handle_quit,
-            CommandIntent.UNKNOWN: handle_unknown,
+            CommandIntent.EQUIP: handle_equip,
+            CommandIntent.PUT: handle_put,
+            CommandIntent.TAKE_FROM: handle_take_from,
             # Add other intents here and map them to appropriate handlers 
             # (e.g., handle_use, handle_interact, etc.) when implemented.
         }
@@ -277,14 +281,16 @@ class GameLoop:
         response_list = self.responses_data.get(key, [])
         if not response_list:
             logging.warning(f"No responses found for key: '{key}'")
-            # Provide a generic fallback if a specific key is missing
             return f"(Action '{key}' occurred, but response text is missing.)"
             
         import random
         chosen_template = random.choice(response_list)
+        logging.debug(f"[get_formatted_response] Key: '{key}', Chosen Template: '{chosen_template}'") # Log chosen template
         
         try:
-            return chosen_template.format(**kwargs)
+            formatted_message = chosen_template.format(**kwargs)
+            logging.debug(f"[get_formatted_response] Formatted Message: '{formatted_message}'") # Log result
+            return formatted_message
         except KeyError as e:
             logging.error(f"Missing placeholder '{e}' in response template for key '{key}': '{chosen_template}'")
             # Return the template with a warning if formatting fails

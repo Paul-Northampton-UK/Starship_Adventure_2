@@ -145,6 +145,14 @@ remove_fail_hands_full_plural:
   - "Your hands are full (holding the {held_item_name}). You need to drop it or put it away before taking off the {item_name}."
   - "You need empty hands to take off the {item_name}."
 
+# --- New Keys for Wearing from Container ---
+wear_from_container_success_singular:
+  - "You take the {item_name} from the {container_name} and put it on."
+  - "After retrieving it from the {container_name}, you equip the {item_name}."
+wear_from_container_success_plural:
+  - "You take the {item_name} from the {container_name} and put them on."
+  - "After retrieving them from the {container_name}, you equip the {item_name}."
+
 # --- Containers (Placeholders) ---
 store_success:
   - "You put the {item_name} in the {container_name}."
@@ -168,6 +176,25 @@ get_from_fail_not_in_container:
 
 get_from_fail_container_closed:
    - "You can't get anything from the {container_name} while it's closed."
+
+# Add specific PUT responses (can reuse store_success for now)
+
+# PUT success keys (ensure no stray characters):
+put_success_singular: "You put the {item_name} in the {container_name}."
+# Define as a list with one item to hopefully fix parsing
+put_success_plural:
+  - "You put the {item_name} in the {container_name}."
+
+# TODO: Add put_fail_incomplete (for commands missing item/container) and 
+#       put_fail_capacity (check container limits).
+
+put_fail_ambiguous: "Which {item_name} do you mean?"
+put_fail_container_closed: "You need to open the {container_name} first."
+put_fail_not_holding: "You aren't holding anything called '{item_name}'."
+put_fail_not_container: "You can't put things inside the {container_name}."
+put_fail_container_not_found: "You don't see a {container_name} here to put things in."
+put_fail_not_holding_anything: "You aren't holding anything to put away."
+
 
 # --- Look / Examine ---
 look_success_room: # Placeholder for detailed room look
@@ -209,3 +236,26 @@ profanity_response: # Responses when player swears (English only)
   - "Oh, I'm sorry. Did the middle of my sentence interrupt the beginning of yours?"
   - "You bring everyone a lot of joy... when you leave the room."
   - "I believe in lifting people, not tearing them down. Let's find a way to understand each other."
+
+error_internal:
+  - "Something went wrong internally ({action}). Please report this!"
+  - "An unexpected error occurred ({action})."
+  - "Whoops, hit a snag processing that ({action})."
+
+# --- New Keys for TAKE_FROM Intent ---
+take_from_success_singular:
+  - "You take the {item_name} from the {container_name}."
+take_from_success_plural:
+  - "You take the {item_name} from the {container_name}."
+take_from_fail_container_not_found:
+  - "You don't see a {container_name} here to take things from."
+take_from_fail_not_container: # If target isn't storage
+  - "You can't take things out of the {container_name}."
+take_from_fail_not_in_container:
+  - "You don't find a {item_name} inside the {container_name}."
+take_from_fail_ambiguous:
+  - "Which {item_name} do you want to take from the {container_name}?"
+take_from_fail_hands_full:
+  - "You need free hands to take the {item_name} from the {container_name}. You're holding the {held_item_name}."
+# TODO: Add take_from_fail_container_closed
+# TODO: Add take_from_fail_incomplete

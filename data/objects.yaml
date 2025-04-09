@@ -10,7 +10,7 @@ objects:
     edges from long shifts and countless decisions. Integrated arm panels house faded
     control interfaces, now dormant. A small indentation at the base suggests biometric
     access, long inactive. Despite the silence, the chair still carries the weight
-    of authority—it feels like it’s waiting for someone to take command.
+    of authority—it feels like it's waiting for someone to take command.
   is_plural: false
   synonyms: []
   initial_state: true
@@ -325,7 +325,7 @@ objects:
   description: The backpack is compact but rugged, built from dark, weather-resistant
     synthweave with reinforced seams and a low-profile frame. Padded straps are shaped
     for comfort during long hauls, with a magnetic chest clasp for extra stability.
-    A faded emblem on the top flap hints at a well known organization. It’s light,
+    A faded emblem on the top flap hints at a well known organization. It's light,
     practical, and clearly designed for survival in space.
   synonyms:
   - rucksack
@@ -440,7 +440,7 @@ objects:
     flexible nano-fabric, its surface dull and lightly textured. A narrow visor shades
     the eyes, embedded with a faint, inactive thread of circuitry along the brim.
     The inner band is lined with soft mesh for comfort and grip. Stitched into the
-    side is a worn patch—just a symbol now, the meaning currently lost on you. It’s
+    side is a worn patch—just a symbol now, the meaning currently lost on you. It's
     the kind of cap made to be worn, not admired.
   is_plural: false
   synonyms:
@@ -616,7 +616,7 @@ objects:
     thinned at the toes and lightly frayed along the seams. The soles are flexible,
     with a faint tread pattern designed for quiet steps on smooth flooring. Faint
     discoloration marks the insides, shaped by repeated use. A small, faded label
-    stitched inside reads “Deck Standard – Rest Use Only.” Despite their plainness,
+    stitched inside reads "Deck Standard – Rest Use Only." Despite their plainness,
     there's a quiet familiarity to them—functional, personal, and utterly unremarkable.
   is_plural: true
   synonyms:
@@ -641,7 +641,7 @@ objects:
     durability:
     range:
     wear_area: feet
-    wear_layer: 2
+    wear_layer: 1
   interaction:
     required_state: []
     required_items: []

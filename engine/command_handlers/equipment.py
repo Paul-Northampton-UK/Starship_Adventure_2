@@ -27,14 +27,44 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
 
     if is_wearing:
         object_id_to_wear = None
+        source_container_id = None # Track if found in a container
+
         # Check hand slot FIRST
-        held_item_id = game_state.hand_slot
-        if held_item_id and item_matches_name(game_state, held_item_id, target_item_name):
-            object_id_to_wear = held_item_id
+        match_in_hand = None
+        for held_id in game_state.hand_slot:
+            if item_matches_name(game_state, held_id, target_item_name):
+                match_in_hand = held_id
+                break # Found a match in hand
+                
+        if match_in_hand:
+            object_id_to_wear = match_in_hand
             logging.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) in hand slot.")
         
-        # If not in hand, check inventory
+        # If not in hand, check worn containers SECOND
         if not object_id_to_wear:
+            logging.debug(f"[handle_equip] Item not in hand slot. Checking worn containers...")
+            for worn_container_id in game_state.worn_items:
+                container_data = game_state.get_object_by_id(worn_container_id)
+                if container_data and container_data.get('properties', {}).get('is_storage'):
+                    container_state = game_state.get_object_state(worn_container_id)
+                    if container_state and 'contains' in container_state:
+                        logging.debug(f"[handle_equip] Checking container {worn_container_id} with contents: {container_state['contains']}")
+                        # Find item within container's 'contains' list
+                        for item_id_in_container in container_state['contains']:
+                            if item_matches_name(game_state, item_id_in_container, target_item_name):
+                                object_id_to_wear = item_id_in_container
+                                source_container_id = worn_container_id # Remember where we found it
+                                logging.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) inside worn container '{source_container_id}'.")
+                                break # Found the item in this container
+                        if object_id_to_wear:
+                            break # Found the item, stop checking containers
+                    else:
+                        logging.debug(f"[handle_equip] Worn item {worn_container_id} is storage but has no state or 'contains' key.")
+                # else: Not storage or no data, skip
+
+        # If not in hand OR worn containers, check inventory THIRD
+        if not object_id_to_wear:
+            logging.debug(f"[handle_equip] Item not in hand or worn containers. Checking inventory...")
             inventory_item_id = game_state._find_object_id_by_name_in_inventory(target_item_name)
             if inventory_item_id:
                 object_id_to_wear = inventory_item_id
@@ -42,8 +72,8 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
 
         # Now, attempt to wear if we found an ID
         if object_id_to_wear:
-            # Get object data
-            object_data = game_state.objects_data.get(object_id_to_wear)
+            # Get object data (we need this regardless of source)
+            object_data = game_state.get_object_by_id(object_id_to_wear)
             if not object_data:
                 logging.error(f"[handle_equip] Wear target ID '{object_id_to_wear}' has no data!")
                 return ("error_internal", {"action": "wear data missing"})
@@ -52,16 +82,37 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
             is_plural = object_data.get('is_plural', False)
             item_name_actual = object_data.get('name', 'unknown object')
             
-            result_message = game_state.wear_item(object_id_to_wear)
-            logging.debug(f"[handle_equip] wear_item result: {result_message}")
+            result_message = ""
+            if source_container_id:
+                # Call the new GameState method for wearing from a container
+                result_message = game_state.wear_item_from_container(object_id_to_wear, source_container_id)
+                logging.debug(f"[handle_equip] wear_item_from_container result: {result_message}")
+            else:
+                # Call the original GameState method for wearing from hand/inventory
+                result_message = game_state.wear_item(object_id_to_wear)
+                logging.debug(f"[handle_equip] wear_item result: {result_message}")
             
-            # Map message to key/kwargs
+            # Map message to key/kwargs (using item_name_actual identified above)
             if "You put on the" in result_message:
-                key = "wear_success_plural" if is_plural else "wear_success_singular"
-                return (key, {"item_name": item_name_actual})
+                 key = "wear_success_plural" if is_plural else "wear_success_singular"
+                 return (key, {"item_name": item_name_actual})
+            # Add check for the specific success message from wear_item_from_container
+            elif "You take the" in result_message and "and put it on" in result_message:
+                 key = "wear_from_container_success_plural" if is_plural else "wear_from_container_success_singular"
+                 # We need the container name for the response template
+                 container_name = game_state._get_object_name(source_container_id) # Get container name from ID
+                 return (key, {"item_name": item_name_actual, "container_name": container_name})
             elif "cannot wear the" in result_message and "occupies that space" in result_message:
-                 # TODO: Extract conflicting item name properly from GameState return
-                 conflicting_item_name = "something else" # Placeholder
+                 # Extract conflicting item name from the message like:
+                 # "You cannot wear the {item_name} there; you are already wearing the {worn_item_name} which occupies that space/layer."
+                 try:
+                    # Find the part after "wearing the " and before " which occupies"
+                    start_index = result_message.index("wearing the ") + len("wearing the ")
+                    end_index = result_message.index(" which occupies that space/layer.")
+                    conflicting_item_name = result_message[start_index:end_index]
+                 except ValueError:
+                    logging.warning(f"Could not extract conflicting item name from message: {result_message}")
+                    conflicting_item_name = "something else" # Fallback
                  key = "wear_fail_conflict_plural" if is_plural else "wear_fail_conflict_singular"
                  return (key, {"item_name": item_name_actual, "other_item_name": conflicting_item_name})
             elif "cannot wear the" in result_message:
@@ -69,11 +120,14 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
                  return (key, {"item_name": item_name_actual})
             elif "isn't configured correctly" in result_message:
                  return ("error_internal", {"action": "wear config"})
+            # Handle potential failure from wear_item_from_container (e.g., container not found?)
+            elif "Cannot find container" in result_message: # Example - adjust based on GameState implementation
+                 return ("error_internal", {"action": "wear container missing"})
             else:
-                 logging.warning(f"Unexpected message from wear_item: {result_message}")
-                 return ("error_internal", {"action": "wear"})
+                 logging.warning(f"Unexpected message from wear attempt: {result_message}")
+                 return ("error_internal", {"action": "wear general fail"})
         else:
-            # If not found in hands or inventory, check if already worn
+            # If not found anywhere (hands, containers, inventory), check if already worn
             worn_item_id = game_state._find_object_id_by_name_worn(target_item_name)
             if worn_item_id:
                  # Get data for already worn item to check plural status
@@ -94,7 +148,12 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
             inventory_item_id = game_state._find_object_id_by_name_in_inventory(target_item_name)
             if inventory_item_id:
                  return ("remove_fail_not_wearing", {"item_name": target_item_name}) # Placeholder
-            elif game_state.hand_slot and item_matches_name(game_state, game_state.hand_slot, target_item_name):
+            match_in_hand = None
+            for held_id in game_state.hand_slot:
+                 if item_matches_name(game_state, held_id, target_item_name):
+                      match_in_hand = held_id
+                      break
+            if match_in_hand:
                  return ("remove_fail_not_wearing", {"item_name": target_item_name}) # Placeholder
             else:
                 return ("remove_fail_not_wearing", {"item_name": target_item_name}) # Placeholder
@@ -116,11 +175,11 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
             key = "remove_success_plural" if is_plural else "remove_success_singular"
             return (key, {"item_name": item_name_actual})
         elif "hands are full" in result_message:
-            held_item_name = "something" 
+            held_items_str = "something you are holding"
             if game_state.hand_slot:
-                 held_item_name = game_state._get_object_name(game_state.hand_slot) 
+                 held_items_str = " and ".join([game_state._get_object_name(item) or "something" for item in game_state.hand_slot])
             key = "remove_fail_hands_full_plural" if is_plural else "remove_fail_hands_full_singular"
-            return (key, {"item_name": item_name_actual, "held_item_name": held_item_name})
+            return (key, {"item_name": item_name_actual, "held_item_name": held_items_str})
         else:
             logging.warning(f"Unexpected message from remove_item: {result_message}")
             return ("error_internal", {"action": "remove"})

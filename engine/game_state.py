@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Set, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from enum import Enum
 import json
 from datetime import datetime, timedelta
@@ -32,16 +32,16 @@ class GameState:
     objects_data: Dict[str, Any]  # Added objects_data
     power_state: PowerState
     current_area_id: Optional[str] = None
-    inventory: List[str] = None  # List of object IDs
-    hand_slot: Optional[str] = None  # Added hand_slot
-    worn_items: List[str] = None  # Added worn_items
-    visited_rooms: Set[str] = None  # Set of room IDs
-    visited_areas: Dict[str, List[str]] = None  # Set of area IDs
-    game_flags: Dict[str, bool] = None  # For tracking game progress/puzzles
-    player_status: PlayerStatus = None  # Player's health and status
-    game_time: datetime = None  # Current game time
-    object_states: Dict[str, Dict] = None  # Track object states and positions
-    last_save_time: Optional[datetime] = None  # Last time the game was saved
+    inventory: List[str] = field(default_factory=list)
+    hand_slot: List[str] = field(default_factory=list)
+    worn_items: List[str] = field(default_factory=list)
+    visited_rooms: Set[str] = field(default_factory=set)
+    visited_areas: Dict[str, List[str]] = field(default_factory=dict)
+    game_flags: Dict[str, bool] = field(default_factory=dict)
+    player_status: PlayerStatus = field(default_factory=lambda: PlayerStatus())
+    game_time: datetime = field(default_factory=datetime.now)
+    object_states: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    last_save_time: Optional[datetime] = None
 
     def __post_init__(self):
         """Initialize collections if they're None."""
@@ -343,32 +343,70 @@ class GameState:
         # 1. Search current location (room/area)
         found_id = self._find_object_id_by_name_in_location(normalized_name)
         if found_id:
-            logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in location.")
-            return found_id
+            # Check if the found object is actually a container
+            obj_data = self.get_object_by_id(found_id)
+            if obj_data and obj_data.get('properties', {}).get('is_storage'):
+                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in location.")
+                 return found_id
+            else:
+                 logging.debug(f"Found object '{normalized_name}' in location, but it is not a container.")
+                 # Continue searching other places
 
-        # 2. Search worn items
+        # 2. Search hand slot <--- NEW STEP
+        logging.debug(f"Searching hand slot for container '{normalized_name}'. Hand slot: {self.hand_slot}")
+        for held_id in self.hand_slot:
+             item_data = self.get_object_by_id(held_id)
+             if not item_data:
+                 logging.warning(f"Hand slot item ID '{held_id}' not found in objects data during container search.")
+                 continue
+             # Check if this held item is a container
+             if not item_data.get('properties', {}).get('is_storage'):
+                 continue # Skip non-container items in hand
+                 
+             name = item_data.get('name', '').lower()
+             synonyms = [s.lower() for s in item_data.get('synonyms', [])]
+             
+             if normalized_name == held_id.lower() or normalized_name == name or normalized_name in synonyms:
+                 logging.debug(f"Found container '{normalized_name}' (ID: {held_id}) in hand slot.")
+                 return held_id # Found the container in hand
+
+        # 3. Search worn items
         found_id = self._find_object_id_by_name_worn(normalized_name)
         if found_id:
-            logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in worn items.")
-            return found_id
+            # Check if the found object is actually a container
+            obj_data = self.get_object_by_id(found_id)
+            if obj_data and obj_data.get('properties', {}).get('is_storage'):
+                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in worn items.")
+                 return found_id
+            else:
+                 logging.debug(f"Found object '{normalized_name}' worn, but it is not a container.")
+                 # Continue searching inventory
 
-        # 3. Search inventory
+        # 4. Search inventory
         found_id = self._find_object_id_by_name_in_inventory(normalized_name)
         if found_id:
-            logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in inventory.")
-            return found_id
+            # Check if the found object is actually a container
+            obj_data = self.get_object_by_id(found_id)
+            if obj_data and obj_data.get('properties', {}).get('is_storage'):
+                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in inventory.")
+                 return found_id
+            else:
+                 logging.debug(f"Found object '{normalized_name}' in inventory, but it is not a container.")
+                 # Fall through to not found
         
-        logging.debug(f"Container '{normalized_name}' not found in location, worn, or inventory.")
+        logging.debug(f"Container '{normalized_name}' not found in location, hand slot, worn, or inventory.")
         return None
 
     def take_object(self, object_id: str) -> str:
         """Moves an object from the location to the player's hand slot."""
-        if self.hand_slot is not None:
-            # This check should ideally happen in GameLoop before calling
-            return f"Your hands are full holding the {self._get_object_name(self.hand_slot)}."
+        # Check 1: Hand Capacity
+        if len(self.hand_slot) >= 2:
+            # TODO: Add response key take_fail_hands_full
+            # Try to list items currently held
+            held_items_str = " and ".join([self._get_object_name(item) or "something" for item in self.hand_slot])
+            return f"Your hands are full (holding the {held_items_str})."
 
-        # Check if object exists in location (redundant if GameLoop checks?)
-        # For safety, let's assume GameLoop might not have checked yet.
+        # Check 2: If object exists in location (redundant if GameLoop checks?)
         if self._find_object_id_by_name_in_location(object_id) != object_id:
              # Attempt lookup by ID directly if name search failed but ID was passed
              if self.get_object_by_id(object_id) and self._find_object_id_by_name_in_location(self._get_object_name(object_id)) == object_id:
@@ -392,7 +430,7 @@ class GameState:
             return f"You try to take the {self._get_object_name(object_id)}, but it seems stuck."
 
         # Add object to hand slot
-        self.hand_slot = object_id
+        self.hand_slot.append(object_id)
         object_name = self._get_object_name(object_id)
         logging.info(f"Player took '{object_id}' ({object_name}) into hand_slot from location.")
         return f"You take the {object_name}."
@@ -411,7 +449,7 @@ class GameState:
 
         # Clear hand slot
         object_name = self._get_object_name(self.hand_slot)
-        self.hand_slot = None
+        self.hand_slot.remove(object_id)
         logging.info(f"Player dropped '{object_id}' ({object_name}) from hand_slot into location.")
         return {"success": True, "message": f"You drop the {object_name}."}
 
@@ -429,7 +467,7 @@ class GameState:
         
         # Check 2: Is the player actually holding it or has it in inventory?
         # (The calling function _handle_equip should ensure this, but double check)
-        is_in_hands = (self.hand_slot == object_id)
+        is_in_hands = (object_id in self.hand_slot)
         is_in_inventory = (object_id in self.inventory)
         
         if not is_in_hands and not is_in_inventory:
@@ -466,7 +504,7 @@ class GameState:
         
         # Remove from original location (hand or inventory)
         if is_in_hands:
-            self.hand_slot = None
+            self.hand_slot.remove(object_id)
             logging.info(f"Item '{object_id}' ({item_name}) removed from hand_slot.")
         elif is_in_inventory:
             self.inventory.remove(object_id)
@@ -478,34 +516,100 @@ class GameState:
         
         return f"You put on the {item_name}."
 
-    def remove_item(self, object_id: str) -> str:
-        """Attempts to remove a worn item and place it in the player's hand_slot."""
-        logging.debug(f"Attempting to remove worn item ID: {object_id} into hand_slot.")
-        item_name = self._get_object_name(object_id)
+    def wear_item_from_container(self, item_id_to_wear: str, container_id: str) -> str:
+        """Attempts to wear an item directly from a container's storage."""
+        logging.debug(f"Attempting to wear item '{item_id_to_wear}' from container '{container_id}'")
 
+        # Check 1: Does the item exist?
+        item_data = self.get_object_by_id(item_id_to_wear)
+        if not item_data:
+            logging.error(f"wear_item_from_container: Cannot find data for item ID: {item_id_to_wear}")
+            return "Cannot find data for that item."
+        item_name = item_data.get("name", item_id_to_wear)
+
+        # Check 2: Does the container exist and have state?
+        container_data = self.get_object_by_id(container_id)
+        container_state = self.get_object_state(container_id)
+        if not container_data or not container_state or 'contains' not in container_state:
+            logging.error(f"wear_item_from_container: Container '{container_id}' data or state ('contains') missing.")
+            return "Cannot access the container properly."
+        container_name = container_data.get("name", container_id)
+
+        # Check 3: Is the item actually in the container?
+        if item_id_to_wear not in container_state['contains']:
+            logging.warning(f"wear_item_from_container: Item '{item_id_to_wear}' not found in container '{container_id}' state: {container_state['contains']}")
+            return f"You don't seem to have the {item_name} in the {container_name}."
+
+        # Check 4: Is it wearable?
+        props = item_data.get('properties', {})
+        if not props.get('is_wearable'):
+            return f"You cannot wear the {item_name}."
+            
+        # Check 5: Does it have valid wear configuration?
+        wear_area = props.get('wear_area')
+        wear_layer = props.get('wear_layer')
+        if not wear_area or wear_layer is None:
+             logging.error(f"wear_item_from_container: Item {item_id_to_wear} ({item_name}) is wearable but missing wear_area or wear_layer.")
+             return f"The {item_name} isn't configured correctly for wearing."
+             
+        # Check 6: Does it conflict with currently worn items?
+        for worn_item_id in self.worn_items:
+            worn_item_data = self.get_object_by_id(worn_item_id)
+            if not worn_item_data: continue
+            worn_props = worn_item_data.get('properties', {})
+            worn_area = worn_props.get('wear_area')
+            worn_layer = worn_props.get('wear_layer')
+            
+            if worn_area == wear_area and worn_layer is not None and wear_layer <= worn_layer:
+                 worn_item_name = self._get_object_name(worn_item_id)
+                 return f"You cannot wear the {item_name} there; you are already wearing the {worn_item_name} which occupies that space/layer."
+
+        # --- All checks passed ---
+        
+        # Remove from container's state
+        try:
+            container_state['contains'].remove(item_id_to_wear)
+            # Important: Update the object_states dictionary directly
+            self.object_states[container_id] = container_state 
+            logging.info(f"Item '{item_id_to_wear}' ({item_name}) removed from container '{container_id}' ({container_name}).")
+        except ValueError:
+            # Should not happen if Check 3 passed, but handle defensively
+            logging.error(f"wear_item_from_container: Failed to remove '{item_id_to_wear}' from container '{container_id}' state after check.")
+            return f"Something went wrong trying to take the {item_name} from the {container_name}."
+            
+        # Add to worn items
+        self.worn_items.append(item_id_to_wear)
+        logging.info(f"Item '{item_id_to_wear}' ({item_name}) added to worn_items.")
+        
+        # Return a slightly different success message to distinguish the action
+        return f"You take the {item_name} from the {container_name} and put it on."
+
+    def remove_item(self, object_id: str) -> str:
+        """Attempts to remove a worn item and place it in hand_slot."""
         # Check 1: Is the item actually worn?
         if object_id not in self.worn_items:
-            # Provide more specific feedback if it's in inventory vs not possessed
+            # Check if they have it elsewhere?
+            item_name = self._get_object_name(object_id) or object_id
             if object_id in self.inventory:
-                 return f"You have the {item_name} in your inventory, but you aren't wearing it."
-            elif self.hand_slot == object_id:
-                 return f"You are holding the {item_name}, not wearing it."
+                return f"You have the {item_name} in your inventory, but you aren't wearing it."
+            elif object_id in self.hand_slot:
+                return f"You are holding the {item_name}, not wearing it."
             else:
-                 # Check if it exists elsewhere (like location) could be added, but for now:
-                 return f"You aren't wearing a {item_name}."
+                return f"You aren't wearing the {item_name}."
 
-        # Check 2: Is the hand_slot free?
-        if self.hand_slot is not None:
-            held_item_name = self._get_object_name(self.hand_slot)
-            return f"Your hands are full (holding the {held_item_name}). You need to drop it or put it away before taking off the {item_name}."
+        item_name = self._get_object_name(object_id)
 
-        # --- All checks passed --- 
+        # Check 2: Is the hand_slot list not full?
+        if len(self.hand_slot) >= 2:
+            # TODO: Add response key remove_fail_hands_full
+            held_items_str = " and ".join([self._get_object_name(item) or "something" for item in self.hand_slot])
+            return f"Your hands are full (holding the {held_items_str}). You need to drop something before taking off the {item_name}."
 
-        # Remove from worn items
+        # Remove from worn_items
         self.worn_items.remove(object_id)
         
-        # Add to hand_slot
-        self.hand_slot = object_id
+        # Add to hand_slot list
+        self.hand_slot.append(object_id)
         
         logging.info(f"Item '{object_id}' ({item_name}) moved from worn_items to hand_slot.")
         return f"You take off the {item_name} and hold it."

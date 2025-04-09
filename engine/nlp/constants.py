@@ -112,6 +112,16 @@ VERB_PATTERNS = {
         "verbs": ["drop", "put"],
         "context_words": ["down", "item", "object", "backpack", "key", "datapad"],
         "priority": 35
+    },
+    CommandIntent.PUT: {
+        "verbs": ["put", "place", "store", "insert", "stow"],
+        "context_words": ["in", "into", "inside", "on", "onto", "backpack", "box", "container", "locker", "chest", "cabinet"],
+        "priority": 86
+    },
+    CommandIntent.TAKE_FROM: {
+        "verbs": ["take", "get", "retrieve", "remove", "extract", "withdraw"],
+        "context_words": ["from", "out", "inside", "backpack", "box", "container", "locker", "chest", "cabinet"],
+        "priority": 87
     }
 }
 
@@ -121,6 +131,8 @@ INTENT_PRIORITIES = {
     CommandIntent.COMPLEX: 95,
     CommandIntent.EQUIP: 90,
     CommandIntent.MANIPULATE: 85,
+    CommandIntent.PUT: 86,
+    CommandIntent.TAKE_FROM: 87,
     CommandIntent.ENVIRONMENT: 80,
     CommandIntent.CLIMB: 75,
     CommandIntent.SOCIAL: 70,
@@ -129,9 +141,9 @@ INTENT_PRIORITIES = {
     CommandIntent.COMMUNICATE: 55,
     CommandIntent.LOOK: 50,
     CommandIntent.MOVE: 45,
-    CommandIntent.TAKE: 40,
+    CommandIntent.TAKE: 85,
     CommandIntent.DROP: 35,
-    CommandIntent.USE: 30, # Note: USE intent exists here but not in VERB_PATTERNS yet
+    CommandIntent.USE: 30,
     CommandIntent.TIME: 25,
     CommandIntent.INVENTORY: 20,
     CommandIntent.QUIT: 15,
@@ -150,7 +162,9 @@ CONTEXT_WORDS = {
     CommandIntent.SOCIAL: ["merchant", "guide", "npc", "person", "character", "ally", "item", "map", "friend", "companion", "trader", "villager", "guard", "sword", "key"],
     CommandIntent.GATHER_INFO: ["book", "music", "flowers", "wall", "text", "sign", "sound", "smell", "scroll", "note", "letter", "inscription", "writing", "noise", "conversation"],
     CommandIntent.SEARCH: ["room", "key", "area", "noise", "clue", "evidence", "place", "location", "spot", "corner", "chest", "container", "box", "tunnel", "drawer"],
-    CommandIntent.COMMUNICATE: ["npc", "captain", "mission", "story", "quest", "dialogue", "person", "guard", "merchant", "villager", "companion", "friend", "ally"]
+    CommandIntent.COMMUNICATE: ["npc", "captain", "mission", "story", "quest", "dialogue", "person", "guard", "merchant", "villager", "companion", "friend", "ally"],
+    CommandIntent.PUT: ["container", "box", "locker", "backpack", "chest", "shelf", "cabinet"],
+    CommandIntent.TAKE_FROM: ["container", "box", "locker", "backpack", "chest", "shelf", "cabinet"]
 }
 
 # Add other constants here if needed, e.g., the valid_words set could potentially move here
