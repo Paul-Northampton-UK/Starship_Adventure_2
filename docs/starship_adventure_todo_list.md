@@ -10,9 +10,9 @@
 ✅ Create alias/action translation system (e.g. n, go north, walk north) - Handled by NLP parser
 ✅ Build modular command handler (actions, movement, examine, etc.) - Handlers created
 ✅ Integrate loguru for dev/system logging
-🔄 Implement loading of initial game state (start room, power state) from game_config.yaml (Basic loading done)
+✅ Implement loading of initial game state (start room, power state) from game_config.yaml (Basic loading done)
 
-��️ GUI & Interface
+🖥️ GUI & Interface
 
 🔄 Build main game window with pygame
 🔄 Add GUI components:
@@ -37,17 +37,19 @@
 
 ✅ Support typed input with NLP variations (Basic NLP in place)
 ✅ Enable command aliases and abbreviations (Handled by NLP patterns/verbs)
+✅ Refactor parser.py into smaller helper functions
 🔄 Add player-to-narrator interactions (e.g. help, insult, ask, hint)
 ✅ Handle invalid/gibberish commands with unique narrator responses (Implemented via responses.yaml)
 ✅ Ensure command vocabulary is easily expandable via YAML (Objects/synonyms loaded)
 ✅ Improve target extraction (handle prepositions like "with", "on") - Improved via entity ruler
-🔄 Refine HELP intent logic (avoid misinterpreting "?" in questions)
+🔄 Refine command parsing logic (e.g., disambiguation, error handling)
 🔄 Implement profanity filtering for player input (Data files created, logic pending)
 🔄 Implement fuzzy matching/typo tolerance (using fuzzywuzzy) - Potential future step
 ✅ Implement response variations (using responses.yaml)
 ✅ Handle plural items in responses
 ✅ Display location description automatically on move
 ✅ Parse two-word diagonal directions (e.g., "north west")
+✅ Add specific response for self-insertion container attempts (e.g., put pack in pack)
    - TODO: Implement 'put_fail_incomplete' response/logic.
    - TODO: Implement 'take_from_fail_incomplete' response/logic.
    - TODO: Refine 'take_from_fail_ambiguous' logic/response.
@@ -56,17 +58,18 @@
 🎮 Gameplay Mechanics
 
 ✅ Define object structure (ID, name, description, size, weight, visibility, etc.)
-✅ Build inventory management system (Basic implementation: take, drop, wear, remove, put, take_from)
+✅ Build inventory management system (Core implemented: take, drop, wear, remove, put, take_from, wear_from)
 ✅ Backpack system with size/weight constraints -> (Partially addressed by container logic, capacity check TODO)
 ✅ Carried object tracking (In hand slot / worn items)
 🔄 Implement environmental mechanics:
   - Room-specific oxygen, temperature, gravity, pressure
   - Hazards (e.g. suffocation, overheating, radiation)
   - Handle death scenarios and narrator warnings
-✅ Object container logic (Core logic implemented: put items in, take items out, wear items from worn containers)
+✅ Object container logic (Core implemented: put items in, take items out, wear items from held/worn containers)
    - TODO: Implement container capacity checks (size/weight/count).
    - TODO: Implement container open/close states and check in commands.
 🔄 Enable object activation, assembly, disassembly
+🔄 Implement HELP system (discuss approach: datapad vs command list)
 
 🧩 Puzzle & Story System
 
@@ -90,8 +93,9 @@
   🔄 Narrator hint system with point penalty
   🔄 Narrator help system for tutorial commands
 
-�� Save/Load System
+💾 Save/Load System
 
+🔄 Implement SAVE/LOAD functionality
 🔄 Auto-save on game exit
 🔄 Manual save/load UI with multiple player profiles
 🔄 Save system must persist:
@@ -130,7 +134,6 @@
 ✅ Docstrings and inline comments throughout
 ✅ Error handling for all I/O and YAML parsing (Basic handling implemented)
 ✅ Clean modular codebase with reusable components (Ongoing effort)
-   - TODO: Decide if wearing items directly from *held* containers should be allowed.
    - TODO: Review necessity/usage of general GameState.inventory list.
 
 🛸 Future Features (Optional / Phase 2+)

@@ -34,10 +34,12 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
         
         # 2. If not in location, check if held
         if not obj_id_to_describe and game_state.hand_slot:
-            if item_matches_name(game_state, game_state.hand_slot, target_name): # Use utility function
-                 obj_id_to_describe = game_state.hand_slot
+            for held_id in game_state.hand_slot:
+                if item_matches_name(game_state, held_id, target_name):
+                    obj_id_to_describe = held_id # Assign the specific matched ID
+                    break # Found it, stop checking hands
 
-        # 3. If not held, check worn items
+        # 3. If not held or found in location, check worn items
         if not obj_id_to_describe:
             obj_id_to_describe = game_state._find_object_id_by_name_worn(target_name)
 
@@ -51,6 +53,7 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
             if item_data:
                 # Use item's description, fallback to generic
                 item_description = item_data.get("description", f"You look closely at the {item_data.get('name', target_name)}.")
+                logging.debug(f"handle_look: SUCCESS - Found {target_name} (ID: {obj_id_to_describe}). Returning description.")
                 return ("look_success_item", {"description": item_description})
             else:
                 # This case should ideally not happen if IDs are consistent
@@ -58,6 +61,7 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
                 return ("error_internal", {"action": f"look for {target_name}"})
         else:
             # Item not found anywhere
+            logging.debug(f"handle_look: FAILED - Target '{target_name}' not found in location, hands, worn, or inventory.")
             return ("look_fail_not_found", {"item_name": target_name})
 
 def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent, display_callback) -> Tuple:

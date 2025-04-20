@@ -246,13 +246,20 @@ class GameState:
              if isinstance(areas, list):
                  for area in areas:
                      if area.get("area_id") == self.current_area_id:
-                         search_list = area.get("area_objects", [])
+                         search_list = area.get("objects_present", [])
+                         logging.debug(f"Searching within area '{self.current_area_id}', found objects: {search_list}")
                          break # Found the area
+                 if not search_list: # Area found but no objects_present key or empty list
+                     logging.debug(f"Area '{self.current_area_id}' found, but no 'objects_present' list or list is empty.")
+             else:
+                 logging.warning(f"Room '{self.current_room_id}' has 'areas' but it is not a list.")
         else:
             # If not in an area, search room objects using the correct key
             search_list = current_room_data.get("objects_present", []) # Use "objects_present"
+            logging.debug(f"Searching within room '{self.current_room_id}', found objects: {search_list}")
             
         # Now search the list (either area_objects or objects_present)
+        logging.debug(f"[_find_in_loc] Attempting to search through list: {search_list}")
         found_id = None
         if isinstance(search_list, list):
              for item in search_list:
@@ -265,16 +272,19 @@ class GameState:
                  
                  if object_id:
                      obj_data = self.get_object_by_id(object_id)
+                     logging.debug(f"[_find_in_loc] Checking ID: {object_id}, Found Data: {obj_data is not None}") # Log data lookup
                      if obj_data:
                          name = obj_data.get('name', '').lower()
                          synonyms = [s.lower() for s in obj_data.get('synonyms', [])]
+                         # Log the comparison details
+                         logging.debug(f"[_find_in_loc] Comparing '{normalized_name}' to ID='{object_id.lower()}', Name='{name}', Synonyms={synonyms}")
                          # Match ID, name, or synonym
                          if normalized_name == object_id.lower() or normalized_name == name or normalized_name in synonyms:
+                             logging.debug(f"[_find_in_loc] Match FOUND for '{normalized_name}' with ID '{object_id}'")
                              if found_id:
                                  logging.warning(f"Ambiguous object name '{normalized_name}' in location (Matches: {found_id}, {object_id})")
                                  return None # Ambiguous match
                              found_id = object_id
-                             logging.debug(f"Found match for '{normalized_name}' in location: {object_id}")
                          
         if not found_id:
              logging.debug(f"Object '{normalized_name}' not found in current location.")
@@ -437,18 +447,21 @@ class GameState:
 
     def drop_object(self, object_id: str) -> Dict[str, Any]:
         """Moves an object from hand_slot to the current location."""
-        if self.hand_slot != object_id:
-            # Check should happen in GameLoop
+        # Corrected Check: Ensure the object ID is actually in the hand_slot list
+        if object_id not in self.hand_slot:
+            # This check ensures the handler doesn't proceed if the item isn't held.
+            # The calling handler (handle_drop) should ideally verify this first.
             return {"success": False, "message": f"You aren't holding the {self._get_object_name(object_id)}."} 
 
-        # Add object to current location (room or area)
+        # Attempt to add the object to the current location FIRST
         added = self._add_object_to_location(object_id)
         if not added:
-             logging.error(f"Failed to add '{object_id}' to location {self.current_room_id}/{self.current_area_id}.")
-             return {"success": False, "message": f"You try to drop the {self._get_object_name(object_id)}, but can't find a place for it."} 
+            logging.error(f"Failed to add '{object_id}' to location {self.current_room_id}/{self.current_area_id} when dropping.")
+            # Keep the item in hand if adding to location fails
+            return {"success": False, "message": f"You try to drop the {self._get_object_name(object_id)}, but can't find a place for it here."} 
 
-        # Clear hand slot
-        object_name = self._get_object_name(self.hand_slot)
+        # If adding to location succeeded, now remove from hand_slot
+        object_name = self._get_object_name(object_id) # Get name before removing
         self.hand_slot.remove(object_id)
         logging.info(f"Player dropped '{object_id}' ({object_name}) from hand_slot into location.")
         return {"success": True, "message": f"You drop the {object_name}."}
@@ -626,7 +639,7 @@ class GameState:
         target_list_index = -1 # Used only for areas
 
         if self.current_area_id:
-            # Add to area_objects
+            # Add to area's objects_present list
             areas = room_data.get("areas")
             if not isinstance(areas, list):
                 logging.error(f"_add_object_to_location: Room {self.current_room_id} 'areas' is not a list.")
@@ -636,7 +649,7 @@ class GameState:
             for i, area_data in enumerate(areas):
                 if isinstance(area_data, dict) and area_data.get("area_id") == self.current_area_id:
                     target_list_container = area_data
-                    target_list_key = "area_objects"
+                    target_list_key = "objects_present"
                     target_list_index = i # Store index for potential update
                     found_area = True
                     break
@@ -677,7 +690,7 @@ class GameState:
         target_list_index = -1 # Only used for areas
 
         if self.current_area_id:
-            # Remove from area_objects
+            # Remove from area's objects_present list
             areas = room_data.get("areas")
             if not isinstance(areas, list):
                 logging.error(f"_remove_object_from_location: Room {self.current_room_id} 'areas' is not a list.")
@@ -687,7 +700,7 @@ class GameState:
             for i, area_data in enumerate(areas):
                  if isinstance(area_data, dict) and area_data.get("area_id") == self.current_area_id:
                      target_list_container = area_data
-                     target_list_key = "area_objects"
+                     target_list_key = "objects_present"
                      target_list_index = i
                      found_area = True
                      break

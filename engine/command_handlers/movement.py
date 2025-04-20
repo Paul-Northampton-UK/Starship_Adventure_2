@@ -5,12 +5,20 @@ from typing import Optional, Dict, Any, Tuple
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
 
+# Helper function to determine 'a' or 'an' (improved)
+def _get_indefinite_article(word: str) -> str:
+    if not word:
+        return "a" # Default
+    # Simple vowel check, ignoring silent 'h' etc.
+    return "an" if word.lower().startswith(('a', 'e', 'i', 'o', 'u')) else "a"
+
 def _format_object_list(game_state: GameState, object_ids: list) -> str:
-    """Formats a list of object IDs (or dicts with 'id') into a readable sentence."""
+    """Formats a list of object IDs (or dicts with 'id') into a readable sentence,
+       correctly handling plurals and articles."""
+    logging.debug(f"[_format_object_list] Received object ID list: {object_ids}")
     if not object_ids:
         return ""
 
-    # Process input list to extract only valid string IDs
     processed_ids = []
     for item in object_ids:
         if isinstance(item, str):
@@ -19,35 +27,45 @@ def _format_object_list(game_state: GameState, object_ids: list) -> str:
             processed_ids.append(item['id'])
         else:
             logging.warning(f"_format_object_list: Skipping unknown item format in object list: {item}")
-            
+
+    logging.debug(f"[_format_object_list] Processed IDs: {processed_ids}")
     if not processed_ids:
         return ""
-        
-    object_names = [game_state._get_object_name(pid) for pid in processed_ids]
-    
-    # Filter out names that are likely just the IDs (because data was missing)
-    # This assumes object IDs don't usually look like proper names.
-    valid_object_names = [
-        name for name in object_names 
-        if name and name not in processed_ids # Check if the retrieved name is just the ID itself
-    ]
-    
-    if not valid_object_names:
+
+    formatted_names = []
+    for pid in processed_ids:
+        object_data = game_state.objects_data.get(pid)
+        if not object_data:
+            logging.warning(f"[_format_object_list] Object data not found for ID '{pid}'")
+            continue # Skip objects not found in main data
+
+        name = object_data.get("name", pid) # Fallback to ID if name missing
+        is_plural = object_data.get("is_plural", False)
+
+        # Skip if name is still just the ID (data likely incomplete)
+        if name == pid and " " not in name: # Check if name is just the ID
+            logging.debug(f"[_format_object_list] Filtering out ID-like name '{name}' for ID '{pid}'")
+            continue
+
+        logging.debug(f"[_format_object_list] ID: {pid}, Name: '{name}', Plural: {is_plural}")
+
+        if is_plural:
+            formatted_names.append(name)
+        else:
+            article = _get_indefinite_article(name)
+            formatted_names.append(f"{article} {name}")
+
+    logging.debug(f"[_format_object_list] Filtered & Formatted Names: {formatted_names}")
+    if not formatted_names:
         return "" # Nothing nameable found
-        
-    # Simple formatting for now, can be improved (a/an, singular/plural)
-    if len(valid_object_names) == 1:
-        return f"You see a {valid_object_names[0]} here."
-    elif len(valid_object_names) == 2:
-        return f"You see a {valid_object_names[0]} and a {valid_object_names[1]} here."
+
+    # Format the final sentence
+    if len(formatted_names) == 1:
+        return f"You see {formatted_names[0]} here."
+    elif len(formatted_names) == 2:
+        return f"You see {formatted_names[0]} and {formatted_names[1]} here."
     else:
         # Oxford comma for lists of 3+
-        # Apply 'a'/'an' logic simply based on first letter (can be improved)
-        formatted_names = []
-        for name in valid_object_names:
-            prefix = "an" if name.lower().startswith(('a', 'e', 'i', 'o', 'u')) else "a"
-            formatted_names.append(f"{prefix} {name}")
-            
         all_but_last = ", ".join(formatted_names[:-1])
         last = formatted_names[-1]
         return f"You see {all_but_last}, and {last} here."
@@ -78,137 +96,145 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
         force_long_description: If True, always returns the first_visit_description.
 
     Returns:
-        A formatted string containing the location description, objects, and exits.
+        A formatted string containing the location name, description, objects, and exits.
     """
     location_data: Optional[Dict[str, Any]] = None
-    is_first_visit = True # Assume first visit initially
+    is_first_visit = True
     description_key = "first_visit_description"
-    location_name_for_fallback = "location"
+    location_id_for_log = area_id or room_id
     objects_present_ids = []
     exits_list = []
     room_data = game_state.rooms_data.get(room_id)
 
     if not room_data:
         logging.error(f"get_location_description: Cannot find room data for {room_id}")
-        return "You are somewhere undefined... which is strange."
+        return "[Unknown Location]\nYou are somewhere undefined... which is strange."
 
     exits_list = room_data.get("exits", [])
+    location_name = room_data.get("name", room_id) # Default to room name
 
     # Determine if we are looking at an area or the room itself
     if area_id:
+        location_found = False
         if isinstance(room_data.get("areas"), list):
             for ad in room_data["areas"]:
                 if ad.get("area_id") == area_id:
                     location_data = ad
+                    location_name = location_data.get("name", area_id) # Use area name
                     is_first_visit = not game_state.has_visited_area(area_id)
-                    if is_first_visit: # Mark as visited only on actual first visit
-                        game_state.visit_area(area_id, room_id) 
-                    location_name_for_fallback = location_data.get("name", "area")
-                    objects_present_ids = location_data.get("area_objects", [])
+                    if is_first_visit: game_state.visit_area(area_id, room_id)
+                    objects_present_ids = location_data.get("objects_present", [])
+                    location_found = True
                     break # Found the area data
-        if not location_data: # Area ID provided but not found
+        if not location_found: # Area ID provided but not found
              logging.error(f"get_location_description: Cannot find area data for {area_id} in {room_id}")
-             return "You arrive, but the details of this area are unclear."
+             return f"[{area_id}]\nYou arrive, but the details of this area are unclear."
     else:
         # Looking at the room itself
         location_data = room_data
+        location_name = location_data.get("name", room_id) # Use room name
         is_first_visit = not game_state.has_visited_room(room_id)
-        if is_first_visit: # Mark as visited only on actual first visit
-            game_state.visit_room(room_id) 
-        location_name_for_fallback = location_data.get("name", "room")
-        objects_present_ids = location_data.get("objects_present", []) # Use correct key for room objects
-    
-    # Determine which description key to use (first_visit or short)
+        if is_first_visit: game_state.visit_room(room_id)
+        objects_present_ids = location_data.get("objects_present", [])
+
+    # Determine which description key to use
     if not force_long_description and not is_first_visit:
         description_key = "short_description"
-    # Otherwise, it defaults to "first_visit_description"
-    
+
     # Get the base description based on power state
     power_state = game_state.power_state.value
     descriptions = location_data.get(description_key, {})
     if not isinstance(descriptions, dict):
-        logging.warning(f"{description_key} data for {area_id or room_id} is not a dictionary! Trying fallback...")
+        logging.warning(f"{description_key} data for {location_id_for_log} is not a dictionary! Trying fallback...")
         fallback_key = "short_description" if description_key == "first_visit_description" else "first_visit_description"
         descriptions = location_data.get(fallback_key, {})
         if not isinstance(descriptions, dict):
-             logging.error(f"Both description keys missing or invalid for {area_id or room_id}")
-             base_description = f"You are in the {location_name_for_fallback}. The description seems missing."
+             logging.error(f"Both description keys missing or invalid for {location_id_for_log}")
+             base_description = f"The description for this location seems missing."
         else:
-             base_description = descriptions.get(power_state, descriptions.get("offline", f"It's too dark to see the {location_name_for_fallback} clearly."))
+             base_description = descriptions.get(power_state, descriptions.get("offline", f"It\'s too dark to see clearly."))
     else:
-        base_description = descriptions.get(power_state, descriptions.get("offline", f"It's too dark to see the {location_name_for_fallback} clearly."))
+        base_description = descriptions.get(power_state, descriptions.get("offline", f"It\'s too dark to see clearly."))
 
-    # Format and append object list
+    # Format object list
     if not isinstance(objects_present_ids, list):
-         logging.warning(f"Object list for {area_id or room_id} is not a list: {objects_present_ids}")
+         logging.warning(f"Object list for {location_id_for_log} is not a list: {objects_present_ids}")
          object_list_str = ""
     else:
+         logging.debug(f"Formatting object list for {location_id_for_log}: {objects_present_ids}")
          object_list_str = _format_object_list(game_state, objects_present_ids)
+         logging.debug(f"Formatted object string: '{object_list_str}'")
 
-    # Format and append exit list
+    # Format exit list
     if not isinstance(exits_list, list):
         logging.warning(f"Exit list for {room_id} is not a list: {exits_list}")
         exit_list_str = "It's unclear how to leave."
     else:
         exit_list_str = _format_exit_list(exits_list)
 
-    # Combine the parts
-    full_description = f"{base_description}\n\n{object_list_str}\n{exit_list_str}"
+    # Format area list (if any areas exist in the room)
+    area_list_str = ""
+    if isinstance(room_data.get("areas"), list) and room_data["areas"]:
+        area_names = [a.get("name", a.get("area_id", "unnamed area")) for a in room_data["areas"]]
+        if area_names:
+            if len(area_names) == 1:
+                area_list_str = f"Area here: {area_names[0]}"
+            elif len(area_names) == 2:
+                area_list_str = f"Areas here: {area_names[0]} and {area_names[1]}"
+            else:
+                area_list_str = f"Areas here: {', '.join(area_names[:-1])}, and {area_names[-1]}"
+
+    # Combine the parts, adding the location name header and area list
+    location_header = f"[{location_name}]"
+    # Include area_list_str only if it's not empty, placing it after object list
+    full_description = f"{location_header}\n{base_description}\n\n{object_list_str}"
+    if area_list_str:
+         full_description += f"\n{area_list_str}"
+    full_description += f"\n{exit_list_str}"
     # Clean up potential leading/trailing whitespace or multiple newlines
     return "\n".join(line.strip() for line in full_description.splitlines() if line.strip())
 
 def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
-    """Handles the MOVE command intent. Returns (key, kwargs) tuple."""
-    target = parsed_intent.target
-    direction_input = parsed_intent.direction # Original player input direction
+    """Handles the MOVE command intent. Checks Area movement first, then Directional exits."""
+    target = parsed_intent.target # Might be an Area name/ID or other text
+    direction_input = parsed_intent.direction # Normalized cardinal direction from parser (if found)
     current_room_id = game_state.current_room_id
     current_room_data = game_state.rooms_data.get(current_room_id)
 
     if not current_room_data:
         logging.error(f"Move failed: Current room '{current_room_id}' not found in rooms_data!")
-        return ("error_internal", {"action": "move"}) # Generic error key
+        return ("error_internal", {"action": "move room data"})
 
-    # --- Direction Normalization --- 
-    normalized_direction_map = {
-        "n": "north", "s": "south", "e": "east", "w": "west",
-        "u": "up", "d": "down", 
-        "ne": "northeast", "nw": "northwest", "se": "southeast", "sw": "southwest",
-        "north-east": "northeast", "north-west": "northwest", 
-        "south-east": "southeast", "south-west": "southwest",
-        "north east": "northeast", "north west": "northwest", 
-        "south east": "southeast", "south west": "southwest",
-    }
-    player_direction_normalized = None # Initialize
-    if direction_input:
-        # Normalize for internal logic, ensuring it handles upstream parser results correctly
-        processed_direction = normalized_direction_map.get(direction_input.lower(), direction_input.lower())
-        # Parser should already remove spaces/hyphens, but do it again just in case
-        player_direction_normalized = processed_direction.replace(" ", "").replace("-", "") 
-    # --- End Direction Normalization ---
-
-    # --- Check for Area Movement FIRST ---
+    # --- Check for Area Movement FIRST (using target) ---
     if target:
         areas_list = current_room_data.get("areas", [])
+        matched_area_id = None
         if isinstance(areas_list, list):
             target_lower = target.lower()
             for area_data in areas_list:
                 area_id = area_data.get("area_id")
-                area_aliases = area_data.get("command_aliases", [])
-                if area_id and (target_lower == area_id.lower() or target_lower in [str(a).lower() for a in area_aliases]):
-                    if game_state.current_area_id == area_id:
-                         area_name = area_data.get('name', area_id)
-                         # TODO: Add move_fail_already_at_area key to responses.yaml
-                         return ("move_fail_direction", {"direction": f"already at {area_name}"}) # Placeholder
-                    logging.info(f"Moving player to area: {area_id} in room {current_room_id}")
-                    game_state.move_to_area(area_id)
-                    desc_str = get_location_description(game_state, current_room_id, area_id)
-                    # Return description directly until get_location_description is refactored
-                    return ("move_success", {"description": desc_str})
+                # Add check for area_name later if needed
+                area_aliases = [str(a).lower() for a in area_data.get("command_aliases", [])] # Handle potential non-strings
+                if area_id and (target_lower == area_id.lower() or target_lower in area_aliases):
+                    # Check for direct ID match or alias match
+                    matched_area_id = area_id
+                    break 
+            
+            if matched_area_id:
+                if game_state.current_area_id == matched_area_id:
+                     area_name = game_state._get_object_name(matched_area_id) # Try getting a proper name if possible
+                     return ("move_fail_already_at_area", {"area_name": area_name or matched_area_id})
+                else:
+                     logging.info(f"Moving player to area: {matched_area_id} in room {current_room_id}")
+                     game_state.move_to_area(matched_area_id)
+                     desc_str = get_location_description(game_state, current_room_id, matched_area_id)
+                     # Use correct key for returning a description
+                     return ("move_success_description", {"description": desc_str})
         else:
              logging.warning(f"Areas data for room '{current_room_id}' is not a list! Skipping area check.")
 
-    # --- If not moving to an area, check for Directional Room Exit ---
-    if player_direction_normalized:
+    # --- If not moving to an area, check for Directional Room Exit (using direction_input) ---
+    if direction_input: # Use the normalized direction from the parser
         exits_list = current_room_data.get("exits", [])
         if not isinstance(exits_list, list):
              logging.error(f"Exits data for room '{current_room_id}' is not a list!")
@@ -218,36 +244,36 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
             exit_direction_yaml = exit_data.get("direction")
             if isinstance(exit_direction_yaml, str):
                 yaml_direction_normalized = exit_direction_yaml.replace(" ", "").lower()
-                if yaml_direction_normalized == player_direction_normalized:
+                if yaml_direction_normalized == direction_input:
                     found_exit = exit_data
                     break 
         if found_exit:
             next_room_id = found_exit.get("destination")
             if not next_room_id:
-                 logging.error(f"Exit '{player_direction_normalized}' in room '{current_room_id}' has no destination.")
+                 logging.error(f"Exit '{direction_input}' in room '{current_room_id}' has no destination.")
                  return ("error_internal", {"action": "move destination"})
-            # Use ONLY player_direction_normalized for logic checks from here
+            # Use ONLY direction_input for logic checks from here
             if next_room_id in game_state.rooms_data:
-                logging.info(f"Moving player via exit '{player_direction_normalized}' from {current_room_id} to {next_room_id}")
+                logging.info(f"Moving player via exit '{direction_input}' from {current_room_id} to {next_room_id}")
                 game_state.move_to_room(next_room_id)
                 desc_str = get_location_description(game_state, next_room_id, None)
                 return ("move_success_description", {"description": desc_str})
             else:
-                logging.warning(f"Exit '{player_direction_normalized}' leads to non-existent room '{next_room_id}' from '{current_room_id}'")
+                logging.warning(f"Exit '{direction_input}' leads to non-existent room '{next_room_id}' from '{current_room_id}'")
                 # Pass the normalized direction for the failure message
-                return ("move_fail_direction", {"direction": player_direction_normalized or 'that way'})
+                return ("move_fail_direction", {"direction": direction_input})
         else:
             # No matching exit found
-            # Pass the normalized direction for the failure message
-            return ("move_fail_direction", {"direction": player_direction_normalized or 'that way'})
+            return ("move_fail_direction", {"direction": direction_input})
             
     # --- Fallback Messages if No Action Was Taken --- 
-    elif not target: 
-         # TODO: Add move_fail_no_target key to responses.yaml
-         return ("invalid_command", {}) # Placeholder
-    elif target: 
-         return ("move_fail_area", {"target_name": target})
-
-    # Default fallback
-    logging.warning("[handle_move] Reached unexpected fallback return.")
-    return ("error_internal", {"action": "move fallback"}) 
+    # If we had a target but it wasn't a valid area
+    if target:
+         return ("move_fail_target_not_found", {"target_name": target})
+    # If we had no direction and no target
+    elif not direction_input:
+         return ("move_fail_no_direction", {})
+    # Should not be reached if direction_input was present but no exit found (handled above)
+    else:
+         logging.error("handle_move reached unexpected state.")
+         return ("invalid_command", {}) 

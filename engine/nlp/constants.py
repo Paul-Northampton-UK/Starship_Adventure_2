@@ -91,7 +91,7 @@ VERB_PATTERNS = {
         "priority": 80
     },
     CommandIntent.TIME: {
-        "verbs": ["wait", "rest", "sleep", "pause", "meditate", "nap", "stop", "delay", "hold", "standby"],
+        "verbs": ["wait", "rest", "sleep", "pause", "meditate", "nap", "stop", "delay", "standby"],
         "context_words": ["for", "until", "while", "briefly", "moment", "time", "cycle", "rotation", "orbit", "period"],
         "priority": 80
     },
@@ -103,7 +103,7 @@ VERB_PATTERNS = {
         "priority": 95
     },
     CommandIntent.TAKE: {
-        "verbs": ["take", "grab", "pick", "get", "collect", "acquire", "obtain", "retrieve", "recover"],
+        "verbs": ["take", "grab", "pick", "get", "collect", "acquire", "obtain", "retrieve", "recover", "hold"],
         "context_words": ["up", "item", "object", "torch", "key", "sword", "potion", "book", "scroll", "map", "coin", "gem",
                         "phaser", "blaster", "laser", "tool", "device", "data pad", "access card", "credits", "artifact"],
         "priority": 85

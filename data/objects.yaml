@@ -131,16 +131,16 @@ objects:
   state_descriptions: {}
 
 - id: nav_officer_log
-  name: Navigation Officer's Log
-  category: key_item
   count: 4
+  name: Navigation Officer's Log
+  is_plural: false
+  category: key_item
   weight: 0.01
   size: 1.0
   description: "A standard ship log entry, recorded by the Navigation Officer. The
     text appears slightly distorted, but a few lines stand out: 'Note to self: If
     I forget my password again, it's just the name of my first pet followed by the
     docking bay number. Stupid security rules...'"
-  is_plural: false
   synonyms: []
   initial_state: true
   is_locked: false
@@ -149,24 +149,43 @@ objects:
   lock_code:
   lock_key_id:
   properties:
-    is_takeable: false
+    is_takeable: true
     is_interactive: true
+    is_dangerous: false
+    is_destroyable: false
+    is_storage: false
+    is_operational: false
+    is_edible: false
+    is_weapon: false
+    is_movable: false
     is_wearable: false
     is_flammable: false
+    is_toxic: false
+    is_food: false
+    is_cookable: false
+    is_consumable: false
+    has_durability: false
+    is_hackable: false
+    is_hidden: false
+    is_rechargeable: false
+    is_fuel_source: false
+    regenerates: false
+    is_modular: false
+    is_stored: false
+    is_transferable: false
+    is_activatable: false
+    is_networked: false
+    requires_power: false
+    requires_item: false
+    has_security: false
+    is_sensitive: false
+    is_fragile: false
+    is_secret: false
     can_store_liquids: false
     storage_capacity:
     damage:
     durability:
     range:
-    wear_area:
-    wear_layer:
-  interaction:
-    required_state: []
-    required_items: []
-    primary_actions: []
-    effects: []
-    success_message:
-    failure_message:
   storage_contents: []
   state_descriptions: {}
 - id: nav_compartment
@@ -231,9 +250,10 @@ objects:
   storage_contents: []
   state_descriptions: {}
 - id: nav_fish_delivery_log
-  name: Fish Delivery Log
-  category: key_item
   count: 6
+  name: Fish Delivery Log
+  is_plural: false
+  category: key_item
   weight: 0.01
   size: 1.0
   description: "A personal log entry from the Navigation Officer. She seems excited:
@@ -241,7 +261,6 @@ objects:
     Bay 22! I can't wait to introduce everyone to Tiberius! Ardean Dancing Fish are
     so rare in the Federation. Just drop the pet seed into fresh water, and in ten
     minutes, I'll have a most rare, vibrant, and energetic fish this side of the galaxy!\""
-  is_plural: false
   synonyms: []
   initial_state: true
   is_locked: false
@@ -250,37 +269,56 @@ objects:
   lock_code:
   lock_key_id:
   properties:
-    is_takeable: false
+    is_takeable: true
     is_interactive: true
+    is_dangerous: false
+    is_destroyable: false
+    is_storage: false
+    is_operational: false
+    is_edible: false
+    is_weapon: false
+    is_movable: false
     is_wearable: false
     is_flammable: false
+    is_toxic: false
+    is_food: false
+    is_cookable: false
+    is_consumable: false
+    has_durability: false
+    is_hackable: false
+    is_hidden: false
+    is_rechargeable: false
+    is_fuel_source: false
+    regenerates: false
+    is_modular: false
+    is_stored: false
+    is_transferable: false
+    is_activatable: false
+    is_networked: false
+    requires_power: false
+    requires_item: false
+    has_security: false
+    is_sensitive: false
+    is_fragile: false
+    is_secret: false
     can_store_liquids: false
     storage_capacity:
     damage:
     durability:
     range:
-    wear_area:
-    wear_layer:
-  interaction:
-    required_state: []
-    required_items: []
-    primary_actions: []
-    effects: []
-    success_message:
-    failure_message:
   storage_contents: []
   state_descriptions: {}
 - id: nav_fish_photo
-  name: Fish Photo
-  category: key_item
   count: 7
+  name: Fish Photo
+  is_plural: false
+  category: key_item
   weight: 0.4
   size: 1.0
   description: A beautifully framed photograph depicts an Ardean Dancing Fish mid-jump,
     its shimmering colors catching the light in mesmerizing patterns. Below the image,
     the name 'Tiberius' is elegantly inscribed, lending the picture an air of quiet
     mystery."
-  is_plural: false
   synonyms:
   - picture
   - photo
@@ -295,24 +333,43 @@ objects:
   lock_code:
   lock_key_id:
   properties:
-    is_takeable: false
+    is_takeable: true
     is_interactive: true
+    is_dangerous: false
+    is_destroyable: false
+    is_storage: false
+    is_operational: false
+    is_edible: false
+    is_weapon: false
+    is_movable: false
     is_wearable: false
     is_flammable: false
+    is_toxic: false
+    is_food: false
+    is_cookable: false
+    is_consumable: false
+    has_durability: false
+    is_hackable: false
+    is_hidden: false
+    is_rechargeable: false
+    is_fuel_source: false
+    regenerates: false
+    is_modular: false
+    is_stored: false
+    is_transferable: false
+    is_activatable: false
+    is_networked: false
+    requires_power: false
+    requires_item: false
+    has_security: false
+    is_sensitive: false
+    is_fragile: false
+    is_secret: false
     can_store_liquids: false
     storage_capacity:
     damage:
     durability:
     range:
-    wear_area:
-    wear_layer:
-  interaction:
-    required_state: []
-    required_items: []
-    primary_actions: []
-    effects: []
-    success_message:
-    failure_message:
   storage_contents: []
   state_descriptions: {}
 - id: cab_backpack
@@ -475,9 +532,10 @@ objects:
   storage_contents: []
   state_descriptions: {}
 - id: cab_bed
-  name: A small bed
-  category: furniture
   count: 11
+  name: Small Cabin Bed
+  is_plural: false
+  category: furniture
   weight: 50.0
   size: 25.0
   description: A narrow bunk is recessed into the wall of the cabin, half-hidden behind
@@ -486,7 +544,6 @@ objects:
     of its last occupant. A pair of buckled restraint straps dangle limply at the
     sides, swaying ever so slightly as if disturbed moments ago, though the air is
     still and stale.
-  is_plural: false
   synonyms:
   - bed
   - cot
@@ -500,22 +557,41 @@ objects:
   properties:
     is_takeable: false
     is_interactive: true
+    is_dangerous: false
+    is_destroyable: false
+    is_storage: false
+    is_operational: false
+    is_edible: false
+    is_weapon: false
+    is_movable: false
     is_wearable: false
     is_flammable: false
+    is_toxic: false
+    is_food: false
+    is_cookable: false
+    is_consumable: false
+    has_durability: false
+    is_hackable: false
+    is_hidden: false
+    is_rechargeable: false
+    is_fuel_source: false
+    regenerates: false
+    is_modular: false
+    is_stored: false
+    is_transferable: false
+    is_activatable: false
+    is_networked: false
+    requires_power: false
+    requires_item: false
+    has_security: false
+    is_sensitive: false
+    is_fragile: false
+    is_secret: false
     can_store_liquids: false
     storage_capacity:
     damage:
     durability:
     range:
-    wear_area:
-    wear_layer:
-  interaction:
-    required_state: []
-    required_items: []
-    primary_actions: []
-    effects: []
-    success_message:
-    failure_message:
   storage_contents: []
   state_descriptions: {}
 - id: cab_jumpsuit

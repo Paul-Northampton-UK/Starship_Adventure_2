@@ -62,9 +62,33 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
                         logging.debug(f"[handle_equip] Worn item {worn_container_id} is storage but has no state or 'contains' key.")
                 # else: Not storage or no data, skip
 
-        # If not in hand OR worn containers, check inventory THIRD
+        # If not in hand or worn containers, check HELD containers THIRD
         if not object_id_to_wear:
-            logging.debug(f"[handle_equip] Item not in hand or worn containers. Checking inventory...")
+            logging.debug(f"[handle_equip] Item not in worn containers. Checking held containers...")
+            for held_container_id in game_state.hand_slot:
+                # Avoid trying to wear the container itself if it matches target name by mistake
+                if held_container_id == object_id_to_wear: continue 
+                
+                container_data = game_state.get_object_by_id(held_container_id)
+                # Ensure it's storage and NOT the item we're trying to wear
+                if container_data and container_data.get('properties', {}).get('is_storage'):
+                    container_state = game_state.get_object_state(held_container_id) or {}
+                    if container_state and 'contains' in container_state:
+                        logging.debug(f"[handle_equip] Checking HELD container {held_container_id} with contents: {container_state['contains']}")
+                        for item_id_in_container in container_state['contains']:
+                            if item_matches_name(game_state, item_id_in_container, target_item_name):
+                                object_id_to_wear = item_id_in_container
+                                source_container_id = held_container_id # Remember where we found it (now could be held or worn)
+                                logging.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) inside HELD container '{source_container_id}'.")
+                                break
+                        if object_id_to_wear:
+                            break 
+                    # else: Held container empty or no state
+                # else: Held item not storage
+
+        # If not found anywhere yet, check general inventory FOURTH (less likely path now)
+        if not object_id_to_wear:
+            logging.debug(f"[handle_equip] Item not in hand, worn, or held containers. Checking inventory...")
             inventory_item_id = game_state._find_object_id_by_name_in_inventory(target_item_name)
             if inventory_item_id:
                 object_id_to_wear = inventory_item_id

@@ -118,9 +118,15 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
         return (key, {"item_name": held_item_name})
     else:
         # Use message from drop_object if available, otherwise generic error
-        error_msg = result_dict.get("message", "drop failed") 
+        error_msg = result_dict.get("message", "drop failed internally") 
         logging.warning(f"drop_object indicated failure: {error_msg}")
-        # We might need more specific keys based on drop_object failure reasons
+        
+        # Map specific failure messages from GameState to user-facing keys
+        if "not holding" in error_msg.lower():
+            return ("drop_fail_not_holding", {"item_name": target_object_name}) # Use the name user typed
+        # Add other specific mappings here if drop_object can fail in other ways
+        
+        # Fallback to generic internal error if message is unrecognized
         return ("error_internal", {"action": f"drop failed: {error_msg}"})
 
 
@@ -162,6 +168,14 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str,
         
     # Find the target container using the new comprehensive search
     container_id = game_state.find_container_id_by_name(container_name)
+    
+    # --- ADDED: Check for self-insertion --- 
+    if object_id_to_put == container_id:
+        item_data = game_state.get_object_by_id(object_id_to_put)
+        item_name = item_data.get('name', 'item') if item_data else 'item' # Get name for message
+        return ("put_fail_self_insertion", {"item_name": item_name})
+    # --- END ADDED ---
+        
     if not container_id:
         # TODO: Add put_fail_container_not_found key
         return ("look_fail_not_found", {"item_name": container_name}) # Reuse look key?

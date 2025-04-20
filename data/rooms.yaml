@@ -134,17 +134,11 @@ rooms:
       torch_light: "The torch reveals dormant controls and a locked navigation screen."
 
     objects_present:
-    - id: "nav_console"
-    - id: "nav_officer_log"
-    - id: "nav_compartment"
-    - id: "nav_fish_delivery_log"
-    - id: "nav_fish_photo"
-
-      # End of Area 1: Navigation Station
-
-      #------------------------------------------ 
-      # Room 1: Area 2: Science Station
-      #------------------------------------------
+    - id: nav_console
+    - id: nav_compartment
+    - id: nav_officer_log
+    - id: nav_fish_photo
+    - id: nav_fish_delivery_log
   - area_id: science_station
     name: "Science Station"
     command_aliases: ["sci", "ss", "science", "scie"]
@@ -410,13 +404,7 @@ rooms:
       torch_light: "A regal chair, partially illuminated by your torch."
 
     objects_present:
-    - id: "cap_captains_chair"
-
-      # End of Area 7: Captain's Chair
-
-      #------------------------------------------ 
-      # Room 1: Area 8: Bridge Viewer
-      #------------------------------------------
+    - id: cap_captains_chair
   - area_id: large_bridge_viewer
     name: "Bridge Viewer"
     command_aliases: ["bv", "bridge_viewer", "large_bridge_viewer", "viewer", "bridge
@@ -1290,11 +1278,11 @@ rooms:
       visited: "To the south is a compact bathroom."
 
   objects_present:
-  - id: cab_bed
   - id: cab_boots
-  - id: cab_backpack
-  - id: cab_slippers
   - id: cab_jumpsuit
+  - id: cab_slippers
+  - id: cab_backpack
+  - id: cab_bed
 - room_id: player_cabin_small_kitchen
   name: "Small Kitchen"
   room_count: 13

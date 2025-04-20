@@ -24,8 +24,7 @@ move_fail_direction:
   - "I have a bad feeling about going {direction}... you can't go that way kid!"
 
 move_fail_area:
-  - "You can't move to '{target_name}' like that."
-  - "There doesn't seem to be a place called '{target_name}' accessible from here."
+  - "You can't move to the {target_name} like that."
 
 move_fail_invalid_direction:
   - "You can't go that way."
@@ -180,10 +179,14 @@ get_from_fail_container_closed:
 # Add specific PUT responses (can reuse store_success for now)
 
 # PUT success keys (ensure no stray characters):
-put_success_singular: "You put the {item_name} in the {container_name}."
+# Ensure this is a list with valid strings
+put_success_singular:
+  - "You put the {item_name} in the {container_name}."
+  - "Stored the {item_name} in the {container_name}."
 # Define as a list with one item to hopefully fix parsing
 put_success_plural:
   - "You put the {item_name} in the {container_name}."
+  - "Stored the {item_name} in the {container_name}."
 
 # TODO: Add put_fail_incomplete (for commands missing item/container) and 
 #       put_fail_capacity (check container limits).
@@ -193,8 +196,15 @@ put_fail_container_closed: "You need to open the {container_name} first."
 put_fail_not_holding: "You aren't holding anything called '{item_name}'."
 put_fail_not_container: "You can't put things inside the {container_name}."
 put_fail_container_not_found: "You don't see a {container_name} here to put things in."
-put_fail_not_holding_anything: "You aren't holding anything to put away."
+put_fail_not_holding_anything:
+  - "You aren't holding anything to put away."
+  - "Put what away? Your hands are empty."
 
+put_fail_self_insertion: # New key for trying to put an item in itself
+  - "Putting the {item_name} into itself? That sounds like a recipe for a spacetime paradox... or maybe just impossible. Let's not try that."
+  - "While the {item_name} might contain multitudes, it cannot contain itself. Try putting something *else* in it."
+  - "You attempt to fold the {item_name} into its own dimensional pocket. It resists, possibly judging your life choices."
+  - "Creating a {item_name}-based black hole is not on today's agenda. Put something else in it."
 
 # --- Look / Examine ---
 look_success_room: # Placeholder for detailed room look
@@ -259,3 +269,11 @@ take_from_fail_hands_full:
   - "You need free hands to take the {item_name} from the {container_name}. You're holding the {held_item_name}."
 # TODO: Add take_from_fail_container_closed
 # TODO: Add take_from_fail_incomplete
+
+# New keys for move failures:
+move_fail_already_at_area:
+  - "You are already at the {area_name}."
+move_fail_target_not_found:
+  - "You can't see anywhere called '{target_name}' to go to from here."
+move_fail_no_direction:
+  - "Where do you want to go?"
