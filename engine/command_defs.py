@@ -28,6 +28,12 @@ class CommandIntent(Enum):
     COMPLEX = auto()
     PUT = auto()
     TAKE_FROM = auto()
+    LOCK = auto()
+    UNLOCK = auto()
+    OPEN = auto()
+    CLOSE = auto()
+    SCORE = auto()
+    INVALID = auto()
 
 @dataclass
 class ParsedIntent:

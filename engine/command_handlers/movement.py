@@ -1,7 +1,7 @@
 """Command handler for player movement."""
 
 import logging
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
 
@@ -194,7 +194,7 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
     # Clean up potential leading/trailing whitespace or multiple newlines
     return "\n".join(line.strip() for line in full_description.splitlines() if line.strip())
 
-def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
+def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
     """Handles the MOVE command intent. Checks Area movement first, then Directional exits."""
     target = parsed_intent.target # Might be an Area name/ID or other text
     direction_input = parsed_intent.direction # Normalized cardinal direction from parser (if found)
@@ -203,7 +203,7 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
 
     if not current_room_data:
         logging.error(f"Move failed: Current room '{current_room_id}' not found in rooms_data!")
-        return ("error_internal", {"action": "move room data"})
+        return [{'key': "error_internal", 'data': {"action": "move room data"}}]
 
     # --- Check for Area Movement FIRST (using target) ---
     if target:
@@ -223,13 +223,13 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
             if matched_area_id:
                 if game_state.current_area_id == matched_area_id:
                      area_name = game_state._get_object_name(matched_area_id) # Try getting a proper name if possible
-                     return ("move_fail_already_at_area", {"area_name": area_name or matched_area_id})
+                     return [{'key': "move_fail_already_at_area", 'data': {"area_name": area_name or matched_area_id}}]
                 else:
                      logging.info(f"Moving player to area: {matched_area_id} in room {current_room_id}")
                      game_state.move_to_area(matched_area_id)
                      desc_str = get_location_description(game_state, current_room_id, matched_area_id)
                      # Use correct key for returning a description
-                     return ("move_success_description", {"description": desc_str})
+                     return [{'key': "move_success_description", 'data': {"description": desc_str}}]
         else:
              logging.warning(f"Areas data for room '{current_room_id}' is not a list! Skipping area check.")
 
@@ -238,7 +238,7 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
         exits_list = current_room_data.get("exits", [])
         if not isinstance(exits_list, list):
              logging.error(f"Exits data for room '{current_room_id}' is not a list!")
-             return ("error_internal", {"action": "move exits"})
+             return [{'key': "error_internal", 'data': {"action": "move exits"}}]
         found_exit = None
         for exit_data in exits_list:
             exit_direction_yaml = exit_data.get("direction")
@@ -251,29 +251,29 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
             next_room_id = found_exit.get("destination")
             if not next_room_id:
                  logging.error(f"Exit '{direction_input}' in room '{current_room_id}' has no destination.")
-                 return ("error_internal", {"action": "move destination"})
+                 return [{'key': "error_internal", 'data': {"action": "move destination"}}]
             # Use ONLY direction_input for logic checks from here
             if next_room_id in game_state.rooms_data:
                 logging.info(f"Moving player via exit '{direction_input}' from {current_room_id} to {next_room_id}")
                 game_state.move_to_room(next_room_id)
                 desc_str = get_location_description(game_state, next_room_id, None)
-                return ("move_success_description", {"description": desc_str})
+                return [{'key': "move_success_description", 'data': {"description": desc_str}}]
             else:
                 logging.warning(f"Exit '{direction_input}' leads to non-existent room '{next_room_id}' from '{current_room_id}'")
                 # Pass the normalized direction for the failure message
-                return ("move_fail_direction", {"direction": direction_input})
+                return [{'key': "move_fail_direction", 'data': {"direction": direction_input}}]
         else:
             # No matching exit found
-            return ("move_fail_direction", {"direction": direction_input})
+            return [{'key': "move_fail_direction", 'data': {"direction": direction_input}}]
             
     # --- Fallback Messages if No Action Was Taken --- 
     # If we had a target but it wasn't a valid area
     if target:
-         return ("move_fail_target_not_found", {"target_name": target})
+         return [{'key': "move_fail_target_not_found", 'data': {"target_name": target}}]
     # If we had no direction and no target
     elif not direction_input:
-         return ("move_fail_no_direction", {})
+         return [{'key': "move_fail_no_direction", 'data': {}}]
     # Should not be reached if direction_input was present but no exit found (handled above)
     else:
          logging.error("handle_move reached unexpected state.")
-         return ("invalid_command", {}) 
+         return [{'key': "invalid_command", 'data': {}}] 

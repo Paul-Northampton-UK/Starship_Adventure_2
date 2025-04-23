@@ -274,26 +274,95 @@ class NLPCommandParser:
         return result
 
     def _parse_structured_command(self, nlp_result: NlpProcessingResult, verb_token: Optional[spacy.tokens.Token], possible_intents: Dict) -> StructureParseResult:
-        """Attempts to parse structured commands like PUT/TAKE_FROM."""
+        """Attempts to parse structured commands like PUT/TAKE_FROM and LOCK/UNLOCK_WITH_KEY."""
         doc = nlp_result.doc
-        action_verb_token = verb_token
         game_object_ents = nlp_result.game_object_ents
 
         result = StructureParseResult()
 
-        likely_intents = {CommandIntent.PUT, CommandIntent.TAKE_FROM}
-        if not action_verb_token or not any(intent in possible_intents for intent in likely_intents):
-            logging.debug("Skipping structured command check (verb missing or PUT/TAKE_FROM not likely).")
+        # --- NEW: Check for LOCK/UNLOCK_WITH_KEY Entities first ---
+        for ent in doc.ents:
+            if ent.label_ in ["LOCK_WITH_KEY", "UNLOCK_WITH_KEY"]:
+                logging.debug(f"Found structured entity: {ent.label_} ('{ent.text}')")
+                # --- MODIFIED: Extract components directly from entity span --- 
+                verb_token = ent[0] # Assume first token is verb
+                preposition_token = None
+                target_tokens = []
+                key_tokens = []
+                prep_found = False
+
+                for token in ent:
+                    if token.i == verb_token.i: # Skip the verb itself
+                        continue
+                    if not prep_found and token.lower_ in ["with", "using"]:
+                        preposition_token = token
+                        prep_found = True
+                        continue # Skip the preposition itself
+                    
+                    if not prep_found:
+                        target_tokens.append(token)
+                    else:
+                        key_tokens.append(token)
+                # --- End Modification ---
+
+                # Check if we extracted all parts
+                if target_tokens and key_tokens and verb_token and preposition_token:
+                    # --- NEW: Strip leading determiners from target and key --- 
+                    if target_tokens and target_tokens[0].pos_ == "DET":
+                        target_tokens = target_tokens[1:]
+                    if key_tokens and key_tokens[0].pos_ == "DET":
+                        key_tokens = key_tokens[1:]
+                    # --- End Stripping ---
+                    
+                    result.primary_target = " ".join([t.text for t in target_tokens])
+                    # Look up ID if the target text matches a known game object entity
+                    # We might need to search game_object_ents based on the joined text, not just exact match
+                    # Simple check for now:
+                    target_ent = game_object_ents.get(result.primary_target)
+                    if target_ent:
+                        result.target_object_id = target_ent.ent_id_
+                    else:
+                         # Maybe try finding object ID via game_state if entity ruler missed it?
+                         # result.target_object_id = self.game_state.find_object_id... (complex)
+                         pass # Leave ID None if no direct entity match
+
+                    result.secondary_target = " ".join([t.text for t in key_tokens])
+                    # Look up key ID similarly
+                    key_ent = game_object_ents.get(result.secondary_target)
+                    if key_ent:
+                        result.secondary_target_id = key_ent.ent_id_
+                    else:
+                         pass # Leave key ID None
+
+                    result.preposition = preposition_token.text.lower()
+                    result.success = True
+
+                    if ent.label_ == "LOCK_WITH_KEY":
+                        result.intent = CommandIntent.LOCK
+                        logging.debug(f"LOCK_WITH_KEY structure parsed from entity: T1='{result.primary_target}', Key='{result.secondary_target}'")
+                    else: # UNLOCK_WITH_KEY
+                        result.intent = CommandIntent.UNLOCK
+                        logging.debug(f"UNLOCK_WITH_KEY structure parsed from entity: T1='{result.primary_target}', Key='{result.secondary_target}'")
+                    return result # Found a specific lock/unlock structure, we're done.
+                else:
+                    logging.warning(f"Found {ent.label_} entity, but failed to extract required components (verb, target, key, prep) from span: {ent.text}")
+                    # Don't return yet, fall through to old logic
+
+        # --- Fallback to existing PUT/TAKE_FROM logic if no lock/unlock entity found ---
+        likely_put_take_intents = {CommandIntent.PUT, CommandIntent.TAKE_FROM}
+        # Use the original verb_token passed to the function for PUT/TAKE_FROM
+        if not verb_token or not any(intent in possible_intents for intent in likely_put_take_intents):
+            logging.debug("Skipping PUT/TAKE_FROM structured command check (verb missing or PUT/TAKE_FROM not likely).")
             return result # Return default failure
 
-        logging.debug("Attempting to parse structured command (verb obj1 prep obj2) using OLD logic.")
+        logging.debug("Attempting to parse structured command (verb obj1 prep obj2) using PREPOSITION logic.")
         target_prepositions = {"in", "on", "into", "onto", "from"}
         preposition_token: Optional[spacy.tokens.Token] = None
         preposition: Optional[str] = None
 
         # Find the first relevant preposition after the verb
         for token in doc:
-            if token.i > action_verb_token.i and token.pos_ == "ADP" and token.text.lower() in target_prepositions:
+            if token.i > verb_token.i and token.pos_ == "ADP" and token.text.lower() in target_prepositions:
                 preposition_token = token
                 preposition = token.text.lower()
                 logging.debug(f"Relevant preposition found: '{preposition}' at index {token.i}")
@@ -301,7 +370,7 @@ class NLPCommandParser:
 
         if preposition_token:
             # Extract primary target (tokens between verb and preposition)
-            target1_tokens = [t for t in doc if action_verb_token.i < t.i < preposition_token.i and t.pos_ != 'ADP']
+            target1_tokens = [t for t in doc if verb_token.i < t.i < preposition_token.i and t.pos_ != 'ADP']
             if target1_tokens:
                 result.primary_target = " ".join([t.text for t in target1_tokens])
                 if result.primary_target in game_object_ents:
@@ -317,21 +386,21 @@ class NLPCommandParser:
             # Check if structure is complete and determine intent
             if result.primary_target and result.secondary_target:
                 result.preposition = preposition
-                verb_lemma = action_verb_token.lemma_
+                verb_lemma = verb_token.lemma_
                 if verb_lemma in ["put", "place", "insert", "store"] and preposition != "from":
                     result.success = True
                     result.intent = CommandIntent.PUT
-                    logging.debug(f"PUT structure successfully parsed (OLD logic): T1='{result.primary_target}', P='{result.preposition}', T2='{result.secondary_target}'")
+                    logging.debug(f"PUT structure successfully parsed (PREPOSITION logic): T1='{result.primary_target}', P='{result.preposition}', T2='{result.secondary_target}'")
                 elif verb_lemma in ["take", "get", "retrieve", "remove", "extract", "withdraw"] and preposition == "from":
                     result.success = True
                     result.intent = CommandIntent.TAKE_FROM
-                    logging.debug(f"TAKE_FROM structure successfully parsed (OLD logic): T1='{result.primary_target}', P='{result.preposition}', T2='{result.secondary_target}'")
+                    logging.debug(f"TAKE_FROM structure successfully parsed (PREPOSITION logic): T1='{result.primary_target}', P='{result.preposition}', T2='{result.secondary_target}'")
                 else:
-                    logging.warning(f"Parsed verb-prep structure ('{verb_lemma}' ... '{preposition}'), but combination doesn't match known PUT/TAKE_FROM patterns (OLD logic).")
+                    logging.warning(f"Parsed verb-prep structure ('{verb_lemma}' ... '{preposition}'), but combination doesn't match known PUT/TAKE_FROM patterns (PREPOSITION logic).")
             else:
-                 logging.warning("Structured command parsing failed (OLD logic): Missing primary or secondary target.")
+                 logging.warning("Structured command parsing failed (PREPOSITION logic): Missing primary or secondary target.")
         else:
-             logging.debug("PUT/TAKE_FROM intent likely, but no relevant preposition found (OLD logic).")
+             logging.debug("PUT/TAKE_FROM intent likely, but no relevant preposition found (PREPOSITION logic).")
 
         return result
 

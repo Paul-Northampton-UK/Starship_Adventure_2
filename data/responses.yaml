@@ -36,6 +36,10 @@ move_success: # Placeholder - Needs integration with showing room description
   - "You move {direction}."
   - "Okay, moving {direction}."
 
+# Add the missing key needed by handle_move
+move_success_description:
+  - "{description}" # Display the full location description provided by the handler
+
 # --- Item Handling ---
 take_success_singular:
   - "You take the {item_name}."
@@ -248,32 +252,120 @@ profanity_response: # Responses when player swears (English only)
   - "I believe in lifting people, not tearing them down. Let's find a way to understand each other."
 
 error_internal:
-  - "Something went wrong internally ({action}). Please report this!"
-  - "An unexpected error occurred ({action})."
-  - "Whoops, hit a snag processing that ({action})."
+  - "Sorry, an internal error occurred ({action}). Please report this."
+  - "Something went wrong behind the scenes ({action}). Maybe try something else?"
+
+error_generic:
+  - "Something unexpected went wrong with that action."
+  - "An error occurred processing your command."
 
 # --- New Keys for TAKE_FROM Intent ---
 take_from_success_singular:
   - "You take the {item_name} from the {container_name}."
+  - "You retrieve the {item_name} from the {container_name}."
+
 take_from_success_plural:
   - "You take the {item_name} from the {container_name}."
+  - "You retrieve the {item_name} from the {container_name}."
+
 take_from_fail_container_not_found:
   - "You don't see a {container_name} here to take things from."
-take_from_fail_not_container: # If target isn't storage
-  - "You can't take things out of the {container_name}."
-take_from_fail_not_in_container:
-  - "You don't find a {item_name} inside the {container_name}."
-take_from_fail_ambiguous:
-  - "Which {item_name} do you want to take from the {container_name}?"
-take_from_fail_hands_full:
-  - "You need free hands to take the {item_name} from the {container_name}. You're holding the {held_item_name}."
-# TODO: Add take_from_fail_container_closed
-# TODO: Add take_from_fail_incomplete
+  - "What {container_name}? There isn't one here."
 
-# New keys for move failures:
-move_fail_already_at_area:
-  - "You are already at the {area_name}."
-move_fail_target_not_found:
-  - "You can't see anywhere called '{target_name}' to go to from here."
-move_fail_no_direction:
-  - "Where do you want to go?"
+take_from_fail_item_not_found:
+  - "You look inside the {container_name}, but don't find a {item_name} there."
+  - "The {item_name} isn't in the {container_name}."
+
+take_from_fail_container_closed:
+  - "You can't take things from the {container_name} while it's closed."
+  - "The {container_name} needs to be opened first."
+
+take_from_fail_hands_full:
+  - "You can't take the {item_name}; your hands are already full (holding the {held_item_name})."
+  - "You'll need a free hand to take the {item_name} from the {container_name}."
+
+# --- Lock / Unlock --- 
+
+unlock_success:
+  - "Click! You unlock the {target} with the {key_name}."
+  - "The {target} lock yields to the {key_name}. It's unlocked."
+  - "Using the {key_name}, you manage to unlock the {target}."
+  # Case for no key required/used
+  - "Click! The {target} unlocks."
+  - "You successfully unlock the {target}."
+
+unlock_fail_no_key:
+  - "You need to specify which key to use on the {target}. (e.g., unlock {target} with keycard)"
+  - "That {target} requires a key to unlock. Which one do you want to use?"
+
+unlock_fail_wrong_key:
+  - "The {key_name} doesn't seem to fit the {target}'s lock."
+  - "You try the {key_name}, but it doesn't unlock the {target}."
+  - "That's the wrong key for the {target}."
+
+unlock_fail_not_locked:
+  - "The {target} is already unlocked."
+  - "You check the {target}, but it isn't locked."
+
+unlock_fail_not_lockable:
+  - "You can't lock or unlock the {target}. It doesn't seem to have a lock."
+  - "The {target} doesn't appear to be lockable."
+
+unlock_fail_target_not_found:
+  - "You don't see a {target} here to unlock."
+  - "What {target}? There isn't one around here."
+
+unlock_fail_key_not_found:
+  - "You don't seem to have the {key_name} on you right now."
+  - "You check your hands and worn items, but can't find the {key_name}."
+
+lock_success:
+  - "Click! You lock the {target} with the {key_name}."
+  - "You turn the {key_name} and the {target}'s lock engages."
+  - "The {target} is now securely locked with the {key_name}."
+  # Case for no key required/used
+  - "Click! The {target} locks."
+  - "You successfully lock the {target}."
+
+lock_fail_no_key:
+  - "You need to specify which key to use to lock the {target}."
+  - "What do you want to lock the {target} with?"
+
+lock_fail_wrong_key:
+  - "The {key_name} doesn't seem to work with the {target}'s lock."
+  - "You try the {key_name}, but it won't lock the {target}."
+  - "That's the wrong key to lock the {target}."
+
+lock_fail_already_locked:
+  - "The {target} is already locked."
+  - "You check the {target}; it's securely locked."
+
+lock_fail_not_lockable: # Can reuse the unlock message key
+  - "You can't lock or unlock the {target}. It doesn't seem to have a lock."
+  - "The {target} doesn't appear to be lockable."
+
+lock_fail_target_not_found: # Can reuse the unlock message key
+  - "You don't see a {target} here to lock."
+  - "What {target}? There isn't one around here."
+
+lock_fail_key_not_found: # Can reuse the unlock message key
+  - "You don't seem to have the {key_name} on you right now."
+  - "You check your hands and worn items, but can't find the {key_name}."
+
+# Search Command Responses
+search_success_hidden_item_found:
+  - "Searching the {target_name}, you discover a {item_name}!"
+  - "Your search of the {target_name} reveals a hidden {item_name}."
+search_fail_nothing_hidden:
+  - "You search the {target_name} carefully, but find nothing hidden."
+  - "Despite your efforts, searching the {target_name} yields nothing new."
+search_fail_target_not_found:
+  - "You search around but don't see any '{target_name}' here."
+
+# --- Inventory Display ---
+inventory_display:
+  - "{inventory_text}" # Simple key to just display the formatted text
+
+# Adding new keys here, ensuring no duplicates from above
+search_reveal_keycard_bed: # Specific for bed puzzle - reveals item
+  - "Searching the bunk, you move the pillow aside and reveal a Blue Keycard lying there!"

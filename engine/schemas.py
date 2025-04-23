@@ -197,6 +197,9 @@ class ObjectProperties(BaseModel):
     durability: Optional[int] = None
     range: Optional[float] = None
     
+    # NEW: Digital Content (Files stored on the object)
+    digital_content: Optional[Dict[str, str]] = {}
+    
     @field_validator('weight', 'size', 'storage_capacity', 'damage', 'durability', 'range', 'wear_layer')
     @classmethod
     def validate_non_negative(cls, v: Optional[Union[float, int]]) -> Optional[Union[float, int]]:

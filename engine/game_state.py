@@ -187,13 +187,114 @@ class GameState:
             oxygen_change=-minutes // 60   # Lose oxygen every hour
         )
 
-    def set_object_state(self, object_id: str, state: Dict) -> None:
-        """Set the state of an object (e.g., locked/unlocked, position)."""
-        self.object_states[object_id] = state
+    def get_object_state(self, object_id: str) -> Dict[str, Any]:
+        """Get the current runtime state of an object, ensuring it's fully initialized."""
+        base_data = self.get_object_by_id(object_id)
+        if not base_data:
+            logging.warning(f"get_object_state: Cannot find base data for '{object_id}'. Returning potentially empty state.")
+            # Ensure at least an empty dict exists in object_states before returning
+            return self.object_states.setdefault(object_id, {})
 
-    def get_object_state(self, object_id: str) -> Optional[Dict]:
-        """Get the current state of an object."""
-        return self.object_states.get(object_id)
+        current_state = self.object_states.get(object_id)
+        needs_rebuild = False
+
+        # Determine required state components based on base data
+        is_lockable = bool(base_data.get("lock_type")) or "lockable" in base_data.get("attributes", []) or isinstance(base_data.get("lock_details"), dict)
+        is_container = "container" in base_data.get("attributes", [])
+
+        # Check if state exists and is complete
+        if current_state is None:
+            logging.debug(f"State for '{object_id}' not found. Will create.")
+            needs_rebuild = True
+        else:
+            # Check for missing essential components
+            if is_lockable and "lock_details" not in current_state:
+                logging.warning(f"State for lockable object '{object_id}' exists but missing 'lock_details'. Rebuilding.")
+                needs_rebuild = True
+            if is_container and "contains" not in current_state:
+                logging.warning(f"State for container object '{object_id}' exists but missing 'contains'. Rebuilding.")
+                needs_rebuild = True
+            # Add checks for other essential state keys if needed
+
+        # Build/Rebuild state if necessary
+        if needs_rebuild:
+            logging.debug(f"Building/Rebuilding state for '{object_id}'.")
+            new_state = {}
+            # Initialize lock details
+            if is_lockable:
+                lock_init = base_data.get("lock_details", {}).copy() # Prioritize lock_details dict
+                if not lock_init and "lockable" in base_data.get("attributes", []): # Fallback to legacy
+                    lock_init = {
+                        "locked": base_data.get("is_locked", True),
+                        "key_id": base_data.get("lock_key_id"),
+                        "required_key": base_data.get("required_key")
+                    }
+                    # Clean up None values from legacy keys if they exist
+                    if lock_init.get("key_id") is None: lock_init.pop("key_id", None)
+                    if lock_init.get("required_key") is None: lock_init.pop("required_key", None)
+                new_state["lock_details"] = lock_init
+                logging.debug(f" > Initialized lock_details for '{object_id}': {lock_init}")
+
+            # Initialize container contents
+            if is_container:
+                base_contents = base_data.get("state", {}).get("contains")
+                if base_contents is None: base_contents = base_data.get("contains", [])
+                new_state["contains"] = list(base_contents) # Ensure list copy
+                logging.debug(f" > Initialized contains for '{object_id}': {new_state['contains']}")
+                
+            # Add other initial state components here if needed (e.g., charge, fuel)
+            
+            # Preserve existing state keys if they are not part of the rebuild
+            preserved_keys = set()
+            if current_state is not None:
+                 for key, value in current_state.items():
+                      if key not in new_state: # Don't overwrite rebuilt keys
+                           new_state[key] = value
+                           preserved_keys.add(key)
+                 if preserved_keys:
+                      logging.debug(f" > Preserved existing keys: {preserved_keys}")
+
+            # Replace the old state (or add the new one)
+            self.object_states[object_id] = new_state
+            logging.debug(f"Final rebuilt state for '{object_id}': {self.object_states[object_id]}")
+            return new_state # Return the newly built state
+        else:
+            # State exists and is considered complete
+            logging.debug(f"State for '{object_id}' exists and seems complete. Returning: {current_state}")
+            return current_state
+
+    def set_object_state(self, object_id: str, state_key: str, value: Any) -> None:
+        """Set a specific key within an object's runtime state."""
+        # Ensure the base state dictionary exists and is initialized using get_object_state
+        # This call will perform initialization/rebuild if needed
+        _ = self.get_object_state(object_id) # Call primarily for side effect of initialization
+
+        # Check if the state dict exists after the call
+        if object_id not in self.object_states or not isinstance(self.object_states[object_id], dict):
+             logging.error(f"set_object_state: Failed to get/initialize state dict for '{object_id}' via get_object_state. Cannot set key '{state_key}'.")
+             return
+
+        # Set the specific key in the object's state dictionary
+        self.object_states[object_id][state_key] = value
+        logging.debug(f"Updated object state for '{object_id}': Set '{state_key}' = {value}")
+
+    def update_object_lock_state(self, object_id: str, locked: bool) -> bool:
+        """Updates the 'locked' status within an object's runtime lock_details."""
+        # Ensure the state is initialized (this will rebuild if necessary)
+        obj_state = self.get_object_state(object_id)
+
+        # Check if lock_details dictionary exists and is a dictionary
+        if "lock_details" in obj_state and isinstance(obj_state["lock_details"], dict):
+            # Update the 'locked' value directly within the dictionary referenced by obj_state
+            obj_state["lock_details"]["locked"] = locked
+            # No need to reassign self.object_states[object_id] = obj_state here, 
+            # because obj_state is already the reference to the dictionary within self.object_states.
+            logging.info(f"Updated lock state for '{object_id}': set locked = {locked}. Current State: {self.object_states[object_id]}")
+            return True
+        else:
+            # Log the failure with the state that was returned by get_object_state
+            logging.error(f"update_object_lock_state: Cannot update lock state for '{object_id}'. 'lock_details' dict not found in runtime state: {obj_state}")
+            return False
 
     def is_object_interacted_with(self, object_id: str) -> bool:
         """Check if an object has been interacted with."""
@@ -219,7 +320,7 @@ class GameState:
                 self.player_status.radiation < self.player_status.max_radiation)
 
     def get_object_by_id(self, object_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieves object data from the stored dictionary."""
+        """Retrieves base object data from the stored dictionary."""
         return self.objects_data.get(object_id)
 
     def _get_object_name(self, object_id: Optional[str]) -> str:
@@ -229,8 +330,8 @@ class GameState:
         obj_data = self.get_object_by_id(object_id)
         return obj_data.get("name", object_id) if obj_data else object_id # Fallback to ID
 
-    def _find_object_id_by_name_in_location(self, object_name: str) -> Optional[str]:
-        """Finds an object ID by name/synonym within the current room or area."""
+    def find_object_id_by_name_in_location(self, object_name: str) -> Optional[str]:
+        """Finds an object ID by name/alias within the current room or area (partial match allowed)."""
         normalized_name = object_name.lower().strip()
         logging.debug(f"Searching for '{normalized_name}' in location {self.current_room_id}/{self.current_area_id or 'room'}")
 
@@ -245,166 +346,278 @@ class GameState:
              areas = current_room_data.get("areas", [])
              if isinstance(areas, list):
                  for area in areas:
-                     if area.get("area_id") == self.current_area_id:
+                     if isinstance(area, dict) and area.get("area_id") == self.current_area_id:
+                         # Use the stateful list if available, otherwise fallback to base data
+                         # This assumes area state might eventually track object presence
+                         # For now, using base area['objects_present']
                          search_list = area.get("objects_present", [])
-                         logging.debug(f"Searching within area '{self.current_area_id}', found objects: {search_list}")
+                         logging.debug(f"Searching within area '{self.current_area_id}', using base objects_present: {search_list}")
                          break # Found the area
-                 if not search_list: # Area found but no objects_present key or empty list
+                 if not search_list and self.current_area_id in [a.get("area_id") for a in areas if isinstance(a, dict)]:
                      logging.debug(f"Area '{self.current_area_id}' found, but no 'objects_present' list or list is empty.")
              else:
                  logging.warning(f"Room '{self.current_room_id}' has 'areas' but it is not a list.")
         else:
-            # If not in an area, search room objects using the correct key
-            search_list = current_room_data.get("objects_present", []) # Use "objects_present"
-            logging.debug(f"Searching within room '{self.current_room_id}', found objects: {search_list}")
+            # If not in an area, search room's base objects_present list
+            search_list = current_room_data.get("objects_present", [])
+            logging.debug(f"Searching within room '{self.current_room_id}', using base objects_present: {search_list}")
             
-        # Now search the list (either area_objects or objects_present)
-        logging.debug(f"[_find_in_loc] Attempting to search through list: {search_list}")
+        # Now search the list (either from area or room)
+        logging.debug(f"[find_in_loc] Attempting to search through list: {search_list}")
         found_id = None
+        # --- ADDED: Prioritize exact matches first --- 
+        # Pass 1: Exact Matches
         if isinstance(search_list, list):
-             for item in search_list:
-                 # Handle simple string IDs vs object dictionaries
+             for item_ref in search_list:
                  object_id = None
-                 if isinstance(item, str):
-                     object_id = item
-                 elif isinstance(item, dict) and 'id' in item:
-                     object_id = item['id']
+                 if isinstance(item_ref, str):
+                     object_id = item_ref
+                 elif isinstance(item_ref, dict) and 'id' in item_ref:
+                     object_id = item_ref['id']
                  
                  if object_id:
                      obj_data = self.get_object_by_id(object_id)
-                     logging.debug(f"[_find_in_loc] Checking ID: {object_id}, Found Data: {obj_data is not None}") # Log data lookup
                      if obj_data:
                          name = obj_data.get('name', '').lower()
-                         synonyms = [s.lower() for s in obj_data.get('synonyms', [])]
-                         # Log the comparison details
-                         logging.debug(f"[_find_in_loc] Comparing '{normalized_name}' to ID='{object_id.lower()}', Name='{name}', Synonyms={synonyms}")
-                         # Match ID, name, or synonym
-                         if normalized_name == object_id.lower() or normalized_name == name or normalized_name in synonyms:
-                             logging.debug(f"[_find_in_loc] Match FOUND for '{normalized_name}' with ID '{object_id}'")
-                             if found_id:
-                                 logging.warning(f"Ambiguous object name '{normalized_name}' in location (Matches: {found_id}, {object_id})")
-                                 return None # Ambiguous match
+                         aliases = [a.lower() for a in obj_data.get('command_aliases', []) if isinstance(a, str)]
+                         # Exact match ID, name, or alias
+                         if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
+                             logging.debug(f"[find_in_loc] EXACT Match FOUND for '{normalized_name}' with ID '{object_id}'")
+                             if found_id and found_id != object_id:
+                                 logging.warning(f"Ambiguous exact object name '{normalized_name}' in location (Matches: {found_id}, {object_id}). Returning None.")
+                                 return None
                              found_id = object_id
-                         
+                             
+        # If an exact match was found, return it immediately
+        if found_id:
+             logging.debug(f"Returning exact match: {found_id}")
+             return found_id
+             
+        # Pass 2: Partial Matches (if no exact match found)
+        logging.debug(f"[find_in_loc] No exact match found for '{normalized_name}'. Checking partial matches.")
+        partial_matches = []
+        if isinstance(search_list, list):
+             for item_ref in search_list:
+                 object_id = None
+                 if isinstance(item_ref, str):
+                     object_id = item_ref
+                 elif isinstance(item_ref, dict) and 'id' in item_ref:
+                     object_id = item_ref['id']
+                     
+                 if object_id:
+                     obj_data = self.get_object_by_id(object_id)
+                     if obj_data:
+                         name = obj_data.get('name', '').lower()
+                         aliases = [a.lower() for a in obj_data.get('command_aliases', []) if isinstance(a, str)]
+                         # Check if normalized_name is IN name or any alias
+                         if normalized_name in name or any(normalized_name in alias for alias in aliases):
+                             logging.debug(f"[find_in_loc] PARTIAL Match FOUND for '{normalized_name}' with ID '{object_id}' (Name: '{name}', Aliases: {aliases})")
+                             if object_id not in partial_matches:
+                                 partial_matches.append(object_id)
+                                 
+        # Handle partial match results
+        if len(partial_matches) == 1:
+             found_id = partial_matches[0]
+             logging.debug(f"Found unique partial match: {found_id}")
+        elif len(partial_matches) > 1:
+             logging.warning(f"Ambiguous partial object name '{normalized_name}' in location (Matches: {partial_matches}). Returning None.")
+             return None # Ambiguous partial match
+             
         if not found_id:
-             logging.debug(f"Object '{normalized_name}' not found in current location.")
+             logging.debug(f"Object '{normalized_name}' not found in current location (exact or partial)." )
              
         return found_id
 
     def _find_object_id_by_name_in_inventory(self, item_name_or_id: str) -> Optional[str]:
-        """Finds the object ID in the player's inventory by its name, synonym, or ID."""
+        """Finds the object ID in inventory by name, alias, or ID (partial match allowed)."""
         normalized_name = item_name_or_id.lower().strip()
-        logging.debug(f"Searching inventory for '{normalized_name}'. Inventory: {self.inventory}")
+        logging.debug(f"Searching base inventory for '{normalized_name}'. Inventory: {self.inventory}")
         
-        found_id = None
+        exact_match = None
+        partial_matches = []
+        
+        # Pass 1: Exact Matches
         for object_id in self.inventory:
             item_data = self.get_object_by_id(object_id)
-            if not item_data:
-                logging.warning(f"Inventory item ID '{object_id}' not found in objects data during search.")
-                continue # Skip if data is missing
-            
+            if not item_data: continue
             name = item_data.get('name', '').lower()
-            synonyms = [s.lower() for s in item_data.get('synonyms', [])]
-            
-            if normalized_name == object_id.lower() or normalized_name == name or normalized_name in synonyms:
-                if found_id:
-                    logging.warning(f"Ambiguous item name '{normalized_name}' found in inventory (Matches: {found_id}, {object_id}).")
-                    return None # Ambiguous match
-                found_id = object_id
-                logging.debug(f"Found match for '{normalized_name}' in inventory: {object_id}")
-
-        if not found_id:
-            logging.debug(f"Item '{normalized_name}' not found in inventory.")
-            
-        return found_id
+            aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+            if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
+                if exact_match and exact_match != object_id:
+                    logging.warning(f"Ambiguous exact item name '{normalized_name}' found in inventory (Matches: {exact_match}, {object_id}).")
+                    return None
+                exact_match = object_id
+                
+        if exact_match: return exact_match
+        
+        # Pass 2: Partial Matches
+        for object_id in self.inventory:
+            item_data = self.get_object_by_id(object_id)
+            if not item_data: continue
+            name = item_data.get('name', '').lower()
+            aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+            if normalized_name in name or any(normalized_name in alias for alias in aliases):
+                 if object_id not in partial_matches:
+                     partial_matches.append(object_id)
+                     
+        if len(partial_matches) == 1:
+             logging.debug(f"Found unique partial match in inventory: {partial_matches[0]}")
+             return partial_matches[0]
+        elif len(partial_matches) > 1:
+             logging.warning(f"Ambiguous partial item name '{normalized_name}' found in inventory (Matches: {partial_matches}).")
+             return None
+             
+        logging.debug(f"Item '{normalized_name}' not found in inventory (exact or partial).")
+        return None
 
     def _find_object_id_by_name_worn(self, item_name_or_id: str) -> Optional[str]:
-        """Finds the object ID of a worn item by its name, synonym, or ID."""
+        """Finds the object ID of a directly worn item by name, alias, or ID (partial match allowed)."""
         normalized_name = item_name_or_id.lower().strip()
-        logging.debug(f"Searching worn items for '{normalized_name}'. Worn list: {self.worn_items}")
+        logging.debug(f"Searching directly worn items for '{normalized_name}'. Worn list: {self.worn_items}")
         
-        found_id = None
+        exact_match = None
+        partial_matches = []
+        
+        # Pass 1: Exact Matches
         for object_id in self.worn_items:
             item_data = self.get_object_by_id(object_id)
-            if not item_data:
-                logging.warning(f"Worn item ID '{object_id}' not found in objects data during search.")
-                continue
-            
+            if not item_data: continue
             name = item_data.get('name', '').lower()
-            synonyms = [s.lower() for s in item_data.get('synonyms', [])]
-            
-            if normalized_name == object_id.lower() or normalized_name == name or normalized_name in synonyms:
-                if found_id:
-                    logging.warning(f"Ambiguous item name '{normalized_name}' found in worn items (Matches: {found_id}, {object_id}).")
-                    return None
-                found_id = object_id
-                logging.debug(f"Found match for '{normalized_name}' in worn items: {object_id}")
+            aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+            if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
+                 if exact_match and exact_match != object_id:
+                     logging.warning(f"Ambiguous exact item name '{normalized_name}' found in worn items (Matches: {exact_match}, {object_id}).")
+                     return None
+                 exact_match = object_id
+                 
+        if exact_match: return exact_match
+        
+        # Pass 2: Partial Matches
+        for object_id in self.worn_items:
+             item_data = self.get_object_by_id(object_id)
+             if not item_data: continue
+             name = item_data.get('name', '').lower()
+             aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+             if normalized_name in name or any(normalized_name in alias for alias in aliases):
+                  if object_id not in partial_matches:
+                      partial_matches.append(object_id)
+                      
+        if len(partial_matches) == 1:
+              logging.debug(f"Found unique partial match in worn items: {partial_matches[0]}")
+              return partial_matches[0]
+        elif len(partial_matches) > 1:
+              logging.warning(f"Ambiguous partial item name '{normalized_name}' found in worn items (Matches: {partial_matches}).")
+              return None
+              
+        logging.debug(f"Item '{normalized_name}' not found directly worn (exact or partial).")
+        return None
 
-        if not found_id:
-            logging.debug(f"Item '{normalized_name}' not found in worn items.")
+    def find_item_id_held_or_worn(self, item_name_or_id: str) -> Optional[str]:
+        """Finds an item ID by name/alias/ID in hands, directly worn, or inside worn containers."""
+        normalized_name = item_name_or_id.lower().strip()
+        logging.debug(f"Searching for item '{normalized_name}' in hands, worn, and inside worn containers.")
+
+        # 1. Search hand slot
+        logging.debug(f"Checking hand slot: {self.hand_slot}")
+        for held_id in self.hand_slot:
+             item_data = self.get_object_by_id(held_id)
+             if not item_data:
+                 logging.warning(f"Hand slot item ID '{held_id}' not found in objects data during find item search.")
+                 continue
+             name = item_data.get('name', '').lower()
+             aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+             if normalized_name == held_id.lower() or normalized_name == name or normalized_name in aliases:
+                 logging.debug(f"Found item '{normalized_name}' (ID: {held_id}) in hand slot.")
+                 return held_id # Found in hand
+        
+        # 2. Search directly worn items (using the helper)
+        found_id = self._find_object_id_by_name_worn(normalized_name)
+        if found_id:
+            logging.debug(f"Found item '{normalized_name}' (ID: {found_id}) directly worn.")
+            return found_id
+
+        # 3. Search inside worn containers
+        logging.debug(f"Checking inside worn containers. Worn list: {self.worn_items}")
+        for worn_container_id in self.worn_items:
+            container_data = self.get_object_by_id(worn_container_id)
+            # Check if this worn item IS a container
+            if not container_data or not container_data.get('properties', {}).get('is_storage'):
+                continue # Skip worn items that are not containers
             
-        return found_id
+            # Get the container's current state (its contents)
+            container_state = self.get_object_state(worn_container_id) # Use state method
+            contained_item_ids = container_state.get('contains', [])
+            logging.debug(f"Checking inside worn container '{worn_container_id}' ({container_data.get('name', '')}). Contains: {contained_item_ids}")
+            
+            if isinstance(contained_item_ids, list):
+                 for item_id_inside in contained_item_ids:
+                     item_data = self.get_object_by_id(item_id_inside)
+                     if not item_data:
+                         logging.warning(f"Item ID '{item_id_inside}' inside container '{worn_container_id}' not found in objects data.")
+                         continue
+                     name = item_data.get('name', '').lower()
+                     aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+                     if normalized_name == item_id_inside.lower() or normalized_name == name or normalized_name in aliases:
+                         logging.debug(f"Found item '{normalized_name}' (ID: {item_id_inside}) inside worn container '{worn_container_id}'.")
+                         # Potential ambiguity: If multiple containers have the same item?
+                         # For now, return the first match found.
+                         return item_id_inside 
+
+        # 4. Optional: Search base inventory as last resort? (Decide if keys can be loose)
+        # found_id = self._find_object_id_by_name_in_inventory(normalized_name)
+        # if found_id:
+        #     logging.debug(f"Found item '{normalized_name}' (ID: {found_id}) in base inventory as fallback.")
+        #     return found_id
+
+        logging.debug(f"Item '{normalized_name}' not found in hands, worn, or inside worn containers.")
+        return None
 
     def find_container_id_by_name(self, container_name: str) -> Optional[str]:
-        """Finds a container object ID by name/synonym, searching location, worn items, and inventory."""
+        """Finds a container object ID by name/alias, searching location, hand slot, and worn items."""
         normalized_name = container_name.lower().strip()
-        logging.debug(f"Searching for container '{normalized_name}' in location, worn, and inventory.")
+        logging.debug(f"Searching for container '{normalized_name}' in location, hand slot, and worn items.")
 
         # 1. Search current location (room/area)
-        found_id = self._find_object_id_by_name_in_location(normalized_name)
+        found_id = self.find_object_id_by_name_in_location(normalized_name) # Use public method
         if found_id:
-            # Check if the found object is actually a container
             obj_data = self.get_object_by_id(found_id)
             if obj_data and obj_data.get('properties', {}).get('is_storage'):
                  logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in location.")
                  return found_id
             else:
-                 logging.debug(f"Found object '{normalized_name}' in location, but it is not a container.")
-                 # Continue searching other places
+                 logging.debug(f"Found object '{normalized_name}' (ID: {found_id}) in location, but it is not a container.")
 
-        # 2. Search hand slot <--- NEW STEP
+        # 2. Search hand slot
         logging.debug(f"Searching hand slot for container '{normalized_name}'. Hand slot: {self.hand_slot}")
         for held_id in self.hand_slot:
              item_data = self.get_object_by_id(held_id)
-             if not item_data:
-                 logging.warning(f"Hand slot item ID '{held_id}' not found in objects data during container search.")
-                 continue
-             # Check if this held item is a container
-             if not item_data.get('properties', {}).get('is_storage'):
-                 continue # Skip non-container items in hand
-                 
+             if not item_data or not item_data.get('properties', {}).get('is_storage'):
+                 continue # Skip non-containers or missing data
              name = item_data.get('name', '').lower()
-             synonyms = [s.lower() for s in item_data.get('synonyms', [])]
-             
-             if normalized_name == held_id.lower() or normalized_name == name or normalized_name in synonyms:
+             aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+             if normalized_name == held_id.lower() or normalized_name == name or normalized_name in aliases:
                  logging.debug(f"Found container '{normalized_name}' (ID: {held_id}) in hand slot.")
-                 return held_id # Found the container in hand
+                 return held_id
 
-        # 3. Search worn items
+        # 3. Search worn items (using the helper)
         found_id = self._find_object_id_by_name_worn(normalized_name)
         if found_id:
-            # Check if the found object is actually a container
             obj_data = self.get_object_by_id(found_id)
             if obj_data and obj_data.get('properties', {}).get('is_storage'):
-                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in worn items.")
+                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) worn.")
                  return found_id
             else:
-                 logging.debug(f"Found object '{normalized_name}' worn, but it is not a container.")
-                 # Continue searching inventory
+                 logging.debug(f"Found object '{normalized_name}' (ID: {found_id}) worn, but it is not a container.")
 
-        # 4. Search inventory
-        found_id = self._find_object_id_by_name_in_inventory(normalized_name)
-        if found_id:
-            # Check if the found object is actually a container
-            obj_data = self.get_object_by_id(found_id)
-            if obj_data and obj_data.get('properties', {}).get('is_storage'):
-                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in inventory.")
-                 return found_id
-            else:
-                 logging.debug(f"Found object '{normalized_name}' in inventory, but it is not a container.")
-                 # Fall through to not found
-        
-        logging.debug(f"Container '{normalized_name}' not found in location, hand slot, worn, or inventory.")
+        # 4. Optional: Search inventory? (If containers can be loose in inventory)
+        # found_id = self._find_object_id_by_name_in_inventory(normalized_name)
+        # if found_id:
+        #    obj_data = self.get_object_by_id(found_id)
+        #    if obj_data and obj_data.get('properties', {}).get('is_storage'):
+        #        logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in inventory as fallback.")
+        #        return found_id
+
+        logging.debug(f"Container '{normalized_name}' not found in location, hand slot, or worn items.")
         return None
 
     def take_object(self, object_id: str) -> str:
@@ -417,9 +630,9 @@ class GameState:
             return f"Your hands are full (holding the {held_items_str})."
 
         # Check 2: If object exists in location (redundant if GameLoop checks?)
-        if self._find_object_id_by_name_in_location(object_id) != object_id:
+        if self.find_object_id_by_name_in_location(object_id) != object_id:
              # Attempt lookup by ID directly if name search failed but ID was passed
-             if self.get_object_by_id(object_id) and self._find_object_id_by_name_in_location(self._get_object_name(object_id)) == object_id:
+             if self.get_object_by_id(object_id) and self.find_object_id_by_name_in_location(self._get_object_name(object_id)) == object_id:
                  pass # Object found by ID/name lookup
              else:
                 logging.warning(f"take_object called for '{object_id}' not found in location.")
@@ -548,11 +761,11 @@ class GameState:
             return "Cannot access the container properly."
         container_name = container_data.get("name", container_id)
 
-        # Check 3: Is the item actually in the container?
-        if item_id_to_wear not in container_state['contains']:
-            logging.warning(f"wear_item_from_container: Item '{item_id_to_wear}' not found in container '{container_id}' state: {container_state['contains']}")
+        # Check 3: Is the item actually in the container state?
+        if item_id_to_wear not in container_state.get('contains', []): # Check state's list
+            logging.warning(f"wear_item_from_container: Item '{item_id_to_wear}' not found in container '{container_id}' state: {container_state.get('contains', [])}")
             return f"You don't seem to have the {item_name} in the {container_name}."
-
+        
         # Check 4: Is it wearable?
         props = item_data.get('properties', {})
         if not props.get('is_wearable'):
@@ -581,12 +794,13 @@ class GameState:
         
         # Remove from container's state
         try:
-            container_state['contains'].remove(item_id_to_wear)
-            # Important: Update the object_states dictionary directly
-            self.object_states[container_id] = container_state 
+            # Modify the list obtained from container_state
+            current_contents = container_state.get('contains', [])
+            current_contents.remove(item_id_to_wear)
+            # Update the state using set_object_state 
+            self.set_object_state(container_id, 'contains', current_contents) 
             logging.info(f"Item '{item_id_to_wear}' ({item_name}) removed from container '{container_id}' ({container_name}).")
         except ValueError:
-            # Should not happen if Check 3 passed, but handle defensively
             logging.error(f"wear_item_from_container: Failed to remove '{item_id_to_wear}' from container '{container_id}' state after check.")
             return f"Something went wrong trying to take the {item_name} from the {container_name}."
             
@@ -594,7 +808,6 @@ class GameState:
         self.worn_items.append(item_id_to_wear)
         logging.info(f"Item '{item_id_to_wear}' ({item_name}) added to worn_items.")
         
-        # Return a slightly different success message to distinguish the action
         return f"You take the {item_name} from the {container_name} and put it on."
 
     def remove_item(self, object_id: str) -> str:

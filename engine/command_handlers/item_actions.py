@@ -1,37 +1,37 @@
 """Command handlers for taking, dropping, and putting items."""
 
 import logging
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
 from .utils import item_matches_name
 from ..schemas import Object # Import the Object schema
 
-def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
-    """Handles the TAKE command intent. Returns (key, kwargs) tuple."""
+def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+    """Handles the TAKE command intent. Returns List[Dict]."""
     target_object_name = parsed_intent.target
     logging.debug(f"[handle_take] Handling TAKE for target name: '{target_object_name}'")
 
     if not target_object_name:
         # TODO: Add take_fail_no_target key to responses.yaml
-        return ("invalid_command", {}) # Placeholder
+        return [{'key': "take_fail_no_target", 'data': {}}]
 
     # Check if hands are free *first*
     if len(game_state.hand_slot) >= 2:
         held_items_str = " and ".join([game_state._get_object_name(item) or "something" for item in game_state.hand_slot])
-        return ("take_fail_hands_full", {"held_item_name": held_items_str, "item_name": target_object_name})
+        return [{'key': "take_fail_hands_full", 'data': {"held_item_name": held_items_str, "item_name": target_object_name}}]
 
     # Find the object in the location
-    found_object_id = game_state._find_object_id_by_name_in_location(target_object_name)
+    found_object_id = game_state.find_object_id_by_name_in_location(target_object_name)
     if not found_object_id:
         logging.debug(f"[handle_take] No object ID found for name '{target_object_name}'.")
-        return ("take_fail_no_item", {"item_name": target_object_name})
+        return [{'key': "take_fail_no_item", 'data': {"item_name": target_object_name}}]
 
     # Get object data to check its properties
-    object_data = game_state.objects_data.get(found_object_id)
+    object_data = game_state.get_object_by_id(found_object_id)
     if not object_data:
         logging.error(f"[handle_take] Found object ID '{found_object_id}' but no data exists in objects_data!")
-        return ("error_internal", {"action": "take data missing"})
+        return [{'key': "error_internal", 'data': {"action": "take data missing"}}]
 
     # Use dictionary access
     is_plural = object_data.get('is_plural', False)
@@ -45,24 +45,24 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
     # Map GameState message to response key/kwargs
     if "You take the" in result_message:
         key = "take_success_plural" if is_plural else "take_success_singular"
-        return (key, {"item_name": item_name})
+        return [{'key': key, 'data': {"item_name": item_name}}]
     elif "cannot take" in result_message:
         # Determine if it's just not takeable or needs a specific action (e.g., unlock)
         # For now, use a generic non-takeable key
         key = "take_fail_not_takeable_plural" if is_plural else "take_fail_not_takeable_singular"
-        return (key, {"item_name": item_name})
+        return [{'key': key, 'data': {"item_name": item_name}}]
     elif "hands are full" in result_message: # Should be caught above, but as fallback
         held_items_str = " and ".join([game_state._get_object_name(item) or "something" for item in game_state.hand_slot])
-        return ("take_fail_hands_full", {"held_item_name": held_items_str, "item_name": target_object_name})
+        return [{'key': "take_fail_hands_full", 'data': {"held_item_name": held_items_str, "item_name": target_object_name}}]
     elif "seems stuck" in result_message:
-        return ("error_internal", {"action": "take stuck"})
+        return [{'key': "error_internal", 'data': {"action": "take stuck"}}]
     else: # Default for unexpected messages from take_object
         logging.warning(f"Unexpected message from take_object: {result_message}")
-        return ("error_internal", {"action": "take"})
+        return [{'key': "error_internal", 'data': {"action": "take unknown"}}]
 
 
-def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
-    """Handles the DROP command intent. Returns (key, kwargs) tuple."""
+def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+    """Handles the DROP command intent. Returns List[Dict]."""
     target_object_name = parsed_intent.target
     logging.debug(f"[handle_drop] Handling DROP for target name: '{target_object_name}'")
 
@@ -74,11 +74,11 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
         else:
             # TODO: Add drop_fail_no_target key
             # TODO: Potentially list held items in the response?
-            return ("drop_fail_no_target_specified", {}) # Need a new response key
+            return [{'key': "drop_fail_no_target_specified", 'data': {}}]
 
     if not game_state.hand_slot: # Check if hands are empty
         # TODO: Check inventory/worn and provide possess_not_holding message?
-        return ("drop_fail_not_holding", {"item_name": "anything"})
+        return [{'key': "drop_fail_not_holding", 'data': {"item_name": "anything"}}]
 
     # Find which item in hand matches the target name
     object_id_to_drop = None
@@ -93,16 +93,16 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
     # Handle ambiguity or no match
     if match_count > 1:
         # TODO: Add drop_fail_ambiguous key
-        return ("drop_fail_ambiguous", {"item_name": target_object_name, "held_items": ", ".join(held_item_names)})
+        return [{'key': "drop_fail_ambiguous", 'data': {"item_name": target_object_name, "held_items": ", ".join(held_item_names)}}]
     elif match_count == 0:
         # TODO: Add drop_fail_target_not_held key
-        return ("drop_fail_not_holding", {"item_name": target_object_name})
+        return [{'key': "drop_fail_not_holding", 'data': {"item_name": target_object_name}}]
         
     # Exactly one match found, proceed to drop
     held_object_data = game_state.get_object_by_id(object_id_to_drop)
     if not held_object_data:
         logging.error(f"[handle_drop] Matched object ID '{object_id_to_drop}' but no data exists!")
-        return ("error_internal", {"action": "drop data missing"})
+        return [{'key': "error_internal", 'data': {"action": "drop data missing"}}]
         
     is_plural = held_object_data.get('is_plural', False)
     held_item_name = held_object_data.get('name', 'unknown object')
@@ -115,7 +115,7 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
 
     if success:
         key = "drop_success_plural" if is_plural else "drop_success_singular"
-        return (key, {"item_name": held_item_name})
+        return [{'key': key, 'data': {"item_name": held_item_name}}]
     else:
         # Use message from drop_object if available, otherwise generic error
         error_msg = result_dict.get("message", "drop failed internally") 
@@ -123,15 +123,15 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str
         
         # Map specific failure messages from GameState to user-facing keys
         if "not holding" in error_msg.lower():
-            return ("drop_fail_not_holding", {"item_name": target_object_name}) # Use the name user typed
+            return [{'key': "drop_fail_not_holding", 'data': {"item_name": target_object_name}}] # Use the name user typed
         # Add other specific mappings here if drop_object can fail in other ways
         
         # Fallback to generic internal error if message is unrecognized
-        return ("error_internal", {"action": f"drop failed: {error_msg}"})
+        return [{'key': "error_internal", 'data': {"action": f"drop failed: {error_msg}"}}]
 
 
-def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
-    """Handles the PUT command intent (e.g., put item in container). Returns (key, kwargs)."""
+def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+    """Handles the PUT command intent (e.g., put item in container). Returns List[Dict]."""
     item_to_put_name = parsed_intent.target
     container_name = parsed_intent.secondary_target
     preposition = parsed_intent.preposition
@@ -141,11 +141,11 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str,
     if not item_to_put_name or not container_name or not preposition:
         logging.warning("[handle_put] Missing item, container, or preposition in parsed intent.")
         # TODO: Add put_fail_incomplete key
-        return ("invalid_command", {}) # Generic fallback
+        return [{'key': "invalid_command", 'data': {}}] # Generic fallback
         
     # --- Find the specific item in hand ---
     if not game_state.hand_slot: # Check if hands are empty
-        return ("put_fail_not_holding_anything", {"item_name": item_to_put_name}) # Need response key
+        return [{'key': "put_fail_not_holding_anything", 'data': {"item_name": item_to_put_name}}] # Need response key
 
     object_id_to_put = None
     match_count = 0
@@ -159,10 +159,10 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str,
     # Handle ambiguity or no match in hands
     if match_count > 1:
         # TODO: Add put_fail_ambiguous key
-        return ("put_fail_ambiguous", {"item_name": item_to_put_name, "held_items": ", ".join(held_item_names)})
+        return [{'key': "put_fail_ambiguous", 'data': {"item_name": item_to_put_name, "held_items": ", ".join(held_item_names)}}]
     elif match_count == 0:
         # TODO: Add put_fail_target_not_held key
-        return ("put_fail_not_holding", {"item_name": item_to_put_name})
+        return [{'key': "put_fail_not_holding", 'data': {"item_name": item_to_put_name}}]
     
     # --- Found the item to put (object_id_to_put) --- 
         
@@ -173,29 +173,29 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str,
     if object_id_to_put == container_id:
         item_data = game_state.get_object_by_id(object_id_to_put)
         item_name = item_data.get('name', 'item') if item_data else 'item' # Get name for message
-        return ("put_fail_self_insertion", {"item_name": item_name})
+        return [{'key': "put_fail_self_insertion", 'data': {"item_name": item_name}}]
     # --- END ADDED ---
         
     if not container_id:
         # TODO: Add put_fail_container_not_found key
-        return ("look_fail_not_found", {"item_name": container_name}) # Reuse look key?
+        return [{'key': "look_fail_not_found", 'data': {"item_name": container_name}}] # Reuse look key?
         
     # Get container data
     container_data = game_state.get_object_by_id(container_id)
     if not container_data:
         logging.error(f"[handle_put] Container ID '{container_id}' found but data missing.")
-        return ("error_internal", {"action": "put container data"})
+        return [{'key': "error_internal", 'data': {"action": "put container data"}}]
         
     # Check if it's actually a container
     if not container_data.get('properties', {}).get('is_storage'):
         # TODO: Add put_fail_not_a_container key
-        return ("store_fail_not_container", {"container_name": container_name}) # Reuse store key?
+        return [{'key': "store_fail_not_container", 'data': {"container_name": container_name}}] # Reuse store key?
         
     # Check if the container is open (using object_states)
     container_state = game_state.get_object_state(container_id) or {}
     if not container_state.get('is_open', True): # Default to True if state not set?
         # TODO: Add put_fail_container_closed key
-        return ("store_fail_container_closed", {"container_name": container_name}) # Reuse store key?
+        return [{'key': "store_fail_container_closed", 'data': {"container_name": container_name}}] # Reuse store key?
         
     # TODO: Implement container capacity checks (Size, Weight, Count)
     # ... capacity check logic goes here ...
@@ -221,7 +221,7 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str,
     held_item_data = game_state.get_object_by_id(object_id_to_put)
     if not held_item_data:
         logging.error(f"[handle_put] Data missing for successfully put item '{object_id_to_put}'!")
-        return ("error_internal", {"action": "put success data missing"}) 
+        return [{'key': "error_internal", 'data': {"action": "put success data missing"}}] 
         
     held_item_display_name = held_item_data.get('name', object_id_to_put)
     is_plural = held_item_data.get('is_plural', False)
@@ -231,9 +231,9 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str,
     key = "put_success_plural" if is_plural else "put_success_singular"
     kwargs = {"item_name": held_item_display_name, "container_name": container_display_name}
     logging.debug(f"[handle_put] Returning success: key='{key}', kwargs={kwargs}")
-    return (key, kwargs) 
+    return [{'key': key, 'data': kwargs}] 
 
-def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
+def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
     """Handles taking an item FROM a container."""
     item_to_take_name = parsed_intent.target
     container_name = parsed_intent.secondary_target
@@ -243,12 +243,12 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tupl
     if not item_to_take_name or not container_name:
         logging.warning("[handle_take_from] Missing item or container in parsed intent.")
         # TODO: Add take_from_fail_incomplete key
-        return ("invalid_command", {}) 
+        return [{'key': "invalid_command", 'data': {}}] 
 
     # --- Find the container ---
     container_id = game_state.find_container_id_by_name(container_name)
     if not container_id:
-        return ("take_from_fail_container_not_found", {"container_name": container_name})
+        return [{'key': "take_from_fail_container_not_found", 'data': {"container_name": container_name}}]
         
     container_data = game_state.get_object_by_id(container_id)
     container_display_name = container_data.get('name', container_id) if container_data else container_id
@@ -256,7 +256,7 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tupl
     # Check if it's actually storage (should be caught by find_container... but double check)
     if not container_data or not container_data.get('properties', {}).get('is_storage'):
          logging.warning(f"[handle_take_from] Target '{container_name}' (ID: {container_id}) is not storage.")
-         return ("take_from_fail_not_container", {"container_name": container_display_name}) # Need new key
+         return [{'key': "take_from_fail_not_container", 'data': {"container_name": container_display_name}}] # Need new key
          
     # --- Check if container is open (if applicable) ---
     container_state = game_state.get_object_state(container_id) or {}
@@ -271,7 +271,7 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tupl
     is_plural = False # Default
     
     if not contents:
-        return ("take_from_fail_not_in_container", {"item_name": item_to_take_name, "container_name": container_display_name})
+        return [{'key': "take_from_fail_not_in_container", 'data': {"item_name": item_to_take_name, "container_name": container_display_name}}]
         
     found_match = None
     match_count = 0
@@ -287,9 +287,9 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tupl
                  
     if match_count > 1:
          # TODO: Add take_from_fail_ambiguous key
-         return ("take_from_fail_ambiguous", {"item_name": item_to_take_name, "container_name": container_display_name})
+         return [{'key': "take_from_fail_ambiguous", 'data': {"item_name": item_to_take_name, "container_name": container_display_name}}]
     elif match_count == 0:
-         return ("take_from_fail_not_in_container", {"item_name": item_to_take_name, "container_name": container_display_name})
+         return [{'key': "take_from_fail_not_in_container", 'data': {"item_name": item_to_take_name, "container_name": container_display_name}}]
     else:
         item_id_to_take = found_match
 
@@ -297,7 +297,7 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tupl
     if len(game_state.hand_slot) >= 2:
         held_items_str = " and ".join([game_state._get_object_name(item) or "something" for item in game_state.hand_slot])
         # TODO: Add take_from_fail_hands_full key
-        return ("take_fail_hands_full", {"held_item_name": held_items_str, "item_name": item_name_actual})
+        return [{'key': "take_fail_hands_full", 'data': {"held_item_name": held_items_str, "item_name": item_name_actual, "container_name": container_display_name}}]
 
     # --- Execution --- 
     logging.info(f"Taking item '{item_id_to_take}' from container '{container_id}'")
@@ -318,7 +318,7 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tupl
     else:
         # This should not happen if the item was found earlier, but handle defensively
         logging.error(f"[handle_take_from] Item '{item_id_to_take}' was not in container '{container_id}' contents during removal attempt.")
-        return ("error_internal", {"action": "take_from consistency error"})
+        return [{'key': "error_internal", 'data': {"action": "take_from consistency error"}}]
         
     # 2. Add item to player's hand list
     game_state.hand_slot.append(item_id_to_take)
@@ -327,4 +327,4 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> Tupl
     key = "take_from_success_plural" if is_plural else "take_from_success_singular"
     kwargs = {"item_name": item_name_actual, "container_name": container_display_name}
     logging.debug(f"[handle_take_from] Returning success: key='{key}', kwargs={kwargs}")
-    return (key, kwargs) 
+    return [{'key': key, 'data': kwargs}] 

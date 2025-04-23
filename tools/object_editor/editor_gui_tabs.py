@@ -650,445 +650,398 @@ def validate_object_data(object_data: dict, is_new: bool, manager: ObjectDataMan
 
 # --- Main Application ---
 def main():
-    sg.theme("DarkBlue3")
-    try:
-        manager = ObjectDataManager(data_dir=Path("data"))
-        object_ids = manager.get_object_ids()
-        room_ids = manager.get_room_ids()
-        initial_total_objects = manager.get_object_count() # Get initial count
-    except Exception as e:
-        logging.error(f"Failed to initialize ObjectDataManager: {e}")
-        sg.popup_error(f"Failed to load data files.\nError: {e}", title="Initialization Error")
-        return
+    """Main function to create and run the Object Editor GUI."""
+    # --- Data Initialization ---
+    # Create an instance of the data manager (adjust path if needed)
+    # Assuming the script runs from 'tools/object_editor'
+    data_dir = Path(__file__).resolve().parent.parent / "data" # Corrected path assumption
+    manager = ObjectDataManager(data_dir=data_dir)
 
-    # --- Define Layout Sections ---
-    # Top controls - ADDED PUSH and TOTAL COUNT DISPLAY
-    top_controls = [
+    # Get initial data for dropdowns
+    object_ids = manager.get_object_ids()
+    room_ids = manager.get_room_ids()
+    area_ids = [] # Initially empty, populated when a room is selected
+    categories = get_object_categories()
+    wear_areas = [area.value for area in WearArea]
+
+    sg.theme("DarkGrey2") # Use a theme
+
+# === START OF NEW LAYOUT CODE ===
+
+    # --- Persistent Top Controls Layout ---
+    top_controls_layout = [
         sg.Text("Select Object:"),
-        sg.Combo(object_ids, key=KEY_OBJECT_DROPDOWN, readonly=True, size=(30, 1), enable_events=True),
-        sg.Button("Load", key=KEY_LOAD_BUTTON),
-        sg.Button("New Object", key=KEY_NEW_BUTTON),
-        sg.Push(), # Pushes subsequent elements to the right
-        sg.Text(f"Total Objects: {initial_total_objects}", key=KEY_TOTAL_OBJECT_COUNT) # Display total count
+        sg.Combo(object_ids, key=KEY_OBJECT_DROPDOWN, size=(30, 1), enable_events=True, readonly=True, tooltip="Select an existing object ID to load its data."),
+        # sg.Button("Load", key=KEY_LOAD_BUTTON, tooltip="Load the selected object's data into the editor."), # Load is triggered by Combo change
+        sg.Button("New Object", key=KEY_NEW_BUTTON, tooltip="Clear all fields to create a new object definition."),
+        sg.Text(f"Total Objects: {len(object_ids)}", key=KEY_TOTAL_OBJECT_COUNT, size=(15,1), justification='right')
     ]
 
-    # Basic Info Frame - Made Count READONLY and removed default_text
-    basic_info_frame = sg.Frame("Basic Information", [
-        [sg.Text("Object ID:", size=(12,1)), sg.Input(key=KEY_OBJECT_ID, size=(30,1), readonly=True)],
-        [sg.Text("Name:", size=(12,1)), sg.Input(key=KEY_OBJECT_NAME, size=(40,1))],
-        [sg.Text("Is Plural?", size=(12,1)), sg.Checkbox('', key=KEY_OBJECT_IS_PLURAL, default=False)],
-        [sg.Text("Category:", size=(12,1)), sg.Combo(get_object_categories(), key=KEY_OBJECT_CATEGORY, readonly=True, size=(20,1))],
-        [sg.Text("Room Location:", size=(12,1)), sg.Combo(room_ids, key=KEY_OBJECT_LOCATION, readonly=True, size=(30,1), enable_events=True)],
-        [sg.Text("Area Location:", size=(12,1)), sg.Combo([], key=KEY_OBJECT_AREA_LOCATION, readonly=True, size=(30,1))],
-        [sg.Text("Count:", size=(12,1)), sg.Input(key=KEY_OBJECT_COUNT, size=(10,1), readonly=True)], # READONLY, no default
-        [sg.Text("Weight:", size=(12,1)), sg.Input(key=KEY_OBJECT_WEIGHT, size=(10,1), default_text="1.0")],
-        [sg.Text("Size:", size=(12,1)), sg.Input(key=KEY_OBJECT_SIZE, size=(10,1), default_text="1.0")],
-        [sg.Text("Synonyms (csv):", size=(12,1)), sg.Input(key=KEY_OBJECT_SYNONYMS, size=(40,1))],
-        [sg.Text("Description:")],
-        [sg.Multiline(key=KEY_OBJECT_DESCRIPTION, size=(60, 5))],
-    ])
+    # --- Tab Layout Definitions ---
 
-    # State & Lock Frame
-    state_lock_frame = sg.Frame("State and Locking", [
-         [sg.Checkbox("Visible Initially", key=KEY_OBJECT_INITIAL_STATE, default=True)],
-         [sg.Checkbox("Is Locked", key=KEY_OBJECT_IS_LOCKED, default=False)],
-         [sg.Text("Power State:", size=(10,1)), sg.Combo(['', 'offline', 'emergency', 'main_power', 'torch_light'], key=KEY_OBJECT_POWER_STATE, size=(20,1), default_value='')],
-         [sg.Text("Lock Type:", size=(10,1)), sg.Combo(['', 'key', 'code', 'biometric'], key=KEY_OBJECT_LOCK_TYPE, size=(20,1), default_value='')],
-         [sg.Text("Lock Code:", size=(10,1)), sg.Input(key=KEY_OBJECT_LOCK_CODE, size=(20,1))],
-         [sg.Text("Lock Key ID:", size=(10,1)), sg.Input(key=KEY_OBJECT_LOCK_KEY_ID, size=(30,1))],
-    ])
-
-    # --- Properties Frame (Expanded) ---
-    # Arrange properties into columns for better spacing
-    prop_col1 = [
-        [sg.Checkbox("Takeable", key=KEY_PROP_IS_TAKEABLE, default=False)],
-        [sg.Checkbox("Interactive", key=KEY_PROP_IS_INTERACTIVE, default=True)],
-        [sg.Checkbox("Dangerous", key=KEY_PROP_IS_DANGEROUS, default=False)],
-        [sg.Checkbox("Destroyable", key=KEY_PROP_IS_DESTROYABLE, default=False)],
-        [sg.Checkbox("Is Storage", key=KEY_PROP_IS_STORAGE, default=False)],
-        [sg.Checkbox("Operational", key=KEY_PROP_IS_OPERATIONAL, default=False)],
-        [sg.Checkbox("Edible", key=KEY_PROP_IS_EDIBLE, default=False)],
-        [sg.Checkbox("Is Weapon", key=KEY_PROP_IS_WEAPON, default=False)],
-        [sg.Checkbox("Movable", key=KEY_PROP_IS_MOVABLE, default=False)],
-        [sg.Checkbox("Wearable", key=KEY_PROP_IS_WEARABLE, default=False)],
+    # Tab 1: Basic Info
+    basic_info_layout = [
+        [sg.Text("Object ID:", size=(15,1)), sg.Input(key=KEY_OBJECT_ID, size=(40, 1), disabled=True, tooltip="Unique internal ID (lowercase_snake_case).\nCannot be changed after saving.")],
+        [sg.Text("Name:", size=(15,1)), sg.Input(key=KEY_OBJECT_NAME, size=(40, 1), tooltip="User-friendly name displayed in the game.")],
+        [sg.Text("Category:", size=(15,1)), sg.Combo(categories, key=KEY_OBJECT_CATEGORY, size=(20, 1), readonly=True, tooltip="Broad classification for the object.")],
+        [sg.Text("Is Plural:", size=(15,1)), sg.Checkbox("", key=KEY_OBJECT_IS_PLURAL, default=False, tooltip="Check if the object name represents a plural entity (e.g., 'boots').\nAffects some output messages.")],
+        [sg.Text("Description:", size=(15,1)), sg.Multiline(key=KEY_OBJECT_DESCRIPTION, size=(60, 5), tooltip="Detailed text shown when the player examines the object.")],
+        [sg.Text("Synonyms:", size=(15,1)), sg.Input(key=KEY_OBJECT_SYNONYMS, size=(60, 1), tooltip="Comma-separated list of alternative names players might use.")],
+        [sg.Text("Weight (kg):", size=(15,1)), sg.Input(key=KEY_OBJECT_WEIGHT, size=(10, 1), tooltip="Object's weight (0.01-250.0).\nAffects inventory and movability.")],
+        [sg.Text("Size (1-50):", size=(15,1)), sg.Input(key=KEY_OBJECT_SIZE, size=(10, 1), tooltip="Abstract size rating (1-50).\n1-25=Takeable, 26-49=Movable, 50=Fixed.")],
+        [sg.Text("Count:", size=(15,1)), sg.Input(key=KEY_OBJECT_COUNT, size=(10, 1), tooltip="Number of instances of this object at this location (usually 1).\nSet to '(Auto)' for new objects.")]
     ]
-    prop_col2 = [
-        [sg.Checkbox("Flammable", key=KEY_PROP_IS_FLAMMABLE, default=False)],
-        [sg.Checkbox("Toxic", key=KEY_PROP_IS_TOXIC, default=False)],
-        [sg.Checkbox("Is Food", key=KEY_PROP_IS_FOOD, default=False)],
-        [sg.Checkbox("Cookable", key=KEY_PROP_IS_COOKABLE, default=False)],
-        [sg.Checkbox("Consumable", key=KEY_PROP_IS_CONSUMABLE, default=False)],
-        [sg.Checkbox("Has Durability", key=KEY_PROP_HAS_DURABILITY, default=False)],
-        [sg.Checkbox("Hackable", key=KEY_PROP_IS_HACKABLE, default=False)],
-        [sg.Checkbox("Hidden", key=KEY_PROP_IS_HIDDEN, default=False)],
-        [sg.Checkbox("Rechargeable", key=KEY_PROP_IS_RECHARGEABLE, default=False)],
-        [sg.Checkbox("Fuel Source", key=KEY_PROP_IS_FUEL_SOURCE, default=False)],
+    basic_info_tab = sg.Tab('Basic Info', basic_info_layout, key='-TAB_BASIC_INFO-')
+
+    # Tab 2: Location
+    location_layout = [
+        [sg.Text("Room Location:", size=(15,1)), sg.Combo(room_ids, key=KEY_OBJECT_LOCATION, size=(30, 1), enable_events=True, readonly=True, tooltip="The room_id where this object is located.")],
+        [sg.Text("Area Location:", size=(15,1)), sg.Combo(area_ids, key=KEY_OBJECT_AREA_LOCATION, size=(30, 1), readonly=True, tooltip="Optional area_id within the room where the object is located.")]
     ]
-    prop_col3 = [
-        [sg.Checkbox("Regenerates", key=KEY_PROP_REGENERATES, default=False)],
-        [sg.Checkbox("Modular", key=KEY_PROP_IS_MODULAR, default=False)],
-        [sg.Checkbox("Is Stored", key=KEY_PROP_IS_STORED, default=False)], # Digital context
-        [sg.Checkbox("Transferable", key=KEY_PROP_IS_TRANSFERABLE, default=False)], # Digital context
-        [sg.Checkbox("Activatable", key=KEY_PROP_IS_ACTIVATABLE, default=False)],
-        [sg.Checkbox("Networked", key=KEY_PROP_IS_NETWORKED, default=False)],
-        [sg.Checkbox("Requires Power", key=KEY_PROP_REQUIRES_POWER, default=False)],
-        [sg.Checkbox("Requires Item", key=KEY_PROP_REQUIRES_ITEM, default=False)],
-        [sg.Checkbox("Has Security", key=KEY_PROP_HAS_SECURITY, default=False)],
-        [sg.Checkbox("Sensitive", key=KEY_PROP_IS_SENSITIVE, default=False)],
+    location_tab = sg.Tab('Location', location_layout, key='-TAB_LOCATION-')
+
+    # Tab 3: State & Locking
+    state_lock_layout = [
+        [sg.Checkbox("Visible Initially", key=KEY_OBJECT_INITIAL_STATE, default=True, tooltip="Is the object visible immediately upon entering the location?\n(Uncheck for hidden/contained items).")],
+        [sg.Checkbox("Is Locked", key=KEY_OBJECT_IS_LOCKED, default=False, tooltip="Does the object start locked, requiring an action to unlock?")],
+        [sg.Text("Lock Type:", size=(15,1)), sg.Combo(['', 'key', 'code', 'biometric'], key=KEY_OBJECT_LOCK_TYPE, size=(15, 1), readonly=True, tooltip="Mechanism required to unlock (if 'Is Locked' is checked).")],
+        [sg.Text("Lock Code:", size=(15,1)), sg.Input(key=KEY_OBJECT_LOCK_CODE, size=(20, 1), tooltip="The specific code required if Lock Type is 'code'.")],
+        [sg.Text("Lock Key ID:", size=(15,1)), sg.Input(key=KEY_OBJECT_LOCK_KEY_ID, size=(30, 1), tooltip="The object_id of the key item required if Lock Type is 'key'.")],
+        [sg.Text("Power State:", size=(15,1)), sg.Combo(['', 'offline', 'emergency', 'main_power', 'torch_light'], key=KEY_OBJECT_POWER_STATE, size=(15, 1), readonly=True, tooltip="Object's functional state based on power conditions\n(affects descriptions/interactions).")],
+        [sg.Checkbox("Is Operational", key=KEY_PROP_IS_OPERATIONAL, default=True, tooltip="Is the device/tool currently functional (independent of power,\nunless Requires Power is also checked)?")]
     ]
-    prop_col4 = [
-        [sg.Checkbox("Is Surface", key=KEY_PROP_IS_SURFACE, default=False)],
-        [sg.Checkbox("Is Charger", key=KEY_PROP_IS_CHARGER, default=False)],
-        [sg.Checkbox("Fragile", key=KEY_PROP_IS_FRAGILE, default=False)],
-        [sg.Checkbox("Secret", key=KEY_PROP_IS_SECRET, default=False)],
-        [sg.Text("_"*15)], # Visual separator
-        [sg.Text("Storage Specific:", font=("Any", 10, "bold"))],
-        [sg.Text("Capacity:", size=(8,1)), sg.Input(key=KEY_PROP_STORAGE_CAPACITY, size=(10,1))],
-        [sg.Checkbox("Stores Liquids", key=KEY_PROP_CAN_STORE_LIQUIDS, default=False)],
-        [sg.Text("_"*15)], # Visual separator
-        [sg.Text("Weapon Specific:", font=("Any", 10, "bold"))],
-        [sg.Text("Damage:", size=(8,1)), sg.Input(key=KEY_PROP_DAMAGE, size=(10,1))],
-        [sg.Text("Durability:", size=(8,1)), sg.Input(key=KEY_PROP_DURABILITY, size=(10,1))], # Weapon/Item durability
-        [sg.Text("Range:", size=(8,1)), sg.Input(key=KEY_PROP_RANGE, size=(10,1))],
+    state_lock_tab = sg.Tab('State & Locking', state_lock_layout, key='-TAB_STATE_LOCK-')
+
+    # Tab 4: Properties (General)
+    # Use columns for better organization
+    props_col1 = [
+        [sg.Checkbox("Takeable", key=KEY_PROP_IS_TAKEABLE, default=False, tooltip="Can the player pick this up and put it in inventory?")],
+        [sg.Checkbox("Interactive", key=KEY_PROP_IS_INTERACTIVE, default=True, tooltip="Can the player interact with this beyond just looking?")],
+        [sg.Checkbox("Dangerous", key=KEY_PROP_IS_DANGEROUS, default=False, tooltip="Does interacting with this pose a threat?")],
+        [sg.Checkbox("Destroyable", key=KEY_PROP_IS_DESTROYABLE, default=False, tooltip="Can this object be destroyed by player actions?")],
+        [sg.Checkbox("Movable", key=KEY_PROP_IS_MOVABLE, default=False, tooltip="Can the player push/pull this object?")],
+        [sg.Checkbox("Flammable", key=KEY_PROP_IS_FLAMMABLE, default=False, tooltip="Can this object be set on fire?")],
+        [sg.Checkbox("Toxic", key=KEY_PROP_IS_TOXIC, default=False, tooltip="Is this object poisonous or harmful if ingested/touched?")],
+        [sg.Checkbox("Requires Power", key=KEY_PROP_REQUIRES_POWER, default=False, tooltip="Does this object need power to function?")]
+    ]
+    props_col2 = [
+        [sg.Checkbox("Has Durability", key=KEY_PROP_HAS_DURABILITY, default=False, tooltip="Does this item have a durability value that degrades?")],
+        [sg.Checkbox("Hackable", key=KEY_PROP_IS_HACKABLE, default=False, tooltip="Can the player attempt to hack this device?")],
+        [sg.Checkbox("Hidden", key=KEY_PROP_IS_HIDDEN, default=False, tooltip="Is this property difficult to discern initially?\n(Affects examine text)")],
+        [sg.Checkbox("Rechargeable", key=KEY_PROP_IS_RECHARGEABLE, default=False, tooltip="Can this item be recharged (e.g., battery)?")],
+        [sg.Checkbox("Is Fuel Source", key=KEY_PROP_IS_FUEL_SOURCE, default=False, tooltip="Can this item be used as fuel?")],
+        [sg.Checkbox("Regenerates", key=KEY_PROP_REGENERATES, default=False, tooltip="Does this object replenish itself over time?")],
+        [sg.Checkbox("Modular", key=KEY_PROP_IS_MODULAR, default=False, tooltip="Can this object accept or be part of modifications?")],
+        [sg.Checkbox("Is Surface", key=KEY_PROP_IS_SURFACE, default=False, tooltip="Does this object provide a surface to place items on?")]
+    ]
+    props_col3 = [
+        [sg.Checkbox("Transferable", key=KEY_PROP_IS_TRANSFERABLE, default=False, tooltip="Can this be transferred (e.g., data, power)?")],
+        [sg.Checkbox("Activatable", key=KEY_PROP_IS_ACTIVATABLE, default=False, tooltip="Can this be activated/deactivated (e.g., a switch)?")],
+        [sg.Checkbox("Networked", key=KEY_PROP_IS_NETWORKED, default=False, tooltip="Is this object part of a network?")],
+        [sg.Checkbox("Requires Item", key=KEY_PROP_REQUIRES_ITEM, default=False, tooltip="Does using this object require another specific item?")],
+        [sg.Checkbox("Has Security", key=KEY_PROP_HAS_SECURITY, default=False, tooltip="Does this object have security measures?")],
+        [sg.Checkbox("Sensitive", key=KEY_PROP_IS_SENSITIVE, default=False, tooltip="Is this object sensitive to environmental conditions?")],
+        [sg.Checkbox("Fragile", key=KEY_PROP_IS_FRAGILE, default=False, tooltip="Is this object easily broken?")],
+        [sg.Checkbox("Secret", key=KEY_PROP_IS_SECRET, default=False, tooltip="Does this object contain a secret or hidden feature?")],
+        [sg.Checkbox("Is Charger", key=KEY_PROP_IS_CHARGER, default=False, tooltip="Can this object charge other items?")]
+        # Removed KEY_PROP_IS_STORED as it seemed redundant/unclear
+    ]
+    properties_layout = [[sg.Column(props_col1), sg.VSeperator(), sg.Column(props_col2), sg.VSeperator(), sg.Column(props_col3)]]
+    properties_tab = sg.Tab('Properties', properties_layout, key='-TAB_PROPERTIES-')
+
+    # Tab 5: Container
+    container_layout = [
+        [sg.Checkbox("Is Storage Container", key=KEY_PROP_IS_STORAGE, default=False, tooltip="Can this object hold other items?")],
+        [sg.Text("Storage Capacity:", size=(15,1)), sg.Input(key=KEY_PROP_STORAGE_CAPACITY, size=(10, 1), tooltip="Maximum number or volume of items it can hold (optional).")],
+        [sg.Checkbox("Can Store Liquids", key=KEY_PROP_CAN_STORE_LIQUIDS, default=False, tooltip="Can this container hold liquids?")],
+        [sg.Text("Initial Contents (ID per line):"), sg.Multiline(key=KEY_OBJECT_STORAGE_CONTENTS, size=(60, 5), tooltip="List the object IDs initially inside this container, one ID per line.")]
+    ]
+    container_tab = sg.Tab('Container', container_layout, key='-TAB_CONTAINER-')
+
+    # Tab 6: Wearable
+    wearable_layout = [
+        [sg.Checkbox("Is Wearable", key=KEY_PROP_IS_WEARABLE, default=False, tooltip="Can the player wear this item?")],
+        [sg.Text("Wear Area:", size=(15,1)), sg.Combo(wear_areas, key=KEY_WEAR_AREA, size=(20, 1), readonly=True, tooltip="Body area where this item is worn (e.g., head, torso, feet).")],
+        [sg.Text("Wear Layer:", size=(15,1)), sg.Input(key=KEY_WEAR_LAYER, size=(10, 1), tooltip="Layering order (e.g., 0=skin, 1=under, 2=over).\nLower layers block higher ones in same area.")]
+    ]
+    wearable_tab = sg.Tab('Wearable', wearable_layout, key='-TAB_WEARABLE-')
+
+    # Tab 7: Weapon/Tool
+    weapon_tool_layout = [
+        [sg.Checkbox("Is Weapon", key=KEY_PROP_IS_WEAPON, default=False, tooltip="Can this be used as a weapon?")],
+        [sg.Text("Damage:", size=(15,1)), sg.Input(key=KEY_PROP_DAMAGE, size=(10, 1), tooltip="Damage value if used as a weapon (numeric).")],
+        [sg.Text("Durability:", size=(15,1)), sg.Input(key=KEY_PROP_DURABILITY, size=(10, 1), tooltip="Item's durability points (numeric, if Has Durability is checked).")],
+        [sg.Text("Range:", size=(15,1)), sg.Input(key=KEY_PROP_RANGE, size=(10, 1), tooltip="Effective range if used as a weapon (numeric/abstract).")]
+        # Add tool-specific properties here later if needed
+    ]
+    weapon_tool_tab = sg.Tab('Weapon/Tool', weapon_tool_layout, key='-TAB_WEAPON_TOOL-')
+
+    # Tab 8: Consumable
+    consumable_layout = [
+        [sg.Checkbox("Is Consumable", key=KEY_PROP_IS_CONSUMABLE, default=False, tooltip="Is this item used up when used/eaten?")],
+        [sg.Checkbox("Is Edible", key=KEY_PROP_IS_EDIBLE, default=False, tooltip="Can the player attempt to eat this?")],
+        [sg.Checkbox("Is Food", key=KEY_PROP_IS_FOOD, default=False, tooltip="Is this beneficial food?")],
+        [sg.Checkbox("Is Cookable", key=KEY_PROP_IS_COOKABLE, default=False, tooltip="Can this item be cooked?")]
+        # Add nutritional value, effects (e.g., heal amount) fields later
+    ]
+    consumable_tab = sg.Tab('Consumable', consumable_layout, key='-TAB_CONSUMABLE-')
+
+    # Tab 9: Interaction
+    interaction_layout = [
+        [sg.Text("Required State:"), sg.Multiline(key=KEY_INTERACTION_REQUIRED_STATE, size=(60, 3), tooltip="Conditions required for interaction (e.g., 'power:on', 'locked:false').\nKey:Value per line.")],
+        [sg.Text("Required Items:"), sg.Multiline(key=KEY_INTERACTION_REQUIRED_ITEMS, size=(60, 3), tooltip="Object IDs of items needed for interaction, one ID per line.")],
+        [sg.Text("Primary Actions:"), sg.Multiline(key=KEY_INTERACTION_PRIMARY_ACTIONS, size=(60, 3), tooltip="Main actions possible (e.g., 'use', 'open', 'activate').\nKey:Effect per line.")],
+        [sg.Text("Effects:"), sg.Multiline(key=KEY_INTERACTION_EFFECTS, size=(60, 4), tooltip="Resulting changes from actions (e.g., 'set_state:is_open:true', 'add_flag:puzzle_solved').\nKey:Value per line.")],
+        [sg.Text("Success Message:"), sg.Multiline(key=KEY_INTERACTION_SUCCESS, size=(60, 3), tooltip="Text displayed on successful interaction.")],
+        [sg.Text("Failure Message:"), sg.Multiline(key=KEY_INTERACTION_FAILURE, size=(60, 3), tooltip="Text displayed on failed interaction (e.g., locked, missing item).")]
+    ]
+    interaction_tab = sg.Tab('Interaction', interaction_layout, key='-TAB_INTERACTION-')
+
+    # Tab 10: Other Details
+    other_details_layout = [
+        [sg.Text("State Descriptions (state: description):"), sg.Multiline(key=KEY_OBJECT_STATE_DESCRIPTIONS, size=(60, 5), tooltip="Alternative descriptions based on state (e.g., 'offline: The screen is dark.').\nKey:Value per line.")],
+        [sg.Text("Digital Content (filename: content \\n---): "), sg.Multiline(key=KEY_OBJECT_DIGITAL_CONTENT, size=(60, 5), tooltip="Text content for readable devices.\nFormat: 'filename: content line1\\ncontent line2\\n---'.")]
+    ]
+    other_details_tab = sg.Tab('Other Details', other_details_layout, key='-TAB_OTHER_DETAILS-')
+
+    # Tab 11: YAML Preview
+    yaml_preview_layout = [
+        [sg.Multiline(key=KEY_YAML_PREVIEW, size=(80, 20), disabled=True, expand_x=True, expand_y=True, tooltip="Preview of the object data structure (read-only).")]
+    ]
+    yaml_preview_tab = sg.Tab('YAML Preview', yaml_preview_layout, key='-TAB_YAML_PREVIEW-')
+
+    # --- Tab Group Definition ---
+    tab_group_layout = [[sg.TabGroup([
+        basic_info_tab,
+        location_tab,
+        state_lock_tab,
+        properties_tab,
+        container_tab,
+        wearable_tab,
+        weapon_tool_tab,
+        consumable_tab,
+        interaction_tab,
+        other_details_tab,
+        yaml_preview_tab
+    ], enable_events=True, key='-TABGROUP-', expand_x=True, expand_y=True)]] # Added expand options
+
+    # --- Persistent Bottom Controls Layout ---
+    bottom_controls_layout = [
+        [sg.Text("❓", size=(2,1), key=KEY_VALIDATE_INDICATOR, text_color="grey", tooltip="Validation Status (❓=Unknown, ✅=Valid, ❌=Invalid)"), # Changed size, added tooltip
+         sg.Button("Validate", key=KEY_VALIDATE_BUTTON, tooltip="Check the current data for errors before saving."),
+         sg.Button("Save Changes", key=KEY_SAVE_BUTTON, tooltip="Save the current object data (new or updated) to objects.yaml and update location in rooms.yaml."),
+         sg.Button("Delete Object", key=KEY_DELETE_BUTTON, button_color=('white', 'red'), tooltip="Permanently delete the currently loaded object from objects.yaml and rooms.yaml.", disabled=True)], # Start disabled
+        [sg.StatusBar("Ready.", key=KEY_STATUS_BAR, size=(80, 1), justification='left')]
     ]
 
-    properties_frame = sg.Frame("Properties", [
-        [sg.Column(prop_col1), sg.VSeparator(),
-         sg.Column(prop_col2), sg.VSeparator(),
-         sg.Column(prop_col3), sg.VSeparator(),
-         sg.Column(prop_col4)]
-    ])
-
-    # --- Interaction Frame (Expanded) ---
-    # Using Multiline for lists, assuming comma-separated values for now
-    interaction_frame = sg.Frame("Interaction", [
-         [sg.Text("Required State (csv):", size=(20,1)), sg.Input(key=KEY_INTERACTION_REQUIRED_STATE, size=(40,1))],
-         [sg.Text("Required Items (IDs, csv):", size=(20,1)), sg.Input(key=KEY_INTERACTION_REQUIRED_ITEMS, size=(40,1))],
-         [sg.Text("Primary Actions (csv):", size=(20,1)), sg.Input(key=KEY_INTERACTION_PRIMARY_ACTIONS, size=(40,1))],
-         [sg.Text("Effects (csv):", size=(20,1)), sg.Input(key=KEY_INTERACTION_EFFECTS, size=(40,1))],
-         [sg.HSeparator()],
-         [sg.Text("Success Message:", size=(20,1)), sg.Input(key=KEY_INTERACTION_SUCCESS, size=(50,1))],
-         [sg.Text("Failure Message:", size=(20,1)), sg.Input(key=KEY_INTERACTION_FAILURE, size=(50,1))],
-    ])
-
-    # Other Frame - ADDING Digital Content
-    other_frame = sg.Frame("Other Details", [
-        [sg.Text("Storage Contents (IDs, csv):", size=(25,1)), sg.Input(key=KEY_OBJECT_STORAGE_CONTENTS, size=(40,1))],
-        [sg.Text("State Descriptions (state:desc \n one per line):", size=(25,2)), # Adjust label size for clarity
-         sg.Multiline(key=KEY_OBJECT_STATE_DESCRIPTIONS, size=(60, 3))], # Slightly smaller height
-        [sg.Text("Digital Content (filename:content \n use '---' separator):", size=(25,2)), # NEW field 
-         sg.Multiline(key=KEY_OBJECT_DIGITAL_CONTENT, size=(60, 4))], # Added with height 4
-    ])
-
-    # --- Define YAML Preview Frame Separately - REDUCED HEIGHT ---
-    yaml_preview_frame = sg.Frame("YAML Preview", [
-        [sg.Multiline(key=KEY_YAML_PREVIEW, size=(65, 5), disabled=True, autoscroll=True)] # Reduced height from 8 to 5
-    ])
-
-    # --- Wearability Frame definition ---
-    wear_area_values = [''] + [area.value for area in WearArea]
-    wear_layer_values = [''] + ['1', '2', '3', '4', '5'] # Add blank option
-    wearability_frame = sg.Frame("Wearability", [
-        [sg.Text("Area:", size=(6,1)), sg.Combo(wear_area_values, key=KEY_WEAR_AREA, size=(15, 1), readonly=True, tooltip="Body area where item is worn (blank for none)")], # Updated tooltip
-        [sg.Text("Layer:", size=(6,1)), sg.Combo(wear_layer_values, key=KEY_WEAR_LAYER, size=(5, 1), readonly=True, tooltip="Layer order (blank for none)")] # Updated tooltip
-    ], vertical_alignment='top')
-
-    # --- RE-ADD Bottom Controls Definition ---
-    bottom_controls = [
-        [ # Row for buttons
-            sg.Button("Update Preview / Validate", key=KEY_VALIDATE_BUTTON),
-            sg.Text("", key=KEY_VALIDATE_INDICATOR, size=(2,1)),
-            sg.Push(),
-            sg.Button("Save Changes", key=KEY_SAVE_BUTTON),
-            sg.Button("Delete Selected Object", key=KEY_DELETE_BUTTON, button_color=('white', 'red')),
-            sg.Button("Close", key=KEY_CLOSE_BUTTON) # Use explicit key
-        ],
-        [sg.StatusBar("", size=(80, 1), key=KEY_STATUS_BAR)]
-    ]
-
-    # --- Assemble Main Layout ---
-    left_col = sg.Column([
-        [basic_info_frame],
-        [properties_frame],
-    ], vertical_alignment='top')
-
-    # Right Column Layout
-    right_col = sg.Column([
-        [sg.Column([[state_lock_frame]], pad=(0,0), expand_x=False),
-         sg.Column([[wearability_frame]], pad=(0,0), expand_x=False)],
-        [interaction_frame],
-        [other_frame],
-        [yaml_preview_frame]
-    ], vertical_alignment='top')
-
-    # Main layout using the defined columns and bottom controls
+    # --- Final Window Layout ---
     layout = [
-        top_controls,
-        [sg.HSeparator()],
-        [left_col, sg.VSeparator(), right_col],
-        [sg.HSeparator()],
-        bottom_controls # Use the re-added definition here
+        top_controls_layout,
+        [sg.HorizontalSeparator()],
+        tab_group_layout, # Add the TabGroup
+        [sg.HorizontalSeparator()],
+        bottom_controls_layout
+        # Removed Close button from layout, use window X
     ]
+# === END OF NEW LAYOUT CODE ===
 
-    # --- Create Window ---
-    window = sg.Window("Starship Adventure 2 - Object Editor", layout, resizable=True, finalize=True)
+    # --- Window Creation ---
+    window = sg.Window("Starship Adventure 2 - Object Editor (Tabs WIP)", layout, resizable=True, finalize=True)
+
+    # Manually set initial focus if desired (e.g., to Object ID if starting blank)
+    # window[KEY_OBJECT_ID].set_focus()
+    # Set minimum window size if needed
+    # window.set_min_size((800, 600))
 
     # --- Event Loop ---
-    current_object_id = None # Track which object is loaded
-    current_object_data = None # Store the full data of the loaded object
+    current_object_id = None
+    is_new_object = False
 
     while True:
         event, values = window.read()
 
-        # Add explicit check for Close button OR window closed event
-        if event == sg.WIN_CLOSED or event == KEY_CLOSE_BUTTON:
+        if event == sg.WIN_CLOSED:
             break
 
-        window[KEY_STATUS_BAR].update("")
+        window[KEY_STATUS_BAR].update("") # Clear status on new event
+        window[KEY_VALIDATE_INDICATOR].update("") # Clear validation indicator
 
-        if event == KEY_OBJECT_DROPDOWN or event == KEY_LOAD_BUTTON:
-            selected_id = values[KEY_OBJECT_DROPDOWN]
-            if selected_id:
-                logging.info(f"Load requested for: {selected_id}")
-                window[KEY_STATUS_BAR].update(f"Loading data for {selected_id}...")
-                window.refresh() # Show status update immediately
-
-                loaded_data = manager.get_object_by_id(selected_id)
-                if loaded_data:
-                    current_object_id = selected_id
-                    current_object_data = loaded_data # Store loaded data
-                    populate_fields(window, current_object_data, manager)
-                    update_yaml_preview(window, current_object_data, manager)
-                    window[KEY_STATUS_BAR].update(f"Loaded: {selected_id}")
-                else:
-                    logging.error(f"Failed to retrieve data for selected ID: {selected_id}")
-                    sg.popup_error(f"Could not load data for object '{selected_id}'. Check data files.", title="Load Error")
-                    current_object_id = None
-                    current_object_data = None
-                    clear_fields(window) # Clear fields on error
-                    window[KEY_STATUS_BAR].update(f"Error loading {selected_id}.")
-
-            else:
-                 window[KEY_STATUS_BAR].update("Select an object ID to load.")
-
-        elif event == KEY_OBJECT_LOCATION: # Room selection changed
-            selected_room_id = values[KEY_OBJECT_LOCATION]
-            logging.info(f"Room selection changed to: {selected_room_id}")
-            area_ids = []
-            if selected_room_id:
-                area_ids = manager.get_area_ids_for_room(selected_room_id)
-            # Workaround: Ensure list is not empty
-            display_area_ids = area_ids if area_ids else ['']
-            # Explicitly set readonly and size during update
-            window[KEY_OBJECT_AREA_LOCATION].update(values=display_area_ids, value=None, readonly=True, size=(30,1))
-
-        elif event == KEY_NEW_BUTTON:
-            logging.info("New Object button clicked.")
-            window[KEY_STATUS_BAR].update("Enter details for new object. ID cannot be changed after saving.")
-            current_object_id = None
-            current_object_data = None
-            clear_fields(window) # Use the helper function
-            update_yaml_preview(window, None, manager) # Clear preview
-            window[KEY_OBJECT_AREA_LOCATION].update(values=[], value=None) # Clear area dropdown
-
-        elif event == KEY_VALIDATE_BUTTON:
-            logging.info("Validate button clicked.")
-            # --- VALIDATION LOGIC ONLY --- 
-            gathered_data, _, _ = gather_data_from_fields(window, manager) # Ignore location here
-
-            if gathered_data is None:
-                window[KEY_VALIDATE_INDICATOR].update('❌', text_color='red')
-                window[KEY_STATUS_BAR].update("Validation Error: Failed to gather data from fields. Check logs.")
-                update_yaml_preview(window, None, manager) 
-                continue 
-
-            is_new_object = not window[KEY_OBJECT_ID].Disabled
-            validation_errors = validate_object_data(gathered_data, is_new_object, manager)
-
-            if not validation_errors:
-                window[KEY_VALIDATE_INDICATOR].update('✔️', text_color='green')
-                window[KEY_STATUS_BAR].update("Validation successful.")
-                update_yaml_preview(window, gathered_data, manager) 
-            else:
-                window[KEY_VALIDATE_INDICATOR].update('❌', text_color='red')
-                error_message = "Validation Failed: " + "; ".join(validation_errors)
-                window[KEY_STATUS_BAR].update(error_message)
-                logging.warning(error_message)
-                update_yaml_preview(window, gathered_data, manager)
-            # --- END OF VALIDATION LOGIC ---
-
-        elif event == KEY_SAVE_BUTTON:
-            # --- MOVED SAVE LOGIC HERE --- 
-            logging.info("Save Changes button clicked.")
-            window[KEY_STATUS_BAR].update("Saving...")
-            window.refresh()
-
-            gathered_data, selected_room_id, selected_area_id = gather_data_from_fields(window, manager)
-            
-            if gathered_data is None:
-                sg.popup_error("Cannot save: Error gathering data from form. Check logs.", title="Save Error")
-                window[KEY_STATUS_BAR].update("Save failed: Invalid data.")
-                continue
-
-            # No longer needed: explicit room check
-            # if not selected_room_id: ... continue
-
-            is_new_object = not window[KEY_OBJECT_ID].Disabled
-            validation_errors = validate_object_data(gathered_data, is_new_object, manager)
-
-            if validation_errors:
-                error_str = "\n".join(validation_errors)
-                confirm = sg.popup_yes_no(f"Validation Issues Found:\n{error_str}\n\nSave anyway?", title="Validation Warning")
-                if confirm == 'No':
-                    window[KEY_STATUS_BAR].update("Save cancelled due to validation issues.")
-                    continue 
-                # END of the validation error check block
-
-            # --- CHECK 1 (Container Contents Initial State) ---
-            if 'storage_contents' in gathered_data and gathered_data['storage_contents']:
-                logging.debug("[Check 1] Checking storage_contents...") 
-                original_contents = list(gathered_data['storage_contents']) 
-                final_contents_to_save = []
-                items_skipped = []
-
-                for item_id in original_contents:
-                    logging.debug(f"[Check 1]   Processing item_id: '{item_id}'") 
-                    item_data = manager.get_object_by_id(item_id) 
-                    logging.debug(f"[Check 1]     Found item_data: {item_data is not None}") 
-                    if item_data:
-                        is_initial = item_data.get('initial_state', True) 
-                        logging.debug(f"[Check 1]       initial_state value: {is_initial} (Type: {type(is_initial)})") 
-                        if not is_initial:
-                            logging.debug("[Check 1]         Condition 'not is_initial' is TRUE. Showing popup.") 
-                            item_name = item_data.get('name', item_id)
-                            confirm_add = sg.popup_yes_no(
-                                f"Object '{item_name}' (ID: {item_id}) has initial_state=False.\n"
-                                f"Add it to this container's starting contents anyway?",
-                                title="Initial State Warning"
-                            )
-                            if confirm_add == 'Yes':
-                                final_contents_to_save.append(item_id)
-                            else:
-                                items_skipped.append(item_name) 
-                        else:
-                            logging.debug("[Check 1]         Condition 'not is_initial' is FALSE. Skipping popup.") 
-                            final_contents_to_save.append(item_id)
+        try:
+            if event == KEY_OBJECT_DROPDOWN:
+                selected_id = values[KEY_OBJECT_DROPDOWN]
+                if selected_id:
+                    logging.info(f"Dropdown changed: Selected Object ID = {selected_id}")
+                    object_data = manager.get_object_by_id(selected_id)
+                    if object_data:
+                        populate_fields(window, object_data, manager)
+                        # update_yaml_preview(window, object_data, manager) # Preview not fully wired yet
+                        current_object_id = selected_id
+                        is_new_object = False
+                        window[KEY_OBJECT_ID].update(disabled=True) # Disable ID field for existing object
+                        window[KEY_DELETE_BUTTON].update(disabled=False)
+                        window[KEY_STATUS_BAR].update(f"Loaded data for: {selected_id}")
                     else:
-                        logging.warning(f"Could not find object data for ID '{item_id}' listed in storage_contents.")
-                        final_contents_to_save.append(item_id) 
+                        logging.error(f"Failed to retrieve data for selected ID: {selected_id}")
+                        clear_fields(window)
+                        # update_yaml_preview(window, None, manager)
+                        current_object_id = None
+                        is_new_object = False
+                        window[KEY_DELETE_BUTTON].update(disabled=True)
+                        window[KEY_STATUS_BAR].update(f"Error: Could not load data for {selected_id}", text_color="red")
 
-                gathered_data['storage_contents'] = final_contents_to_save
+            elif event == KEY_NEW_BUTTON:
+                logging.info("New Object button clicked.")
+                clear_fields(window)
+                # update_yaml_preview(window, None, manager)
+                current_object_id = None
+                is_new_object = True
+                window[KEY_OBJECT_ID].update(disabled=False) # Enable ID field for new object
+                window[KEY_OBJECT_ID].set_focus()
+                window[KEY_DELETE_BUTTON].update(disabled=True)
+                window[KEY_STATUS_BAR].update("Enter details for new object. ID must be unique.")
 
-                if items_skipped:
-                    skipped_str = ", ".join(items_skipped)
-                    window[KEY_STATUS_BAR].update(f"Note: Skipped adding items to contents: {skipped_str}")
-                    sg.popup_notify(f"Skipped adding to contents (initial_state=False):\n{skipped_str}", title="Contents Note")
-            # --- END OF CHECK 1 ---
-
-            # --- CHECK 2 (Object Location Initial State) ---
-            add_object_to_room_location = True 
-            if not gathered_data.get('initial_state', True) and selected_room_id:
-                object_name_for_warn = gathered_data.get('name', gathered_data.get('id', 'this object'))
-                room_name_for_warn = manager.get_room_name(selected_room_id) or selected_room_id
-                
-                confirm_loc_add = sg.popup_yes_no(
-                    f"Object '{object_name_for_warn}' has initial_state=False (initially invisible).\n"
-                    f"Do you want to add it to the starting objects_present list for Room '{room_name_for_warn}'?",
-                    title="Initial State Location Warning"
-                )
-                if confirm_loc_add == 'No':
-                    add_object_to_room_location = False
-                    window[KEY_STATUS_BAR].update(f"Note: '{object_name_for_warn}' will NOT be added to '{room_name_for_warn}'s starting objects.")
-            # --- END CHECK 2 ---
-            
-            # --- Optional: Warning for saving without location --- 
-            if not selected_room_id: 
-                confirm_no_loc = sg.popup_yes_no(
-                     "Warning: No room location selected.\nObject will be saved but not placed in any room.\n\nContinue saving?",
-                     title="Confirm Save Without Location"
-                 )
-                if confirm_no_loc == 'No':
-                     window[KEY_STATUS_BAR].update("Save cancelled: No location selected.")
-                     continue # Stop the save process
-            # --- End Optional Warning ---
-
-            # --- Final Save Confirmation ---
-            if sg.popup_yes_no("Are you sure you want to save these changes?", title="Confirm Save") == 'Yes':
-                try:
-                    object_id_to_save = gathered_data['id']
-                    save_successful = False
-                    
-                    # Decide final room/area based on Check 2 
-                    final_room_id_to_save = selected_room_id if add_object_to_room_location else None
-                    final_area_id_to_save = selected_area_id if add_object_to_room_location else None
-                    
-                    # Use correct save logic based on new/existing
-                    if is_new_object:
-                        if manager.add_object(gathered_data):
-                            save_successful = manager.save_object_and_location(object_id_to_save, final_room_id_to_save, final_area_id_to_save)
-                        else:
-                            sg.popup_error(f"Failed to add object '{object_id_to_save}' internally.", title="Save Error")
-                    else: 
-                        if manager.update_object(current_object_id, gathered_data): 
-                            save_successful = manager.save_object_and_location(object_id_to_save, final_room_id_to_save, final_area_id_to_save)
-                        else:
-                            sg.popup_error(f"Failed to update object '{current_object_id}' internally.", title="Save Error")
-                    
-                    # Handle outcome
-                    if save_successful:
-                        window[KEY_STATUS_BAR].update(f"Object '{object_id_to_save}' saved successfully!")
-                        # Refresh UI
-                        new_object_ids = manager.get_object_ids()
-                        new_total_count = manager.get_object_count() 
-                        window[KEY_OBJECT_DROPDOWN].update(values=new_object_ids)
-                        window[KEY_TOTAL_OBJECT_COUNT].update(f"Total Objects: {new_total_count}") 
-                        window[KEY_OBJECT_DROPDOWN].update(value=object_id_to_save) 
-                        current_object_data = manager.get_object_by_id(object_id_to_save)
-                        if current_object_data:
-                             populate_fields(window, current_object_data, manager)
-                             update_yaml_preview(window, current_object_data, manager)
-                        else: 
-                              clear_fields(window)
-                              update_yaml_preview(window, None, manager)
-                    else:
-                         window[KEY_STATUS_BAR].update("Save failed! Check logs.") 
-
-                except Exception as e:
-                    logging.exception(f"Error during save operation for {gathered_data.get('id')}") # Log full traceback
-                    sg.popup_error(f"Failed to save changes.\nError: {e}", title="Save Error")
-                    window[KEY_STATUS_BAR].update(f"Save failed: {e}")
-            else:
-                window[KEY_STATUS_BAR].update("Save cancelled.")
-            # --- END OF MOVED SAVE LOGIC --- 
-
-        elif event == KEY_DELETE_BUTTON:
-            selected_id_to_delete = values[KEY_OBJECT_DROPDOWN]
-            logging.info(f"Delete button clicked for: {selected_id_to_delete}")
-            if not selected_id_to_delete:
-                 window[KEY_STATUS_BAR].update("Select an object from the dropdown to delete.")
-                 continue
-
-            if sg.popup_yes_no(f"Are you sure you want to permanently delete object '{selected_id_to_delete}'?", title="Confirm Delete", button_color=('white','red')) == 'Yes':
-                 window[KEY_STATUS_BAR].update(f"Deleting {selected_id_to_delete}...")
-                 window.refresh()
-                 if manager.delete_object(selected_id_to_delete):
-                     window[KEY_STATUS_BAR].update(f"Object '{selected_id_to_delete}' deleted successfully.")
-                     current_object_id = None
-                     current_object_data = None
-                     clear_fields(window)
-                     update_yaml_preview(window, None, manager)
-                     # Refresh dropdown AND total count
-                     new_object_ids = manager.get_object_ids()
-                     new_total_count = manager.get_object_count()
-                     window[KEY_OBJECT_DROPDOWN].update(values=new_object_ids, value='')
-                     window[KEY_TOTAL_OBJECT_COUNT].update(f"Total Objects: {new_total_count}") # Update display
+            elif event == KEY_OBJECT_LOCATION: # Room selection changed
+                 selected_room_id = values[KEY_OBJECT_LOCATION]
+                 if selected_room_id:
+                      area_ids = manager.get_area_ids_for_room(selected_room_id)
+                      window[KEY_OBJECT_AREA_LOCATION].update(values=area_ids, value=None) # Update area dropdown
                  else:
-                     window[KEY_STATUS_BAR].update(f"Delete failed for '{selected_id_to_delete}'. Check logs.")
-                     sg.popup_error(f"Failed to delete object '{selected_id_to_delete}'. Check logs for details.", title="Delete Error")
-            else:
-                 window[KEY_STATUS_BAR].update("Delete cancelled.")
+                      window[KEY_OBJECT_AREA_LOCATION].update(values=[], value=None) # Clear if no room selected
 
+            elif event == KEY_VALIDATE_BUTTON:
+                object_data, _, _ = gather_data_from_fields(window, manager)
+                if not object_data:
+                    window[KEY_VALIDATE_INDICATOR].update("Cannot Validate", text_color="red")
+                    window[KEY_STATUS_BAR].update("Failed to gather data from fields for validation.", text_color="red")
+                    continue
+
+                errors = validate_object_data(object_data, is_new_object, manager)
+                if errors:
+                    window[KEY_VALIDATE_INDICATOR].update("Invalid!", text_color="red")
+                    error_message = "Validation Errors:\n- " + "\n- ".join(errors)
+                    sg.popup_error(error_message, title="Validation Failed")
+                    window[KEY_STATUS_BAR].update(f"{len(errors)} validation errors found.", text_color="red")
+                else:
+                    window[KEY_VALIDATE_INDICATOR].update("Valid", text_color="green")
+                    window[KEY_STATUS_BAR].update("Data is valid.", text_color="green")
+                    # Re-populate YAML preview with validated/cleaned data
+                    # update_yaml_preview(window, object_data, manager)
+
+            elif event == KEY_SAVE_BUTTON:
+                object_data, room_id, area_id = gather_data_from_fields(window, manager)
+                if not object_data:
+                    window[KEY_STATUS_BAR].update("Error: Could not gather data from fields to save.", text_color="red")
+                    continue
+
+                obj_id_to_save = object_data.get('id')
+                if not obj_id_to_save:
+                     window[KEY_STATUS_BAR].update("Error: Object ID is missing.", text_color="red")
+                     sg.popup_error("Object ID cannot be empty.", title="Save Error")
+                     continue
+
+                # Validate before saving
+                errors = validate_object_data(object_data, is_new_object, manager)
+                if errors:
+                    window[KEY_VALIDATE_INDICATOR].update("Invalid!", text_color="red")
+                    error_message = "Cannot save due to validation errors:\n- " + "\n- ".join(errors)
+                    sg.popup_error(error_message, title="Save Failed")
+                    window[KEY_STATUS_BAR].update("Cannot save. Please fix validation errors.", text_color="red")
+                    continue
+
+                # Confirmation
+                action = "create new object" if is_new_object else "update existing object"
+                confirm = sg.popup_yes_no(f"Are you sure you want to {action} '{obj_id_to_save}' and save all changes to objects.yaml and rooms.yaml?", title="Confirm Save")
+                if confirm != 'Yes':
+                    window[KEY_STATUS_BAR].update("Save cancelled.")
+                    continue
+
+                # Perform Add or Update using manager
+                success = False
+                if is_new_object:
+                    success = manager.add_object(object_data)
+                else:
+                    # Use current_object_id which should be the originally loaded ID
+                    if current_object_id:
+                        success = manager.update_object(current_object_id, object_data)
+                    else:
+                         logging.error("Save Error: Trying to update but no current_object_id is set.")
+                         window[KEY_STATUS_BAR].update("Error: Cannot determine which object to update.", text_color="red")
+                         success = False
+
+                if success:
+                     # Update location in rooms data separately
+                     loc_success = manager._update_object_location_in_rooms(obj_id_to_save, room_id, area_id)
+                     if not loc_success:
+                          logging.warning(f"Object data saved/updated for {obj_id_to_save}, but failed to update its location in rooms data.")
+                          # Consider if this should be a bigger error shown to user
+
+                     # Attempt to save both files
+                     save_all_ok = manager.save_all_changes()
+
+                     if save_all_ok:
+                         window[KEY_STATUS_BAR].update(f"Object '{obj_id_to_save}' saved successfully.", text_color="green")
+                         # Refresh dropdown
+                         object_ids = manager.get_object_ids()
+                         window[KEY_OBJECT_DROPDOWN].update(values=object_ids, value=obj_id_to_save)
+                         window[KEY_TOTAL_OBJECT_COUNT].update(f"Total Objects: {len(object_ids)}")
+                         current_object_id = obj_id_to_save # Ensure current ID is set
+                         is_new_object = False # It's now an existing object
+                         window[KEY_OBJECT_ID].update(disabled=True)
+                         window[KEY_DELETE_BUTTON].update(disabled=False)
+                         window[KEY_VALIDATE_INDICATOR].update("Saved", text_color="green")
+                     else:
+                          window[KEY_STATUS_BAR].update(f"Error saving YAML files after updating '{obj_id_to_save}'. Check logs.", text_color="red")
+                          sg.popup_error("Failed to save changes to data files after updating. Object changes might be lost on exit.", title="Save Error")
+                else:
+                    window[KEY_STATUS_BAR].update(f"Failed to add/update object '{obj_id_to_save}' in manager.", text_color="red")
+                    sg.popup_error(f"Could not {{'add' if is_new_object else 'update'}} object data internally. Check logs.", title="Save Error")
+
+            elif event == KEY_DELETE_BUTTON:
+                if current_object_id:
+                    confirm = sg.popup_yes_no(f"WARNING: Are you absolutely sure you want to permanently delete the object '{current_object_id}'?\nThis cannot be undone.", title="Confirm Deletion", button_color=('white', 'red'))
+                    if confirm == 'Yes':
+                        deleted = manager.delete_object(current_object_id)
+                        if deleted:
+                             save_all_ok = manager.save_all_changes()
+                             if save_all_ok:
+                                 window[KEY_STATUS_BAR].update(f"Object '{current_object_id}' deleted successfully.", text_color="orange")
+                                 clear_fields(window)
+                                 # update_yaml_preview(window, None, manager)
+                                 object_ids = manager.get_object_ids()
+                                 window[KEY_OBJECT_DROPDOWN].update(values=object_ids, value='')
+                                 window[KEY_TOTAL_OBJECT_COUNT].update(f"Total Objects: {len(object_ids)}")
+                                 current_object_id = None
+                                 is_new_object = False
+                                 window[KEY_DELETE_BUTTON].update(disabled=True)
+                             else:
+                                 window[KEY_STATUS_BAR].update(f"Error saving YAML files after deleting '{current_object_id}'. Check logs.", text_color="red")
+                                 sg.popup_error("Failed to save changes to data files after deletion. Object might reappear on next load.", title="Deletion Save Error")
+                        else:
+                             window[KEY_STATUS_BAR].update(f"Failed to delete object '{current_object_id}'. Check logs.", text_color="red")
+                             sg.popup_error(f"Could not delete object '{current_object_id}'. It might not exist or an error occurred.", title="Deletion Error")
+                    else:
+                        window[KEY_STATUS_BAR].update("Deletion cancelled.")
+                else:
+                     window[KEY_STATUS_BAR].update("No object selected to delete.", text_color="yellow")
+
+            # --- Update preview on tab change (simplified) ---
+            if event == '-TABGROUP-':
+                # temp_data, _, _ = gather_data_from_fields(window, manager) # Don't gather here yet
+                # if temp_data:
+                #     update_yaml_preview(window, temp_data, manager)
+                # else:
+                #     update_yaml_preview(window, None, manager)
+                pass # Preview update deferred until full layout is done
+
+        except Exception as e:
+            logging.exception("An unexpected error occurred in the GUI event loop.")
+            sg.popup_error(f"An unexpected error occurred: {e}\n\nPlease check the console logs for more details.", title="GUI Error")
+            # Optionally, try to save unsaved changes here?
+            # break # Might be too abrupt, depends on the error
+
+    # --- Cleanup ---
     window.close()
+    logging.info("Object Editor GUI closed.")
 
 if __name__ == '__main__':
     main() 

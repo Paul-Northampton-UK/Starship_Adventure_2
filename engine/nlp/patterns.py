@@ -116,5 +116,25 @@ def generate_patterns(game_state: GameState) -> List[Dict[str, Any]]:
                                      logging.debug(f"Added AREA pattern for ID '{area_id}': {pattern}")
             # else: Room has no areas list or it's invalid
         
+    # --- Define LOCK/UNLOCK with Key Patterns ---
+    # Matches "lock [TARGET] with [KEY]" and "unlock [TARGET] with [KEY]"
+    lock_unlock_verbs = ["lock", "unlock"]
+    prepositions = ["with", "using"]
+    
+    for verb in lock_unlock_verbs:
+        for prep in prepositions:
+            # MODIFIED: Allow optional determiner (DET) before target and key
+            pattern = [
+                {spacy.symbols.LOWER: verb},                     
+                {"POS": "DET", "OP": "?"}, # Optional determiner (e.g., "the")
+                {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "+"}, # Target (allow NOUN or PROPN)
+                {spacy.symbols.LOWER: prep},                      
+                {"POS": "DET", "OP": "?"}, # Optional determiner (e.g., "the")
+                {"POS": {"IN": ["NOUN", "PROPN", "ADJ"]}, "OP": "+"}  # Key (allow NOUN, PROPN, or ADJ)
+            ]
+            label = "LOCK_WITH_KEY" if verb == "lock" else "UNLOCK_WITH_KEY"
+            logging.debug(f"Adding {label} pattern: {pattern}")
+            custom_patterns.append({"label": label, "pattern": pattern})
+
     logging.debug(f"Finished generating custom patterns. Total: {len(custom_patterns)}")
     return custom_patterns 

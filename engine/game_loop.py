@@ -15,6 +15,8 @@ from .command_handlers.movement import handle_move, get_location_description
 from .command_handlers.item_actions import handle_take, handle_drop, handle_put, handle_take_from
 from .command_handlers.equipment import handle_equip
 from .command_handlers.basic_commands import handle_look, handle_inventory, handle_quit, handle_unknown
+from .command_handlers.search import handle_search
+from .command_handlers.locking import handle_lock, handle_unlock
 # --------------------------------------
 
 print("--- engine.game_loop module loading ---")
@@ -205,79 +207,66 @@ class GameLoop:
         # Final goodbye is now handled within the loop
 
     def process_command(self, parsed_intent: ParsedIntent) -> Optional[str]:
-        """Processes the parsed command intent, calls the handler,
-           and formats the response using get_formatted_response.
-           Returns the final message string or None (for quit).
-        """
-        intent = parsed_intent.intent
-        logging.debug(f"Processing intent: {intent} with data: {parsed_intent}")
+        """Processes the parsed command intent and returns the response message."""
+        handler = self.intent_map.get(parsed_intent.intent, handle_unknown)
+        logging.info(f"Dispatching intent {parsed_intent.intent} to handler: {handler.__name__}")
 
-        handler = self.intent_map.get(intent)
-
-        if handler:
-            try:
-                # Special case for handle_inventory which uses a display callback
-                if handler == handle_inventory:
-                    handler_result = handler(self.game_state, parsed_intent, self.display_output)
-                    # It returns () on success, handle if it raises an error instead?
-                    return "" # Indicate no further message needed
-
-                # Call other handlers
-                handler_result = handler(self.game_state, parsed_intent)
-
-                # Check handler result type
-                if handler_result is None:
-                    # Signal to quit the game loop (handled in run method)
-                    return None
-                elif isinstance(handler_result, tuple) and len(handler_result) == 2:
-                    # Expected result: (response_key, kwargs_dict)
-                    key, kwargs = handler_result
-
-                    # Handle direct description returns (from move or look)
-                    if key in ["move_success_description", "look_success_room", "look_success_item"]:
-                        return kwargs.get("description", "(Description missing)") # Return pre-formatted description
-                    else:
-                         # Format other responses using the key and kwargs
-                         logging.debug(f"Calling get_formatted_response with key='{key}', kwargs={kwargs}") # Log before call
-                         formatted_message = self.get_formatted_response(key, **kwargs)
-                         logging.debug(f"Received formatted message: '{formatted_message}'") # Log after call
-                         return formatted_message
-                else:
-                    # Handler returned something unexpected
-                    logging.error(f"Handler for {intent} returned unexpected result type: {handler_result}")
-                    # Pass action as a keyword argument
-                    return self.get_formatted_response("error_internal", action=f"handle_{intent.name.lower()}")
-
-            except Exception as e:
-                logging.exception(f"Error executing handler for intent: {intent}")
-                # Use generic error key
-                # TODO: Add error_internal key to responses.yaml
-                return self.get_formatted_response("invalid_command", **{})
-        else:
-            # No handler mapped for this intent (should be caught by UNKNOWN mapping)
-            logging.warning(f"No handler explicitly mapped for intent: {intent}")
-            return self.get_formatted_response("invalid_command", **{})
+        try:
+            # Pass game_state and parsed_intent to the handler
+            result_messages = handler(self.game_state, parsed_intent)
+            
+            # Handlers now return a list of message dictionaries or None to quit
+            if result_messages is None:
+                return None # Signal to quit
+                
+            if not isinstance(result_messages, list):
+                logging.error(f"Handler {handler.__name__} returned unexpected type: {type(result_messages)}. Expected List[Dict].")
+                return "An internal error occurred with that command."
+                
+            # Format the list of messages into a single string for display
+            formatted_output = []
+            for msg_dict in result_messages:
+                 if isinstance(msg_dict, dict) and 'key' in msg_dict:
+                     key = msg_dict['key']
+                     data = msg_dict.get('data', {})
+                     # Get formatted response using the game loop's method
+                     formatted_output.append(self.get_formatted_response(key, **data))
+                 else:
+                     # Handle direct string messages or invalid formats if necessary
+                     logging.warning(f"Handler {handler.__name__} returned non-standard message format: {msg_dict}")
+                     formatted_output.append(str(msg_dict)) # Attempt basic string conversion
+                     
+            return "\n".join(formatted_output)
+            
+        except Exception as e:
+            logging.error(f"Error executing handler {handler.__name__} for intent {parsed_intent.intent}: {e}", exc_info=True)
+            return self.get_formatted_response("error_generic") # Use a response key for generic errors
 
     def _setup_intent_map(self):
-        """Initializes the mapping from CommandIntent to imported handler functions."""
+        """Initializes the mapping from CommandIntent to handler functions."""
+        # Map intents to their corresponding handler functions
         self.intent_map = {
-            CommandIntent.UNKNOWN: handle_unknown,
             CommandIntent.MOVE: handle_move,
             CommandIntent.LOOK: handle_look,
-            CommandIntent.TAKE: handle_take,
-            CommandIntent.DROP: handle_drop,
             CommandIntent.INVENTORY: handle_inventory,
             CommandIntent.QUIT: handle_quit,
-            CommandIntent.EQUIP: handle_equip,
+            CommandIntent.TAKE: handle_take,
+            CommandIntent.DROP: handle_drop,
+            CommandIntent.EQUIP: handle_equip, # Covers wear/remove/wield etc.
+            CommandIntent.SEARCH: handle_search,
             CommandIntent.PUT: handle_put,
             CommandIntent.TAKE_FROM: handle_take_from,
-            # Add other intents here and map them to appropriate handlers 
-            # (e.g., handle_use, handle_interact, etc.) when implemented.
+            CommandIntent.LOCK: handle_lock,         # <-- ADD LOCK
+            CommandIntent.UNLOCK: handle_unlock,     # <-- ADD UNLOCK
+            # Add other intents and handlers here as they are implemented
+            # e.g., CommandIntent.HELP: handle_help,
+            CommandIntent.UNKNOWN: handle_unknown
         }
-        logging.info(f"Intent map initialized with {len(self.intent_map)} handlers pointing to imported functions.")
+        logging.info("Command intent map configured.")
+        logging.debug(f"Intent Map: {[(intent.name, func.__name__) for intent, func in self.intent_map.items()]}")
 
     def get_formatted_response(self, key: str, **kwargs) -> str:
-        """Gets a random response for the key, formats it, and returns it."""
+        """Retrieves and formats a response string from loaded responses."""
         response_list = self.responses_data.get(key, [])
         if not response_list:
             logging.warning(f"No responses found for key: '{key}'")
@@ -300,7 +289,7 @@ class GameLoop:
             return f"(Response formatting error for '{key}')"
 
     def display_output(self, message: str):
-        """Prints output to the console (can be overridden for GUI)."""
+        """Displays the given message to the player."""
         print(f"\n{message}\n") # Add blank lines for readability
 
 # --- Old handler methods removed from GameLoop class --- 

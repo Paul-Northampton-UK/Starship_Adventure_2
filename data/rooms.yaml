@@ -134,11 +134,11 @@ rooms:
       torch_light: "The torch reveals dormant controls and a locked navigation screen."
 
     objects_present:
-    - id: nav_console
     - id: nav_compartment
-    - id: nav_officer_log
-    - id: nav_fish_photo
+    - id: nav_console
     - id: nav_fish_delivery_log
+    - id: nav_fish_photo
+    - id: nav_officer_log
   - area_id: science_station
     name: "Science Station"
     command_aliases: ["sci", "ss", "science", "scie"]
@@ -1278,11 +1278,12 @@ rooms:
       visited: "To the south is a compact bathroom."
 
   objects_present:
+  - id: cab_backpack
   - id: cab_boots
   - id: cab_jumpsuit
   - id: cab_slippers
-  - id: cab_backpack
   - id: cab_bed
+  - id: cab_footlocker
 - room_id: player_cabin_small_kitchen
   name: "Small Kitchen"
   room_count: 13

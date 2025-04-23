@@ -1,14 +1,14 @@
 """Command handler for equipping and unequipping items."""
 
 import logging
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
 from .utils import item_matches_name # Import the shared helper
 from ..schemas import Object # Import the Object schema
 
-def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[str, Dict]:
-    """Handles EQUIP/UNEQUIP intents. Returns (key, kwargs) tuple."""
+def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+    """Handles EQUIP/UNEQUIP intents. Returns List[Dict]."""
     target_item_name = parsed_intent.target
     action_verb = parsed_intent.action or "" # Get action from intent
     # Define verbs that mean 'wear' vs 'remove'
@@ -18,8 +18,8 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
     logging.debug(f"[handle_equip] Target: '{target_item_name}', Action: '{action_verb}'")
 
     if not target_item_name:
-        # TODO: Add equip_fail_no_target key
-        return ("invalid_command", {}) # Placeholder
+        # Return List[Dict]
+        return [{'key': "equip_fail_no_target", 'data': {}}] # Need this response key
 
     # Determine if the action is WEAR or REMOVE based on the verb
     is_wearing = action_verb.lower() in wear_verbs
@@ -100,7 +100,8 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
             object_data = game_state.get_object_by_id(object_id_to_wear)
             if not object_data:
                 logging.error(f"[handle_equip] Wear target ID '{object_id_to_wear}' has no data!")
-                return ("error_internal", {"action": "wear data missing"})
+                # Return List[Dict]
+                return [{'key': "error_internal", 'data': {"action": "wear data missing"}}]
             
             # Use dictionary access
             is_plural = object_data.get('is_plural', False)
@@ -119,13 +120,15 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
             # Map message to key/kwargs (using item_name_actual identified above)
             if "You put on the" in result_message:
                  key = "wear_success_plural" if is_plural else "wear_success_singular"
-                 return (key, {"item_name": item_name_actual})
+                 # Return List[Dict]
+                 return [{'key': key, 'data': {"item_name": item_name_actual}}]
             # Add check for the specific success message from wear_item_from_container
             elif "You take the" in result_message and "and put it on" in result_message:
                  key = "wear_from_container_success_plural" if is_plural else "wear_from_container_success_singular"
                  # We need the container name for the response template
                  container_name = game_state._get_object_name(source_container_id) # Get container name from ID
-                 return (key, {"item_name": item_name_actual, "container_name": container_name})
+                 # Return List[Dict]
+                 return [{'key': key, 'data': {"item_name": item_name_actual, "container_name": container_name}}]
             elif "cannot wear the" in result_message and "occupies that space" in result_message:
                  # Extract conflicting item name from the message like:
                  # "You cannot wear the {item_name} there; you are already wearing the {worn_item_name} which occupies that space/layer."
@@ -138,18 +141,23 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
                     logging.warning(f"Could not extract conflicting item name from message: {result_message}")
                     conflicting_item_name = "something else" # Fallback
                  key = "wear_fail_conflict_plural" if is_plural else "wear_fail_conflict_singular"
-                 return (key, {"item_name": item_name_actual, "other_item_name": conflicting_item_name})
+                 # Return List[Dict]
+                 return [{'key': key, 'data': {"item_name": item_name_actual, "other_item_name": conflicting_item_name}}]
             elif "cannot wear the" in result_message:
                  key = "wear_fail_not_wearable_plural" if is_plural else "wear_fail_not_wearable_singular"
-                 return (key, {"item_name": item_name_actual})
+                 # Return List[Dict]
+                 return [{'key': key, 'data': {"item_name": item_name_actual}}]
             elif "isn't configured correctly" in result_message:
-                 return ("error_internal", {"action": "wear config"})
+                 # Return List[Dict]
+                 return [{'key': "error_internal", 'data': {"action": "wear config"}}]
             # Handle potential failure from wear_item_from_container (e.g., container not found?)
             elif "Cannot find container" in result_message: # Example - adjust based on GameState implementation
-                 return ("error_internal", {"action": "wear container missing"})
+                 # Return List[Dict]
+                 return [{'key': "error_internal", 'data': {"action": "wear container missing"}}]
             else:
                  logging.warning(f"Unexpected message from wear attempt: {result_message}")
-                 return ("error_internal", {"action": "wear general fail"})
+                 # Return List[Dict]
+                 return [{'key': "error_internal", 'data': {"action": "wear general fail"}}]
         else:
             # If not found anywhere (hands, containers, inventory), check if already worn
             worn_item_id = game_state._find_object_id_by_name_worn(target_item_name)
@@ -159,10 +167,12 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
                  # Use dictionary access
                  is_plural = worn_object_data.get('is_plural', False) if worn_object_data else False
                  key = "wear_fail_already_wearing_plural" if is_plural else "wear_fail_already_wearing_singular"
-                 return (key, {"item_name": target_item_name})
+                 # Return List[Dict]
+                 return [{'key': key, 'data': {"item_name": target_item_name}}]
             else:
                  # Cannot determine plural status if item not found anywhere
-                 return ("wear_fail_not_have", {"item_name": target_item_name})
+                 # Return List[Dict]
+                 return [{'key': "wear_fail_not_have", 'data': {"item_name": target_item_name}}]
 
     elif is_removing:
         # Find the item in worn items first
@@ -171,21 +181,25 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
             # Check inventory *before* giving up
             inventory_item_id = game_state._find_object_id_by_name_in_inventory(target_item_name)
             if inventory_item_id:
-                 return ("remove_fail_not_wearing", {"item_name": target_item_name}) # Placeholder
+                 # Return List[Dict]
+                 return [{'key': "remove_fail_not_wearing", 'data': {"item_name": target_item_name}}] # Placeholder
             match_in_hand = None
             for held_id in game_state.hand_slot:
                  if item_matches_name(game_state, held_id, target_item_name):
                       match_in_hand = held_id
                       break
             if match_in_hand:
-                 return ("remove_fail_not_wearing", {"item_name": target_item_name}) # Placeholder
+                 # Return List[Dict]
+                 return [{'key': "remove_fail_not_wearing", 'data': {"item_name": target_item_name}}] # Placeholder
             else:
-                return ("remove_fail_not_wearing", {"item_name": target_item_name}) # Placeholder
+                # Return List[Dict]
+                return [{'key': "remove_fail_not_wearing", 'data': {"item_name": target_item_name}}] # Placeholder
         # Get data for the item being removed
         object_data = game_state.objects_data.get(object_id_to_remove)
         if not object_data:
             logging.error(f"[handle_equip] Remove target ID '{object_id_to_remove}' has no data!")
-            return ("error_internal", {"action": "remove data missing"})
+            # Return List[Dict]
+            return [{'key': "error_internal", 'data': {"action": "remove data missing"}}]
         
         # Use dictionary access
         is_plural = object_data.get('is_plural', False)
@@ -197,18 +211,22 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> Tuple[st
         # Map message to key/kwargs
         if "take off the" in result_message and "hold it" in result_message:
             key = "remove_success_plural" if is_plural else "remove_success_singular"
-            return (key, {"item_name": item_name_actual})
+            # Return List[Dict]
+            return [{'key': key, 'data': {"item_name": item_name_actual}}]
         elif "hands are full" in result_message:
             held_items_str = "something you are holding"
             if game_state.hand_slot:
                  held_items_str = " and ".join([game_state._get_object_name(item) or "something" for item in game_state.hand_slot])
             key = "remove_fail_hands_full_plural" if is_plural else "remove_fail_hands_full_singular"
-            return (key, {"item_name": item_name_actual, "held_item_name": held_items_str})
+            # Return List[Dict]
+            return [{'key': key, 'data': {"item_name": item_name_actual, "held_item_name": held_items_str}}]
         else:
             logging.warning(f"Unexpected message from remove_item: {result_message}")
-            return ("error_internal", {"action": "remove"})
+            # Return List[Dict]
+            return [{'key': "error_internal", 'data': {"action": "remove"}}]
 
     else:
         # If the NLP parser returned EQUIP intent but the action wasn't recognized
         logging.warning(f"handle_equip received EQUIP intent but unclear action verb: '{action_verb}'")
-        return ("invalid_command", {}) # Placeholder 
+        # Return List[Dict]
+        return [{'key': "invalid_command", 'data': {}}] # Placeholder 

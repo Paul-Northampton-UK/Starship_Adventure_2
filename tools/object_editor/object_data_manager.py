@@ -98,6 +98,14 @@ class ObjectDataManager:
         # Now reads keys from the dictionary created in _load_data
         return sorted(list(self.rooms_data.keys()))
 
+    def get_room_name(self, room_id: str) -> Optional[str]:
+        """Returns the name of the room with the given ID."""
+        if not self.rooms_data or room_id not in self.rooms_data:
+            logging.warning(f"get_room_name: Room ID '{room_id}' not found in rooms_data.")
+            return None
+        room_data = self.rooms_data.get(room_id, {})
+        return room_data.get('name') # Return the name or None if key missing
+
     def get_object_by_id(self, object_id: str) -> Optional[Dict[str, Any]]:
          """Retrieves the data for a specific object by its ID."""
          if not self.objects_data or not isinstance(self.objects_data, list): # Added type check
@@ -363,20 +371,29 @@ class ObjectDataManager:
         if not object_id:
              logging.error("save_object_and_location: Missing object_id.")
              return False
-        if not new_room_id:
-             logging.error("save_object_and_location: Missing new_room_id. Cannot save object without assigning to a room.")
-             return False
+        # REMOVED the check requiring new_room_id. It's now okay to save an object without a location.
+        # if not new_room_id:
+        #      logging.error("save_object_and_location: Missing new_room_id. Cannot save object without assigning to a room.")
+        #      return False
 
-        # Update location in the rooms data structure
-        location_updated = self._update_object_location_in_rooms(object_id, new_room_id, new_area_id)
+        # Update location in the rooms data structure.
+        # This will remove the object from any old location.
+        # If new_room_id is None, it simply won't be added to any new location.
+        # The function should return True if the update was successful (including successfully clearing location),
+        # and False only if there was an error (e.g., trying to add to an invalid room/area).
+        location_updated_successfully = self._update_object_location_in_rooms(object_id, new_room_id, new_area_id)
 
-        if not location_updated:
-            logging.error(f"Failed to update location for object '{object_id}' in rooms data.")
+        # --- ADJUSTED LOGIC --- 
+        # Only prevent saving if _update_object_location_in_rooms explicitly failed (returned False).
+        # If it returned True (meaning location was updated OR successfully cleared), proceed to save.
+        if not location_updated_successfully:
+            logging.error(f"Failed to update location for object '{object_id}' in rooms data. Aborting save.")
             # Don't save if location update failed critically (e.g., target room/area invalid)
             return False
-
-        # Save changes to both files
-        return self.save_all_changes()
+        else:
+             logging.info(f"Location update for object '{object_id}' handled (new location: Room='{new_room_id}', Area='{new_area_id}'). Proceeding to save.")
+             # Save changes to both files (objects.yaml and rooms.yaml)
+             return self.save_all_changes()
 
 # Example Usage (for testing)
 if __name__ == '__main__':

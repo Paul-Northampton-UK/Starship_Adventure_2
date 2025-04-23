@@ -51,11 +51,21 @@ VERB_PATTERNS = {
         "priority": 80
     },
     CommandIntent.MANIPULATE: {
-        "verbs": ["open", "close", "lock", "unlock", "push", "pull", "turn", "press", "activate", "deactivate", "engage", "disengage",
+        "verbs": ["open", "close", "push", "pull", "turn", "press", "activate", "deactivate", "engage", "disengage",
                  "weld", "repair", "fix", "hack", "override", "bypass", "jump", "modify", "adjust", "calibrate"],
         "context_words": ["door", "chest", "box", "window", "button", "lever", "key", "card", "torch", "computer", "terminal", "screen",
                         "panel", "console", "switch", "control", "hatch", "airlock", "gate", "valve", "circuit", "system"],
         "priority": 85
+    },
+    CommandIntent.LOCK: {
+        "verbs": ["lock"],
+        "context_words": ["with", "using", "door", "chest", "box", "locker", "container", "gate", "safe"],
+        "priority": 88
+    },
+    CommandIntent.UNLOCK: {
+        "verbs": ["unlock"],
+        "context_words": ["with", "using", "door", "chest", "box", "locker", "container", "gate", "safe", "key", "keycard", "card", "code"],
+        "priority": 88
     },
     CommandIntent.CLIMB: {
         "verbs": ["climb", "jump", "crawl", "swim", "hover", "fly", "launch", "land"],
@@ -103,7 +113,7 @@ VERB_PATTERNS = {
         "priority": 95
     },
     CommandIntent.TAKE: {
-        "verbs": ["take", "grab", "pick", "get", "collect", "acquire", "obtain", "retrieve", "recover", "hold"],
+        "verbs": ["take", "grab", "pick", "get", "collect", "acquire", "obtain", "recover", "hold"],
         "context_words": ["up", "item", "object", "torch", "key", "sword", "potion", "book", "scroll", "map", "coin", "gem",
                         "phaser", "blaster", "laser", "tool", "device", "data pad", "access card", "credits", "artifact"],
         "priority": 85
@@ -122,7 +132,18 @@ VERB_PATTERNS = {
         "verbs": ["take", "get", "retrieve", "remove", "extract", "withdraw"],
         "context_words": ["from", "out", "inside", "backpack", "box", "container", "locker", "chest", "cabinet"],
         "priority": 87
-    }
+    },
+    "use": {CommandIntent.MANIPULATE: 80},
+    "activate": {CommandIntent.MANIPULATE: 80},
+    "push": {CommandIntent.MANIPULATE: 70},
+    "pull": {CommandIntent.MANIPULATE: 70},
+    "turn": {CommandIntent.MANIPULATE: 70},
+    "press": {CommandIntent.MANIPULATE: 70},
+    "open": {CommandIntent.MANIPULATE: 85},
+    "close": {CommandIntent.MANIPULATE: 85},
+    "lock": {CommandIntent.MANIPULATE: 50, CommandIntent.LOCK: 90},
+    "unlock": {CommandIntent.MANIPULATE: 50, CommandIntent.UNLOCK: 90},
+    "read": {CommandIntent.GATHER_INFO: 85}
 }
 
 # Define intent priorities (higher number = higher priority)
@@ -148,7 +169,9 @@ INTENT_PRIORITIES = {
     CommandIntent.INVENTORY: 20,
     CommandIntent.QUIT: 15,
     CommandIntent.HELP: 10,
-    CommandIntent.UNKNOWN: -1
+    CommandIntent.UNKNOWN: -1,
+    CommandIntent.LOCK: 88,
+    CommandIntent.UNLOCK: 88
 }
 
 # Define context words for each intent (optional, used for scoring refinement)
