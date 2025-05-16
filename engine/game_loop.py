@@ -17,6 +17,7 @@ from .command_handlers.equipment import handle_equip
 from .command_handlers.basic_commands import handle_look, handle_inventory, handle_quit, handle_unknown
 from .command_handlers.search import handle_search
 from .command_handlers.locking import handle_lock, handle_unlock
+from .command_handlers.open_close_handler import handle_open, handle_close # Added import for open/close
 # --------------------------------------
 
 print("--- engine.game_loop module loading ---")
@@ -79,6 +80,7 @@ class GameLoop:
         self.game_state = GameState(current_room_id=start_room_id, 
                                     rooms_data=self.rooms_data,
                                     objects_data=self.objects_data,
+                                    responses_data=self.responses_data,
                                     power_state=start_power_state) # Use loaded power state
         logging.info(f"GameState initialized. Starting room: {self.game_state.current_room_id}, Power State: {self.game_state.power_state.value}")
 
@@ -160,6 +162,7 @@ class GameLoop:
             if isinstance(loaded_responses, dict):
                  self.responses_data = loaded_responses
                  logging.info(f"Loaded {len(self.responses_data)} response categories.")
+                 logging.debug(f"Loaded response keys: {list(self.responses_data.keys())}") # Added logging for keys
             else:
                  logging.warning(f"Unexpected structure in {responses_filename}. Expected a dictionary.")
         except FileNotFoundError:
@@ -258,6 +261,8 @@ class GameLoop:
             CommandIntent.TAKE_FROM: handle_take_from,
             CommandIntent.LOCK: handle_lock,         # <-- ADD LOCK
             CommandIntent.UNLOCK: handle_unlock,     # <-- ADD UNLOCK
+            CommandIntent.OPEN: handle_open,      # Added OPEN mapping
+            CommandIntent.CLOSE: handle_close,    # Added CLOSE mapping
             # Add other intents and handlers here as they are implemented
             # e.g., CommandIntent.HELP: handle_help,
             CommandIntent.UNKNOWN: handle_unknown
@@ -267,6 +272,7 @@ class GameLoop:
 
     def get_formatted_response(self, key: str, **kwargs) -> str:
         """Retrieves and formats a response string from loaded responses."""
+        logging.debug(f"Attempting to get response for key: >>>{key}<<<Data: {kwargs}") # Added logging for requested key & data
         response_list = self.responses_data.get(key, [])
         if not response_list:
             logging.warning(f"No responses found for key: '{key}'")
@@ -289,20 +295,23 @@ class GameLoop:
             return f"(Response formatting error for '{key}')"
 
     def display_output(self, message: str):
-        """Displays the given message to the player."""
-        print(f"\n{message}\n") # Add blank lines for readability
+        """Prints the game's output to the console."""
+        if message: # Ensure message is not empty
+            print(f"\n{message}\n") # Removed marker
 
-# --- Old handler methods removed from GameLoop class --- 
+    def main():
+        """Main entry point to start the game."""
+        # Setup basic logging for testing this module directly
+        # Change level to DEBUG to see detailed parser logs
+        logging.basicConfig(level=logging.CRITICAL, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s') # Changed to CRITICAL
+        
+        try:
+            game_loop = GameLoop()
+            game_loop.run() 
+        except Exception as e:
+             logging.critical(f"Game loop failed to initialize or run: {e}", exc_info=True)
+             print(f"\nCRITICAL ERROR: {e}") 
 
 # Example of how it might be run (likely from main.py later)
 if __name__ == '__main__':
-    # Setup basic logging for testing this module directly
-    # Change level to DEBUG to see detailed parser logs
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-    
-    try:
-        game_loop = GameLoop()
-        game_loop.run() 
-    except Exception as e:
-         logging.critical(f"Game loop failed to initialize or run: {e}", exc_info=True)
-         print(f"\nCRITICAL ERROR: {e}") 
+    GameLoop.main() 

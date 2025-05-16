@@ -287,29 +287,27 @@ take_from_fail_hands_full:
 # --- Lock / Unlock --- 
 
 unlock_success:
-  - "Click! You unlock the {target} with the {key_name}."
-  - "The {target} lock yields to the {key_name}. It's unlocked."
-  - "Using the {key_name}, you manage to unlock the {target}."
-  # Case for no key required/used
-  - "Click! The {target} unlocks."
-  - "You successfully unlock the {target}."
+  - "Click! The {target_name} unlocks."
+  - "You successfully unlock the {target_name} with the {key_name}."
+  - "The {target_name} is now unlocked, thanks to the {key_name}."
+  - "With a satisfying snick, the {key_name} turns the lock. The {target_name} is open!"
 
 unlock_fail_no_key:
-  - "You need to specify which key to use on the {target}. (e.g., unlock {target} with keycard)"
-  - "That {target} requires a key to unlock. Which one do you want to use?"
+  - "You need to specify which key to use on the {target_name}. (e.g., unlock {target_name} with keycard)"
+  - "That {target_name} requires a key to unlock. Which one do you want to use?"
 
 unlock_fail_wrong_key:
-  - "The {key_name} doesn't seem to fit the {target}'s lock."
-  - "You try the {key_name}, but it doesn't unlock the {target}."
-  - "That's the wrong key for the {target}."
+  - "The {key_name} doesn't seem to fit the {target_name}'s lock."
+  - "You try the {key_name}, but it doesn't unlock the {target_name}."
+  - "That's the wrong key for the {target_name}."
 
 unlock_fail_not_locked:
   - "The {target} is already unlocked."
   - "You check the {target}, but it isn't locked."
 
 unlock_fail_not_lockable:
-  - "You can't lock or unlock the {target}. It doesn't seem to have a lock."
-  - "The {target} doesn't appear to be lockable."
+  - "You can't lock or unlock the {target_name}. It doesn't seem to have a lock."
+  - "The {target_name} doesn't appear to be lockable."
 
 unlock_fail_target_not_found:
   - "You don't see a {target} here to unlock."
@@ -320,16 +318,15 @@ unlock_fail_key_not_found:
   - "You check your hands and worn items, but can't find the {key_name}."
 
 lock_success:
-  - "Click! You lock the {target} with the {key_name}."
-  - "You turn the {key_name} and the {target}'s lock engages."
-  - "The {target} is now securely locked with the {key_name}."
-  # Case for no key required/used
-  - "Click! The {target} locks."
-  - "You successfully lock the {target}."
+  - "Click! The {target_name} is now locked."
+  - "You successfully lock the {target_name} with the {key_name}."
+  - "The {target_name} clicks shut and locks, thanks to the {key_name}."
+  - "With a satisfying thunk, the {key_name} secures the {target_name}."
 
 lock_fail_no_key:
-  - "You need to specify which key to use to lock the {target}."
-  - "What do you want to lock the {target} with?"
+  - "You need to specify which key to use to lock the {target_name}."
+  - "The {target_name} requires a specific key to lock it, and you haven't specified one."
+  - "Which key are you trying to use with the {target_name}?"
 
 lock_fail_wrong_key:
   - "The {key_name} doesn't seem to work with the {target}'s lock."
@@ -341,8 +338,8 @@ lock_fail_already_locked:
   - "You check the {target}; it's securely locked."
 
 lock_fail_not_lockable: # Can reuse the unlock message key
-  - "You can't lock or unlock the {target}. It doesn't seem to have a lock."
-  - "The {target} doesn't appear to be lockable."
+  - "You can't lock or unlock the {target_name}. It doesn't seem to have a lock."
+  - "The {target_name} doesn't appear to be lockable."
 
 lock_fail_target_not_found: # Can reuse the unlock message key
   - "You don't see a {target} here to lock."
@@ -352,20 +349,87 @@ lock_fail_key_not_found: # Can reuse the unlock message key
   - "You don't seem to have the {key_name} on you right now."
   - "You check your hands and worn items, but can't find the {key_name}."
 
-# Search Command Responses
-search_success_hidden_item_found:
-  - "Searching the {target_name}, you discover a {item_name}!"
-  - "Your search of the {target_name} reveals a hidden {item_name}."
-search_fail_nothing_hidden:
-  - "You search the {target_name} carefully, but find nothing hidden."
-  - "Despite your efforts, searching the {target_name} yields nothing new."
-search_fail_target_not_found:
-  - "You search around but don't see any '{target_name}' here."
+# --- Search ---
+SEARCH_NO_TARGET:
+  - "Search what?"
+  - "You look around, but you'll need to be more specific about what you want to search."
+
+SEARCH_BED_FINDS_KEYCARD:
+  - "You search the {bed_name}. Tucked under the edge of the thin mattress, you find a {keycard_name}!"
+  - "After a bit of searching around the {bed_name}, your hand closes around a thin plastic card - it's the {keycard_name}."
+
+SEARCH_BED_ALREADY_FOUND_KEYCARD:
+  - "You search the {item_name} again, but find nothing new of interest."
+  - "You've already thoroughly searched the {item_name}."
+
+SEARCH_EMPTY_GENERIC:
+  - "You search the {item_name}, but find nothing of interest."
+  - "Nothing seems out of the ordinary with the {item_name}."
 
 # --- Inventory Display ---
 inventory_display:
   - "{inventory_text}" # Simple key to just display the formatted text
 
-# Adding new keys here, ensuring no duplicates from above
-search_reveal_keycard_bed: # Specific for bed puzzle - reveals item
-  - "Searching the bunk, you move the pillow aside and reveal a Blue Keycard lying there!"
+# --- Open / Close --- 
+OPEN_NO_TARGET:
+  - "Open what?"
+  - "You need to specify what you want to open."
+
+OPEN_TARGET_NOT_FOUND:
+  - "You don't see a '{target_name}' here to open."
+  - "What '{target_name}'? There isn't one around."
+
+# NEW KEYS FOR GENERIC OPENABLES
+OPEN_FAIL_NOT_OPENABLE:
+  - "You can't open or close the {target_name}."
+  - "The {target_name} doesn't seem to be something you can open."
+
+ALREADY_OPEN_GENERIC:
+  - "The {target_name} is already open."
+
+OPEN_SUCCESS_GENERIC:
+  - "You open the {target_name}."
+
+# END NEW KEYS
+
+OPEN_FAIL_LOCKED:
+  - "The '{target_name}' is locked. You'll need to unlock it first."
+  - "It won't budge. The '{target_name}' seems to be locked."
+
+ALREADY_OPEN_EMPTY:
+  - "The '{container_name}' is already open. It's empty."
+  - "You check the '{container_name}' - it's open and there's nothing inside."
+
+ALREADY_OPEN_CONTENTS:
+  - "The '{container_name}' is already open. Inside, you see: {item_list}."
+  - "Looking inside the open '{container_name}', you find: {item_list}."
+
+OPEN_SUCCESS_EMPTY:
+  - "With a click, the {container_name} opens, revealing nothing inside."
+  - "You open the {container_name}, but it's empty."
+
+OPEN_SUCCESS_CONTENTS:
+  - "With a click, the {container_name} opens, revealing: {item_list_str}."
+  - "You open the {container_name}. Inside, you see: {item_list_str}."
+  - "The {container_name} creaks open. You find {item_list_str} inside."
+  - "Opening the {container_name} reveals {item_list_str}."
+
+CLOSE_NO_TARGET:
+  - "Close what?"
+  - "You need to specify what you want to close."
+
+CLOSE_TARGET_NOT_FOUND:
+  - "You don't see a '{target_name}' here to close."
+  - "What '{target_name}'? There isn't one around."
+
+CLOSE_FAIL_NOT_CLOSABLE:
+  - "You can't close the '{target_name}'. It doesn't seem to be something that closes."
+  - "The '{target_name}' isn't something you can close."
+
+ALREADY_CLOSED:
+  - "The '{target_name}' is already closed."
+  - "You check the '{target_name}' - it's shut tight."
+
+CLOSE_SUCCESS:
+  - "You close the '{target_name}'."
+  - "With a soft click, the '{target_name}' is now closed."

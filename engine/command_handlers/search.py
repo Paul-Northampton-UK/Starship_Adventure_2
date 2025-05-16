@@ -1,131 +1,104 @@
 """Command handler for searching locations and objects."""
 
 import logging
-from typing import Tuple, Dict, List
+from typing import Dict, List, Any # Changed Tuple to Any for data dict
 from ..game_state import GameState
-from ..command_defs import ParsedIntent
-import random
+from ..command_defs import ParsedIntent # CommandResponse removed, random removed
+# get_response_text removed as GameLoop will handle formatting
 
-def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
-    """Handles the SEARCH command intent.
-    
-    Allows searching the current location or a specific object within it
-    to potentially find hidden items or trigger events.
+def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]: # Changed return type
     """
-    target_name = parsed_intent.target
-    logging.debug(f"[handle_search] Handling SEARCH for target: '{target_name}'")
+    Handles the 'search' command.
 
-    if not target_name:
-        # Search the current location (room/area)
-        logging.debug("[handle_search] No target specified, searching current location.")
-        room_id, area_id = game_state.get_current_location()
-        location_id = area_id if area_id else room_id
-        location_data = None
-        if area_id:
-            room_data = game_state.rooms_data.get(room_id)
-            if room_data and isinstance(room_data.get("areas"), list):
-                 for area in room_data["areas"]:
-                     if isinstance(area, dict) and area.get("area_id") == area_id:
-                         location_data = area
-                         break
-        else:
-            location_data = game_state.rooms_data.get(room_id)
-            
-        if not location_data:
-            logging.error(f"Could not find location data for {location_id} to search.")
-            return [{'key': "error_internal", 'data': {'action': "search location data"}}]
+    Allows the player to search specific objects or areas in the current room
+    to find hidden items or clues.
+    """
+    target_object_id = parsed_intent.target_object_id
+    target_object_name_player = parsed_intent.target or target_object_id
 
-        # Check for hidden items in the location
-        hidden_items = location_data.get("hidden_objects", []) # Assuming hidden_objects key
-        if hidden_items:
-            found_item_id = random.choice(hidden_items) # Simple: find one random item
-            # TODO: Add difficulty checks, perception skills, etc.
-            
-            # Add item to location's objects_present list
-            # TODO: Need a GameState method to add item to location state, 
-            #       similar to drop, but without requiring player to hold it.
-            # For now, let's just reveal it in the message.
-            item_data = game_state.get_object_by_id(found_item_id)
-            item_name = item_data.get("name", found_item_id) if item_data else found_item_id
-            
-            # TODO: Remove the item from hidden_objects once found?
-            
-            # Return success message revealing the item
-            # TODO: Need search_success_hidden_item_found key in responses.yaml
-            return [{'key': "search_success_hidden_item_found", 'data': {"target_name": location_id, "item_name": item_name}}]
-        else:
-            # Nothing hidden found in the location
-            # TODO: Need search_fail_nothing_hidden key in responses.yaml
-            return [{'key': "search_fail_nothing_hidden", 'data': {"target_name": location_id}}]
-            
+    if not target_object_id:
+        # Player typed "search" without a target or parser didn't ID it
+        return [{
+            "key": "SEARCH_NO_TARGET",
+            "data": {}
+        }]
+
+    # Check if the target object is in the current room
+    obj_data = game_state.get_object_by_id(target_object_id)
+    
+    # Get objects in the current room
+    current_room_data = game_state.rooms_data.get(game_state.current_room_id)
+    current_room_objects_refs: List[Any] = [] # Store references (IDs or dicts)
+    if current_room_data:
+        # For now, assuming we are not in a specific sub-area for the 'search' command's context.
+        # If 'search' needs to be area-aware, this logic would need to check game_state.current_area_id
+        current_room_objects_refs = current_room_data.get("objects_present", [])
     else:
-        # Search a specific object
-        logging.debug(f"[handle_search] Target is an object: {target_name}")
-        # Use the public method name here
-        target_object_id = game_state.find_object_id_by_name_in_location(target_name)
-        
-        if not target_object_id:
-            # TODO: Need search_fail_target_not_found key
-            return [{'key': "search_fail_target_not_found", 'data': {"target_name": target_name}}]
+        logging.error(f"handle_search: Could not find room data for current_room_id: {game_state.current_room_id}")
+        # Fallback to an empty list, error message will be generated later if obj_data is None
+
+    # Ensure current_room_objects is a list of objects with an 'id' attribute for comparison
+    target_is_in_room = False
+    # The list can contain strings (object_ids) or dicts (like {'id': 'obj_id', 'state': ...})
+    # We need to extract the ID in either case for comparison.
+    if current_room_objects_refs and isinstance(current_room_objects_refs, list):
+        for item_ref in current_room_objects_refs:
+            item_id_in_room = None
+            if isinstance(item_ref, str):
+                item_id_in_room = item_ref
+            elif isinstance(item_ref, dict) and 'id' in item_ref:
+                item_id_in_room = item_ref['id']
             
-        # Get object data
-        target_object_data = game_state.get_object_by_id(target_object_id)
-        if not target_object_data:
-            logging.error(f"Search target '{target_name}' matched ID '{target_object_id}' but data is missing.")
-            return [{'key': "error_internal", 'data': {"action": "search object data"}}]
+            if item_id_in_room == target_object_id:
+                target_is_in_room = True
+                break
+
+    if not obj_data or not target_is_in_room:
+        obj_name_for_msg = target_object_name_player if target_object_name_player != target_object_id else target_object_id
+        return [{
+            "key": "OBJECT_NOT_FOUND_IN_ROOM",
+            "data": {"item_name": obj_name_for_msg}
+        }]
+
+    # Get the canonical name of the object being searched for messages
+    searched_object_canonical_name = obj_data.get('name', target_object_id)
+
+    # --- Special Search Logic ---
+    if target_object_id == "cab_bed":
+        keycard_id = "cab_locker_keycard"
+        keycard_data = game_state.get_object_by_id(keycard_id)
+        # Ensure keycard_data exists before proceeding
+        if not keycard_data:
+            logging.error(f"[handle_search] Data for '{keycard_id}' not found. Cannot proceed with bed search logic.")
+            # Potentially return a generic search failure or a specific error response
+            return [{"key": "SEARCH_EMPTY_GENERIC", "data": {"target_name": target_object_name_player}}]
+
+        if not game_state.get_game_flag(f"{keycard_id}_found_in_bed"):
+            game_state.set_object_state(keycard_id, "is_visible", True)
+            # If the keycard isn't already considered part of the room's static objects, add it dynamically.
+            if not game_state.is_object_statically_in_room(keycard_id, game_state.current_room_id):
+                game_state.add_dynamic_object_to_room(game_state.current_room_id, keycard_id)
+            game_state.set_game_flag(f"{keycard_id}_found_in_bed", True)
             
-        # --- !!! Special Case: Searching the Bed !!! ---
-        if target_object_id == "cab_bed":
-            logging.debug(f"[handle_search] Special check for cab_bed search.")
-            # Check if the keycard has already been found using a game flag
-            if not game_state.get_game_flag("found_keycard_in_bed"):
-                logging.debug(f"[handle_search] Keycard not yet found in bed. Attempting to reveal.")
-
-                # Add the keycard object ID to the current location's list
-                added_to_location = game_state._add_object_to_location("cab_locker_keycard")
-
-                if added_to_location:
-                    # Set the flag to indicate the keycard has been found
-                    game_state.set_game_flag("found_keycard_in_bed", True)
-                    logging.info(f"Player searched bed and revealed cab_locker_keycard in the location.")
-                    # Return the specific reveal message
-                    return [{'key': "search_reveal_keycard_bed", 'data': {}}]
-                else:
-                    # Failed to add to location (e.g., already there? Error in _add_object?)
-                    logging.error(f"_add_object_to_location failed for cab_locker_keycard when searching bed.")
-                    # Fall back to generic search fail message
-                    return [{'key': "search_fail_nothing_hidden", 'data': {"target_name": target_name}}]
-            else:
-                # Keycard already found, return standard nothing found message
-                logging.debug(f"[handle_search] Keycard already found (flag 'found_keycard_in_bed' is true).")
-                return [{'key': "search_fail_nothing_hidden", 'data': {"target_name": target_name}}]
-        # --- !!! End Special Case !!! ---
-
-        # Check if the object *can* be searched (e.g., is it a container, furniture?)
-        # For now, assume any object can potentially hide things.
-        
-        # Check for hidden items *within* the object definition
-        # This requires a specific structure in objects.yaml, e.g.:
-        # hidden_items: [key_001]
-        hidden_items = target_object_data.get("hidden_items", []) 
-        
-        if hidden_items:
-             found_item_id = random.choice(hidden_items)
-             item_data = game_state.get_object_by_id(found_item_id)
-             item_name = item_data.get("name", found_item_id) if item_data else found_item_id
-             
-             # TODO: Add found item to the location? Or directly to player inventory/hands?
-             # Let's add it to the location for now.
-             added = game_state._add_object_to_location(found_item_id)
-             if not added:
-                 logging.error(f"Failed to add found hidden item '{found_item_id}' to location.")
-                 # Still tell the player they found it, even if adding failed
-                 return [{'key': "search_success_hidden_item_found", 'data': {"target_name": target_name, "item_name": item_name}}, 
-                         {'key': "error_internal", 'data': {"action": "search add item failed"}}]
-                 
-             # TODO: Remove item from target object's hidden_items state? Needs state update method.
-             
-             return [{'key': "search_success_hidden_item_found", 'data': {"target_name": target_name, "item_name": item_name}}]
+            keycard_name = keycard_data.get("name", keycard_id)
+            bed_name = target_object_name_player # Use the name the player used or the default name
+            logging.info(f"Object '{keycard_id}' state 'is_visible' set to True after searching '{target_object_id}'. Flag '{keycard_id}_found_in_bed' set.")
+            
+            return [{
+                "key": "SEARCH_BED_FINDS_KEYCARD",
+                "data": {"bed_name": bed_name, "keycard_name": keycard_name, "found_item_id": keycard_id}
+            }]
         else:
-             # Nothing hidden found in the object
-             return [{'key': "search_fail_nothing_hidden", 'data': {"target_name": target_name}}] 
+            # Player has already found the keycard by searching the bed
+            # GameLoop will handle missing key fallback if necessary
+            return [{
+                "key": "SEARCH_BED_ALREADY_FOUND_KEYCARD",
+                "data": {"item_name": target_object_name_player}
+            }]
+    
+    # --- Default Search Logic (if no special case matched) ---
+    # GameLoop will handle missing key fallback if necessary
+    return [{
+        "key": "SEARCH_EMPTY_GENERIC",
+        "data": {"item_name": searched_object_canonical_name}
+    }] 

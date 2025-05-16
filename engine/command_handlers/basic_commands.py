@@ -18,30 +18,116 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
        Can look at the current location or a specific item/target.
     """
     target_name = parsed_intent.target # Get the target name from the parsed intent
+    target_object_id_from_parser = parsed_intent.target_object_id # Get the resolved ID
+
     current_room_id = game_state.current_room_id
     current_area_id = game_state.current_area_id
 
-    if not target_name or target_name.lower() in ["room", "area", "around", "here"]:
+    logging.debug(f"[handle_look in basic_commands] Target Name: '{target_name}', Target ID from Parser: '{target_object_id_from_parser}'")
+
+    if not target_name and not target_object_id_from_parser:
         # Look at the current room/area - Force the long description
         desc_str = get_location_description(game_state, current_room_id, current_area_id, force_long_description=True)
         return [{'key': "look_success_room", 'data': {"description": desc_str}}]
     else:
-        # Look at a specific target (item, feature, etc.)
-        obj_id_to_describe = game_state.find_object_id_by_name_in_location(target_name)
+        # Player is looking AT something specific.
+        obj_data_to_describe: Optional[Dict[str, Any]] = None
+        obj_id_for_description: Optional[str] = None
+        found_in_source: str = "unknown"
+
+        # Priority 1: Use the ID from the parser if available
+        if target_object_id_from_parser:
+            # Check hand slot by ID
+            if target_object_id_from_parser in game_state.hand_slot:
+                obj_id_for_description = target_object_id_from_parser
+                found_in_source = "hand_slot (by ID)"
+                logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in hand_slot by ID.")
+            
+            # Check worn items by ID
+            if not obj_id_for_description:
+                if target_object_id_from_parser in game_state.worn_items: # worn_items is List[str]
+                    obj_id_for_description = target_object_id_from_parser
+                    found_in_source = "worn_items (by ID)"
+                    logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in worn_items by ID.")
+
+            # Check location by ID (if not found in hands/worn)
+            if not obj_id_for_description:
+                # Check if this ID is visible in the current location
+                # This requires checking if the object_id is in the set of all visible objects in the location
+                all_visible_in_loc = game_state._get_all_object_ids_in_current_location(visible_only=True)
+                if target_object_id_from_parser in all_visible_in_loc:
+                    obj_id_for_description = target_object_id_from_parser
+                    found_in_source = "location (by ID)"
+                    logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in location by ID (was visible).")
         
-        if obj_id_to_describe:
-            obj_data = game_state.get_object_by_id(obj_id_to_describe)
-            if obj_data:
-                # Use detailed description if available, otherwise fallback
-                description = obj_data.get("detailed_description", obj_data.get("description", f"You see a {obj_data.get('name', target_name)}."))
-                return [{'key': "look_success_item", 'data': {"description": description}}]
+        # Priority 2: If no ID from parser OR ID not found in hands/worn/location by ID, try finding by name in location.
+        if not obj_id_for_description and target_name:
+            logging.debug(f"[handle_look] ID '{target_object_id_from_parser}' not confirmed or no ID from parser. Searching location for name: '{target_name}'")
+            # This is the call that was causing the error
+            obj_id_found_in_room_by_name = game_state.find_object_id_by_name_in_location(
+                object_name=target_name,
+                room_id=current_room_id,
+                area_id=current_area_id,
+                visible_only=True # Standard for "look at"
+            )
+            if obj_id_found_in_room_by_name:
+                obj_id_for_description = obj_id_found_in_room_by_name
+                found_in_source = "location (by name)"
+                logging.debug(f"[handle_look] Found '{obj_id_for_description}' in location by name '{target_name}'.")
+
+        # Now, if we have an obj_id_for_description, get its data and format description
+        if obj_id_for_description:
+            obj_data_to_describe = game_state.get_object_by_id(obj_id_for_description)
+            if obj_data_to_describe:
+                # Base description
+                description = obj_data_to_describe.get("detailed_description", 
+                                                     obj_data_to_describe.get("description"))
+                if not description: # Fallback if no description fields
+                    description = f"You see a {obj_data_to_describe.get('name', 'mysterious object')}."
+                else: # Ensure the name is part of the description if using detailed_description
+                    if obj_data_to_describe.get('name') and obj_data_to_describe.get('name').lower() not in description.lower() :
+                         description = f"It's {game_state._get_object_name(obj_id_for_description)}. {description}"
+
+
+                # Add stateful descriptions
+                obj_state = game_state.get_object_state(obj_id_for_description)
+                properties = obj_data_to_describe.get("properties", {})
+
+                if properties.get("is_openable_closable"):
+                    description += " It is currently " + ("open." if obj_state.get("is_open") else "closed.")
+                
+                # Check for lock_details in state first, then base data for lockable property
+                is_lockable_prop = properties.get("is_lockable", False) # From YAML properties
+                has_lock_type = bool(obj_data_to_describe.get("lock_type")) # From YAML direct
+                
+                if is_lockable_prop or has_lock_type:
+                    lock_details_state = obj_state.get("lock_details", {})
+                    # Fallback to base data's is_locked if not in runtime state (should be initialized by get_object_state)
+                    is_obj_locked_runtime = lock_details_state.get("locked", obj_data_to_describe.get("is_locked", False))
+                    description += " It appears to be " + ("locked." if is_obj_locked_runtime else "unlocked.")
+                
+                # Example: if it's a container and open, list contents? (Optional, can make descriptions long)
+                if properties.get("is_storage") and obj_state.get("is_open"):
+                    contained_item_ids = obj_state.get("contains", [])
+                    if contained_item_ids:
+                        item_names = [game_state._get_object_name(item_id) for item_id in contained_item_ids]
+                        if item_names:
+                             description += f" Inside, you see: {', '.join(item_names)}."
+                        else: # Should not happen if IDs are present, but good fallback
+                             description += " It's empty."
+                    else:
+                        description += " It's empty."
+                
+                logging.debug(f"[handle_look] Describing '{obj_data_to_describe.get('name')}' (ID: {obj_id_for_description}, Found in: {found_in_source}). Desc: {description[:100]}...")
+                return [{'key': "look_success_item", 'data': {"item_name": obj_data_to_describe.get('name', target_name), "description": description}}]
             else:
-                logging.error(f"Look target '{target_name}' matched ID '{obj_id_to_describe}' but data is missing.")
-                return [{'key': "error_internal", 'data': {'action': "look data missing"}}]
+                logging.error(f"Look target ID \'{obj_id_for_description}\' (found via {found_in_source} for name \'{target_name}\') but its data is missing.")
+                return [{'key': "error_internal", 'data': {'action': "look data missing for " + obj_id_for_description}}]
         else:
             # Item not found anywhere
-            logging.debug(f"handle_look: FAILED - Target '{target_name}' not found in location, hands, worn, or inventory.")
-            return [{'key': "look_fail_not_found", 'data': {"item_name": target_name}}]
+            final_search_term = target_name or target_object_id_from_parser or "something"
+            logging.warning(f"[handle_look] FAILED - Target '{final_search_term}' not found after checking by ID (hands, worn, location) and by name (location).")
+            return [{'key': "look_fail_not_found", 'data': {"item_name": final_search_term}}]
 
 def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
     """Handles the INVENTORY command intent by formatting and returning the status."""

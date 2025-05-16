@@ -1,9 +1,10 @@
 objects:
 - id: cap_captains_chair
-  count: 1
   name: Captain's Chair
   is_plural: false
   category: equipment
+  location: ship_bridge
+  count: 1
   weight: 50.0
   size: 30.0
   description: A high-backed command chair anchored to the deck by a magnetic stabilizer
@@ -12,60 +13,47 @@ objects:
     control interfaces, now dormant. A small indentation at the base suggests biometric
     access, long inactive. Despite the silence, the chair still carries the weight
     of authority—it feels like it's waiting for someone to take command.
-  synonyms: []
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: false
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: bridge_torch
-  count: 2
   name: Bridge Torch
   is_plural: false
   category: device
+  location: ship_bridge
+  count: 2
   weight: 0.5
   size: 2.0
   description: A standard-issue shipboard torch, compact and rugged. Its brushed metal
@@ -80,57 +68,45 @@ objects:
   - lantern
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
-    is_rechargeable: false
+    is_operational: false
+    requires_power: false
+    is_rechargeable: true
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: nav_console
-  count: 3
   name: Navigation Console
   is_plural: false
-  category: key_item
+  category: device
+  location: ship_bridge
+  count: 3
   weight: 250.0
   size: 50.0
   description: A sleek, futuristic navigation console commands your attention, its
@@ -146,118 +122,94 @@ objects:
   - control panel
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  lock_type: key
+  lock_key_id: cab_locker_keycard
+  is_open: false
   properties:
     is_takeable: false
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
-
+    is_openable_closable: false
 - id: nav_officer_log
-  count: 4
   name: Navigation Officer's Log
   is_plural: false
-  category: key_item
+  category: readable
+  location: ship_bridge
+  count: 4
   weight: 0.01
   size: 1.0
   description: "A standard ship log entry, recorded by the Navigation Officer. The
     text appears slightly distorted, but a few lines stand out: 'Note to self: If
     I forget my password again, it's just the name of my first pet followed by the
     docking bay number. Stupid security rules...'"
-  synonyms: []
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: nav_compartment
-  count: 5
   name: Hidden Storage Compartment
   is_plural: false
   category: container
+  location: ship_bridge
+  count: 5
   weight: 10.0
   size: 50.0
   description: A small, almost invisible compartment is nestled within the structure
@@ -270,57 +222,49 @@ objects:
   - Locker
   initial_state: true
   is_locked: true
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  lock_type: code
+  lock_code: test
+  is_open: false
   properties:
     is_takeable: false
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: true
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
+    is_storage: true
     storage_capacity: 10
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: true
 - id: nav_fish_delivery_log
-  count: 6
   name: Fish Delivery Log
   is_plural: false
-  category: key_item
+  category: readable
+  location: ship_bridge
+  count: 6
   weight: 0.01
   size: 1.0
   description: "A personal log entry from the Navigation Officer. She seems excited:
@@ -328,60 +272,47 @@ objects:
     Bay 22! I can't wait to introduce everyone to Tiberius! Ardean Dancing Fish are
     so rare in the Federation. Just drop the pet seed into fresh water, and in ten
     minutes, I'll have a most rare, vibrant, and energetic fish this side of the galaxy!\""
-  synonyms: []
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: nav_fish_photo
-  count: 7
   name: Fish Photo
   is_plural: false
-  category: key_item
+  category: furniture
+  location: ship_bridge
+  count: 7
   weight: 0.4
   size: 1.0
   description: A beautifully framed photograph depicts an Ardean Dancing Fish mid-jump,
@@ -397,57 +328,45 @@ objects:
   - snap
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: cab_backpack
-  count: 8
   name: Standard Backpack
   is_plural: false
   category: container
+  location: player_cabin
+  count: 8
   weight: 3.0
   size: 3.0
   description: The backpack is compact but rugged, built from dark, weather-resistant
@@ -463,59 +382,50 @@ objects:
   - backpack
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: true
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: true
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
+    is_storage: true
     storage_capacity: 10
-    damage:
-    durability:
-    range:
+    is_wearable: true
     wear_area: back
     wear_layer: 2
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: true
 - id: cab_mirror
-  count: 9
   name: Bathroom Mirror
   is_plural: false
   category: furniture
+  location: player_cabin_small_bathroom
+  count: 9
   weight: 4.0
   size: 4.0
   description: A small, oval mirror clings to the wall above a narrow metal sink,
@@ -532,60 +442,45 @@ objects:
   - wall glass
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: false
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  interaction:
-    required_state: []
-    failure_message: set_flag:player_checked_mirror
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: cab_hat
-  count: 10
   name: Capped Hat
   is_plural: false
   category: clothing
+  location: player_cabin_small_kitchen
+  count: 10
   weight: 1.0
   size: 1.0
   description: The cap is a close-fitting, utilitarian piece of headgear made from
@@ -600,59 +495,49 @@ objects:
   - cap
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  lock_type: key
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: true
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
+    is_wearable: true
     wear_area: head
     wear_layer: 2
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: cab_bed
-  count: 11
   name: Small Cabin Bed
   is_plural: false
   category: furniture
+  location: player_cabin
+  count: 11
   weight: 50.0
   size: 25.0
   description: A narrow bunk is recessed into the wall of the cabin, half-hidden behind
@@ -667,58 +552,45 @@ objects:
   - bunk
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: false
     is_interactive: true
-    is_dangerous: false
+    is_movable: true
     is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
-    is_movable: false
-    is_wearable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
-  digital_content: {}
+    is_openable_closable: false
 - id: cab_jumpsuit
-  count: 12
   name: Jumpsuit
   is_plural: false
   category: clothing
+  location: player_cabin
+  count: 12
   weight: 1.0
   size: 1.0
   description: The standard-issue jumpsuit is a full-body garment made from durable,
@@ -733,59 +605,49 @@ objects:
   - suit
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  lock_type: key
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: true
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
+    is_wearable: true
     wear_area: torso
     wear_layer: 2
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: cab_boots
-  count: 13
   name: Utility Boots
   is_plural: true
   category: clothing
+  location: player_cabin
+  count: 13
   weight: 1.0
   size: 1.0
   description: 'The boots are sturdy and worn, their dark composite material scuffed
@@ -800,59 +662,48 @@ objects:
   - work boots
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: true
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
+    is_wearable: true
     wear_area: feet
     wear_layer: 2
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: cab_slippers
-  count: 14
   name: Cabin Slippers
   is_plural: true
   category: clothing
+  location: player_cabin
+  count: 14
   weight: 1.0
   size: 1.0
   description: The cabin slippers are simple and well-worn, their soft grey fabric
@@ -868,59 +719,48 @@ objects:
   - cabin shoes
   initial_state: true
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: true
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
+    is_wearable: true
     wear_area: feet
     wear_layer: 1
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
 - id: cab_footlocker
-  count: 15
   name: Footlocker
   is_plural: false
   category: container
+  location: player_cabin
+  count: 15
   weight: 10.0
   size: 10.0
   description: A rugged foot locker rests at the foot of the bunk, its matte-black
@@ -936,59 +776,52 @@ objects:
   - footlocker
   initial_state: true
   is_locked: true
-  power_state:
   lock_type: key
-  lock_code:
   lock_key_id: cab_locker_keycard
+  is_open: false
   properties:
-    is_takeable: false
+    is_takeable: true
     is_interactive: true
-    is_dangerous: false
+    is_movable: false
     is_destroyable: false
-    is_storage: true
-    is_operational: false
-    is_edible: false
-    is_weapon: false
-    is_movable: true
-    is_wearable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: true
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: true
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
+    is_storage: true
+    storage_capacity: 10
+    is_openable_closable: true
   storage_contents:
   - cab_tablet
-  state_descriptions: {}
-  digital_content: {}
+  - cab_phaser
 - id: cab_locker_keycard
-  count: 16
   name: Blue KeyCard
   is_plural: false
   category: key_item
+  location: ''
+  count: 16
   weight: 0.01
   size: 1.0
   description: A sleek blue keycard, slightly worn at the edges, with a faint shimmer
@@ -1002,60 +835,48 @@ objects:
   - blue key
   initial_state: false
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  lock_type: key
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: false
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: false
+    requires_power: false
     is_rechargeable: false
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: false
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
-  digital_content: {}
+    is_openable_closable: false
 - id: cab_tablet
-  count: 17
   name: Personal Tablet
   is_plural: false
   category: device
-  weight: 0.5
-  size: 1.0
+  location: ''
+  count: 16
+  weight: 0.2
+  size: 1.5
   description: A standard-issue personal tablet. Its metallic casing shows minor scuffs,
     and the screen is currently dark. A small indicator light near the charging port
     suggests it has power. Seems designed for accessing ship systems or personal logs.
@@ -1068,52 +889,39 @@ objects:
   - device
   initial_state: false
   is_locked: false
-  power_state:
-  lock_type:
-  lock_code:
-  lock_key_id:
+  is_open: false
   properties:
     is_takeable: true
     is_interactive: true
-    is_dangerous: false
-    is_destroyable: false
-    is_storage: false
-    is_operational: true
-    is_edible: false
-    is_weapon: false
     is_movable: false
-    is_wearable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
     is_flammable: false
     is_toxic: false
+    is_edible: false
     is_food: false
     is_cookable: false
     is_consumable: false
-    has_durability: false
-    is_hackable: false
-    is_hidden: false
+    is_operational: true
+    requires_power: true
     is_rechargeable: true
+    is_charger: false
     is_fuel_source: false
-    regenerates: false
-    is_modular: false
+    is_hackable: false
     is_stored: false
     is_transferable: false
-    is_activatable: false
     is_networked: false
-    requires_power: true
-    requires_item: false
     has_security: false
     is_sensitive: false
-    is_fragile: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
     is_secret: false
-    can_store_liquids: false
-    is_surface: false
-    is_charger: false
-    storage_capacity:
-    damage:
-    durability:
-    range:
-  storage_contents: []
-  state_descriptions: {}
+    is_openable_closable: false
   digital_content:
     intro_message.txt: "Welcome aboard, recruit!\nThis tablet is your primary interface
       for ship systems and personal logs.\nRemember to keep it charged. Use 'help'
@@ -1127,4 +935,61 @@ objects:
     Interaction: "OPEN/CLOSE [container]\nPUT [item] IN [container]\nTAKE [item] FROM
       [container]\nWEAR [item] / REMOVE [item]\nSEARCH [object]\nUNLOCK [object] WITH
       [key]"
-
+- id: cab_phaser
+  name: Phaser Gun
+  is_plural: false
+  category: weapon
+  location: ''
+  count: 17
+  weight: 0.5
+  size: 2.0
+  description: "It's a sleek, palm-sized weapon with a matte black casing and subtle
+    indigo glow pulsing along its spine. Lightweight but deadly, the grip conforms
+    naturally to your hand, as if tailored for you. A small holographic display flickers
+    to life near the trigger, reading: \"Charge: 87% – Mode: Stun.\" There's a recessed
+    dial at the rear marked with faint symbols—Stun, Disrupt, Burn—but it seems locked
+    to its current setting. You notice fine microfractures in the emitter lens, hinting
+    at heavy past use, yet the weapon hums with quiet potential. A tiny maintenance
+    port on the underside suggests it could be upgraded… or modified."
+  synonyms:
+  - gun
+  - weapon
+  - phaser
+  initial_state: false
+  is_locked: false
+  is_open: false
+  properties:
+    is_takeable: true
+    is_interactive: true
+    is_movable: false
+    is_destroyable: false
+    has_durability: false
+    is_fragile: false
+    is_surface: false
+    is_dangerous: false
+    is_flammable: false
+    is_toxic: false
+    is_edible: false
+    is_food: false
+    is_cookable: false
+    is_consumable: false
+    is_operational: false
+    requires_power: false
+    is_rechargeable: false
+    is_charger: false
+    is_fuel_source: false
+    is_hackable: false
+    is_stored: false
+    is_transferable: false
+    is_networked: false
+    has_security: false
+    is_sensitive: false
+    is_activatable: false
+    regenerates: false
+    is_modular: false
+    requires_item: false
+    is_secret: false
+    is_weapon: true
+    damage: 100
+    range: 100
+    is_openable_closable: false

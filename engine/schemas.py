@@ -151,6 +151,7 @@ class ObjectProperties(BaseModel):
     is_operational: bool = False
     is_edible: bool = False
     is_weapon: bool = False
+    is_openable_closable: bool = False
     
     # Physical Object Attributes
     weight: float = 1.0

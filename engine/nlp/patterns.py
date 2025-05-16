@@ -66,6 +66,13 @@ def generate_patterns(game_state: GameState) -> List[Dict[str, Any]]:
                  for alias in aliases:
                       if isinstance(alias, str):
                            names_to_pattern.add(alias.lower())
+            
+            # Add synonyms as well
+            synonyms = obj_data.get('synonyms', [])
+            if isinstance(synonyms, list):
+                for synonym in synonyms:
+                    if isinstance(synonym, str):
+                        names_to_pattern.add(synonym.lower())
 
             for name in names_to_pattern:
                  if name: # Ensure name is not empty

@@ -133,6 +133,24 @@ class ObjectDataManager:
          logging.warning(f"get_object_by_id: No match found for '{search_id}'.")
          return None
 
+    def get_key_object_ids(self) -> List[str]:
+        """Returns a sorted list of object IDs for objects categorized as 'key'."""
+        if not self.objects_data or not isinstance(self.objects_data, list):
+            logging.warning("get_key_object_ids: No objects_data list found.")
+            return []
+        key_ids = []
+        for obj in self.objects_data:
+            if isinstance(obj, dict):
+                obj_id = obj.get('id')
+                category = obj.get('category')
+                # Accept 'key_item' as a valid category
+                if obj_id and category == 'key_item':
+                    key_ids.append(str(obj_id)) # Ensure it's a string
+        
+        sorted_key_ids = sorted(key_ids)
+        logging.debug(f"get_key_object_ids: Found key IDs: {sorted_key_ids}")
+        return sorted_key_ids
+
     def get_area_ids_for_room(self, room_id: str) -> List[str]:
         """Returns a sorted list of area IDs for a given room ID."""
         if not self.rooms_data or room_id not in self.rooms_data:

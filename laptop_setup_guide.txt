@@ -1,0 +1,109 @@
+# Laptop Setup Guide for Starship_Adventure_2
+
+This guide provides step-by-step instructions to set up the Starship Adventure 2 project on a new Windows computer (like your laptop).
+
+## 1. Install Git
+
+**Why?** Git is needed to download (clone) the project from GitHub and manage different versions of your code.
+**How?**
+   - Go to: https://git-scm.com/downloads
+   - Download the Windows installer.
+   - Run the installer. You can generally accept the default settings. Ensure that Git is added to your system's PATH (this is often a default option).
+   - **Verify:** Open a new Command Prompt or PowerShell and type `git --version`. You should see a version number.
+
+## 2. Install Python
+
+**Why?** The project is written in Python, so you need the Python interpreter to run it.
+**How?**
+   - Go to: https://www.python.org/downloads/
+   - Download the latest stable version for Windows (e.g., Python 3.11 or 3.12).
+   - Run the installer. **IMPORTANT:** On the first screen of the installer, make sure to check the box that says "Add Python X.Y to PATH".
+   - **Verify:** Open a new Command Prompt or PowerShell and type `py --version` (or `python --version`). You should see the installed version number.
+
+## 3. Install Cursor IDE
+
+**Why?** Cursor is the IDE (Integrated Development Environment) you use, providing helpful features for coding.
+**How?**
+   - Go to: https://cursor.sh/
+   - Download and run the installer for Windows. Follow the installation prompts.
+
+## 4. Get the Project Code (Clone Repository)
+
+**Why?** Download the project files from your online GitHub repository.
+**How?**
+   - Choose a location on your laptop to store your projects (e.g., `C:\Users\YourUsername\Projects`).
+   - Open a terminal (Git Bash, PowerShell, or Command Prompt integrated in Cursor/VS Code).
+   - Navigate to your chosen projects folder using the `cd` command:
+     ```bash
+     cd C:\Users\YourUsername\Projects 
+     ```
+     (Replace `YourUsername` with your actual Windows username)
+   - Clone the repository:
+     ```bash
+     git clone https://github.com/Paul-Northampton-UK/Starship_Adventure_2.git
+     ```
+   - This creates a `Starship_Adventure_2` folder. Navigate into it:
+     ```bash
+     cd Starship_Adventure_2
+     ```
+   - **Note:** The first time you interact with GitHub (like cloning), Git might ask for your GitHub username and password or a Personal Access Token (PAT). Using a PAT is recommended by GitHub for better security.
+
+## 5. Set Up Project Environment & Install Dependencies
+
+**Why?** Create an isolated Python environment for the project and install the specific libraries it needs.
+**How?** (Make sure you are inside the `Starship_Adventure_2` directory in your terminal)
+   - **Create a virtual environment:**
+     ```bash
+     py -m venv venv
+     ```
+     (If `py` doesn't work, try `python`. This creates a `venv` subfolder.)
+   - **Activate the virtual environment:**
+     ```bash
+     .\venv\Scripts\activate
+     ```
+     (Your terminal prompt should change, likely showing `(venv)` at the start.)
+   - **Install required packages:**
+     ```bash
+     pip install -r requirements.txt
+     ```
+     (This reads `requirements.txt` and installs libraries like `rich`, `pygame`, etc. into your `venv`.)
+
+## 6. Verify Setup
+
+**Why?** Check if the project can run.
+**How?** (With the virtual environment still active)
+   - Run the main game file:
+     ```bash
+     py main.py
+     ```
+     (or `python main.py`)
+   - The game should start without errors about missing modules.
+
+## 7. Syncing Changes with Git (Do's and Don'ts)
+
+**Why?** Keep your local code synchronized with the GitHub repository and share changes between your computers.
+
+**Key Commands:**
+   - `git status`: Shows which files have been modified, added, or deleted since your last commit. Run this often!
+   - `git add <file>` or `git add .`: Stages changes. `git add .` stages all changes in the current directory and subdirectories.
+   - `git commit -m "Your descriptive message"`: Saves your staged changes as a snapshot (commit) in your local repository history.
+   - `git pull origin master`: Downloads the latest changes from the `master` branch on GitHub (`origin`) and merges them into your local `master` branch.
+   - `git push origin master`: Uploads your local commits (that aren't already on GitHub) from your `master` branch to the `master` branch on GitHub (`origin`).
+
+**Do's:**
+   - **DO `git pull` before starting work:** Always run `git pull origin master` when you start a coding session on a machine to ensure you have the latest changes from GitHub (potentially pushed from another computer).
+   - **DO `git status` frequently:** Check the status of your files before adding and committing.
+   - **DO commit often:** Make small, logical commits. Instead of one giant commit at the end of the day, commit after completing a specific feature or fix.
+   - **DO write clear commit messages:** Explain *what* the change does and *why*. (e.g., "Fix player inventory bug when dropping items", "Add combat system framework").
+   - **DO `git push` regularly:** Push your commits to GitHub frequently, especially at the end of a work session, to back them up and make them available to your other computer.
+   - **DO resolve merge conflicts carefully:** If `git pull` results in a merge conflict (Git couldn't automatically combine changes), Git will mark the conflicted sections in the files. Open these files, manually edit them to resolve the differences, save them, then `git add` the resolved files and `git commit`.
+
+**Don'ts:**
+   - **DON'T `git push` if `git pull` fails or has conflicts:** Resolve any issues from pulling before you try to push. Pushing with unresolved conflicts can cause problems.
+   - **DON'T commit large data files or secrets:** Use the `.gitignore` file (which is already set up in this project) to prevent tracking things like virtual environments (`venv/`), cache files (`__pycache__/`), IDE settings (`.vscode/`, `.idea/`), logs (`logs/`), or sensitive information.
+   - **DON'T force push (`git push --force`) unless you are absolutely sure:** Force pushing overwrites the history on GitHub and can cause data loss for collaborators (or for your other computer if you're not careful). Avoid it unless you understand the risks.
+   - **DON'T work on the same feature on both computers simultaneously without pulling/pushing frequently:** This increases the chance of merge conflicts. Try to finish a piece of work on one machine, push it, then pull it on the other before continuing.
+
+---
+End of Guide
+--- 

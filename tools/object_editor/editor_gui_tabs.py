@@ -56,6 +56,7 @@ KEY_PROP_IS_TAKEABLE = "-PROP_IS_TAKEABLE-"
 KEY_PROP_IS_INTERACTIVE = "-PROP_IS_INTERACTIVE-"
 KEY_PROP_IS_DANGEROUS = "-PROP_IS_DANGEROUS-"
 KEY_PROP_IS_DESTROYABLE = "-PROP_IS_DESTROYABLE-"
+KEY_PROP_IS_OPENABLE_CLOSABLE = "-PROP_IS_OPENABLE_CLOSABLE-" # <-- NEW KEY
 # KEY_PROP_IS_LOCKABLE = "-PROP_IS_LOCKABLE-" # Use state frame 'is_locked'
 KEY_PROP_IS_STORAGE = "-PROP_IS_STORAGE-"
 KEY_PROP_IS_OPERATIONAL = "-PROP_IS_OPERATIONAL-"
@@ -298,6 +299,12 @@ def clear_fields(window):
     window[KEY_SAVE_BUTTON].update(disabled=True)
     window[KEY_DELETE_BUTTON].update(disabled=False)
 
+    window[KEY_PROP_IS_DANGEROUS].update(False)
+    window[KEY_PROP_IS_DESTROYABLE].update(False)
+    window[KEY_PROP_IS_OPENABLE_CLOSABLE].update(False) # <-- CLEAR NEW FIELD
+    # window[KEY_PROP_IS_LOCKABLE].update(False)
+    window[KEY_PROP_IS_STORAGE].update(False)
+
 
 def populate_fields(window, object_data: dict, manager: ObjectDataManager):
     """Populates the GUI fields with data from the loaded object."""
@@ -392,7 +399,8 @@ def populate_fields(window, object_data: dict, manager: ObjectDataManager):
         # Skip keys handled in other tabs or specific sections
         if key in ["wear_area", "wear_layer", "is_wearable", "is_storage",
                    "storage_capacity", "can_store_liquids", "is_weapon",
-                   "damage", "range", "durability", "has_durability"]:
+                   "damage", "range", "durability", "has_durability",
+                   "is_openable_closable"]: # <-- Add to exclusion list if handled explicitly elsewhere
             continue
 
         # Convert property key (e.g., "is_takeable") to GUI key (e.g., "-PROP_IS_TAKEABLE-")
@@ -455,6 +463,9 @@ def populate_fields(window, object_data: dict, manager: ObjectDataManager):
     # Reset Validate button color to default on load
     window[KEY_VALIDATE_BUTTON].update(button_color=sg.theme_button_color())
     window[KEY_STATUS_BAR].update(f"Loaded object: {obj_id}")
+
+    # Explicitly set openable_closable field state on load (Properties I tab)
+    window[KEY_PROP_IS_OPENABLE_CLOSABLE].update(props.get("is_openable_closable", False))
 
 
 def update_yaml_preview(window, object_data: Optional[dict], manager: ObjectDataManager):
@@ -594,7 +605,8 @@ def gather_data_from_fields(window: sg.Window, manager: ObjectDataManager) -> tu
 
                 # Skip properties managed in specific tabs
                 if prop_name_lower in ["is_storage", "storage_capacity", "can_store_liquids",
-                                       "is_weapon", "damage", "range", "durability", "is_wearable"]:
+                                       "is_weapon", "damage", "range", "durability", "is_wearable",
+                                       "is_openable_closable"]:
                     continue
 
                 if isinstance(element, sg.Checkbox):
@@ -674,6 +686,9 @@ def gather_data_from_fields(window: sg.Window, manager: ObjectDataManager) -> tu
                 properties["wear_layer"] = int(wear_layer_str)
             except (ValueError, TypeError):
                 logging.warning(f"Invalid wear layer value '{wear_layer_str}', not saving.")
+
+    # Add is_openable_closable to properties
+    properties["is_openable_closable"] = bool(values.get(KEY_PROP_IS_OPENABLE_CLOSABLE)) # <-- GATHER FIELD
 
     # Only add properties dict if it's not empty
     if properties:
@@ -821,6 +836,17 @@ def validate_object_data(object_data: dict, is_new: bool, manager: ObjectDataMan
 
     # --- Validate Properties ---
     properties = object_data.get("properties", {})
+
+    # --- NEW: Validate Openable/Closable, Is Open, and Is Locked consistency ---
+    is_openable_closable_prop = properties.get("is_openable_closable", False)
+
+    if not is_openable_closable_prop and is_open:
+        errors.append("If 'Is Openable/Closable' property is unchecked, the object's 'Is Open' state (in States tab) must also be unchecked (i.e., it cannot start open).")
+
+    if is_locked and not is_openable_closable_prop:
+        errors.append("If object 'Is Locked' (in States tab), its 'Is Openable/Closable' property (in Properties I tab) must be checked.")
+    # --- END NEW VALIDATION ---
+
     if properties.get("is_storage"):
         if "storage_capacity" not in properties or not isinstance(properties["storage_capacity"], (int, float)) or properties["storage_capacity"] <= 0:
             errors.append("If 'Is Storage' is checked, 'Storage Capacity' must be a positive number.")
@@ -966,7 +992,8 @@ def main():
         [sg.Checkbox("Initially Visible?", key=KEY_OBJECT_INITIAL_STATE, default=True, tooltip="Is the object visible when the player enters the room?")],
         [sg.HorizontalSeparator()],
         # Add Durability input back
-        [sg.Text("Durability:"), sg.Input(key=KEY_PROP_DURABILITY, tooltip="Object health/uses remaining (if Has Durability)", size=(8,1), disabled=True)]
+        [sg.Text("Durability:"), sg.Input(key=KEY_PROP_DURABILITY, tooltip="Object health/uses remaining (if Has Durability)", size=(8,1), disabled=True)],
+        [sg.Checkbox("Openable/Closable", key=KEY_PROP_IS_OPENABLE_CLOSABLE, enable_events=True, tooltip="Can this object be opened and closed (e.g., doors, containers, books)?")],
     ]
 
     # Define the new "Properties I" tab layout with frames
@@ -988,6 +1015,8 @@ def main():
         [sg.Frame(None, [ # Frame title set to None
             [sg.Text("Physical Attributes & Hazards", font=("Helvetica", 11, "bold"))],
             [sg.HorizontalSeparator()],
+            [sg.Checkbox("Is Openable/Closable?", key=KEY_PROP_IS_OPENABLE_CLOSABLE, enable_events=True, tooltip="Can this object be opened and closed (e.g., doors, containers, books)?", size=(25,None)), # <-- NEW CHECKBOX
+             sg.Text("Object can be opened and closed (doors, containers, books).", expand_x=True)], # <-- NEW TEXT
             [sg.Checkbox("Destroyable", key=KEY_PROP_IS_DESTROYABLE, tooltip="Can this object be destroyed?", size=(25,None)),
              sg.Text("Object can be damaged and ultimately destroyed.", expand_x=True)],
             [sg.Checkbox("Has Durability", key=KEY_PROP_HAS_DURABILITY, enable_events=True, tooltip="Does this object have a durability value?", size=(25,None)),

@@ -47,3 +47,15 @@ class ParsedIntent:
     direction: Optional[str] = None
     preposition: Optional[str] = None
     original_input: str = ""
+
+@dataclass
+class CommandResponse:
+    """Class to hold the response from a command handler."""
+    handler_name: str
+    intent_name: CommandIntent # Using the CommandIntent enum for type safety
+    original_input: str
+    message: str
+    status_code: int # HTTP-like status codes (e.g., 200 OK, 400 Bad Request, 404 Not Found)
+    room_id: str # Current room ID, useful for client updates
+    target_object_name: Optional[str] = None
+    extra_data: Optional[Dict[str, Any]] = field(default_factory=dict)

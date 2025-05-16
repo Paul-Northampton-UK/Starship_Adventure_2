@@ -30,6 +30,7 @@ class GameState:
     current_room_id: str
     rooms_data: Dict[str, Any]  # Added to store loaded room definitions
     objects_data: Dict[str, Any]  # Added objects_data
+    responses_data: Dict[str, Any] # Added for storing loaded response templates
     power_state: PowerState
     current_area_id: Optional[str] = None
     inventory: List[str] = field(default_factory=list)
@@ -41,6 +42,7 @@ class GameState:
     player_status: PlayerStatus = field(default_factory=lambda: PlayerStatus())
     game_time: datetime = field(default_factory=datetime.now)
     object_states: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    dynamic_room_objects: Dict[str, List[str]] = field(default_factory=dict)
     last_save_time: Optional[datetime] = None
 
     def __post_init__(self):
@@ -61,6 +63,8 @@ class GameState:
             self.game_time = datetime.now()
         if self.object_states is None:
             self.object_states = {}
+        if self.responses_data is None: # Ensure responses_data is also initialized
+            self.responses_data = {}
 
     def visit_room(self, room_id: str) -> None:
         """Mark a room as visited."""
@@ -140,6 +144,7 @@ class GameState:
             'player_status': asdict(self.player_status),
             'game_time': self.game_time.isoformat(),
             'object_states': self.object_states,
+            'dynamic_room_objects': self.dynamic_room_objects,
             'last_save_time': datetime.now().isoformat()
         }
         
@@ -162,6 +167,7 @@ class GameState:
         game_state.player_status = PlayerStatus(**save_data['player_status'])
         game_state.game_time = datetime.fromisoformat(save_data['game_time'])
         game_state.object_states = save_data['object_states']
+        game_state.dynamic_room_objects = save_data['dynamic_room_objects']
         game_state.last_save_time = datetime.fromisoformat(save_data['last_save_time'])
         
         return game_state
@@ -200,7 +206,7 @@ class GameState:
 
         # Determine required state components based on base data
         is_lockable = bool(base_data.get("lock_type")) or "lockable" in base_data.get("attributes", []) or isinstance(base_data.get("lock_details"), dict)
-        is_container = "container" in base_data.get("attributes", [])
+        is_container = base_data.get("properties", {}).get("is_storage", False)
 
         # Check if state exists and is complete
         if current_state is None:
@@ -220,39 +226,70 @@ class GameState:
         if needs_rebuild:
             logging.debug(f"Building/Rebuilding state for '{object_id}'.")
             new_state = {}
-            # Initialize lock details
-            if is_lockable:
-                lock_init = base_data.get("lock_details", {}).copy() # Prioritize lock_details dict
-                if not lock_init and "lockable" in base_data.get("attributes", []): # Fallback to legacy
-                    lock_init = {
-                        "locked": base_data.get("is_locked", True),
-                        "key_id": base_data.get("lock_key_id"),
-                        "required_key": base_data.get("required_key")
-                    }
-                    # Clean up None values from legacy keys if they exist
-                    if lock_init.get("key_id") is None: lock_init.pop("key_id", None)
-                    if lock_init.get("required_key") is None: lock_init.pop("required_key", None)
-                new_state["lock_details"] = lock_init
-                logging.debug(f" > Initialized lock_details for '{object_id}': {lock_init}")
 
-            # Initialize container contents
-            if is_container:
-                base_contents = base_data.get("state", {}).get("contains")
-                if base_contents is None: base_contents = base_data.get("contains", [])
-                new_state["contains"] = list(base_contents) # Ensure list copy
-                logging.debug(f" > Initialized contains for '{object_id}': {new_state['contains']}")
-                
-            # Add other initial state components here if needed (e.g., charge, fuel)
-            
-            # Preserve existing state keys if they are not part of the rebuild
-            preserved_keys = set()
+            # Priority 1: Preserve simple existing state values from current_state
+            # These are typically flags like is_open, is_visible, charge, etc.
+            # Complex structures like lock_details and contains will be handled/rebuilt specifically.
             if current_state is not None:
-                 for key, value in current_state.items():
-                      if key not in new_state: # Don't overwrite rebuilt keys
-                           new_state[key] = value
-                           preserved_keys.add(key)
-                 if preserved_keys:
-                      logging.debug(f" > Preserved existing keys: {preserved_keys}")
+                for key, value in current_state.items():
+                    if key not in ["lock_details", "contains"]: # Don't blindly copy complex structures
+                        new_state[key] = value
+                logging.debug(f" > Preserved simple keys from current_state: {new_state}")
+
+            # Priority 2: Initialize/Rebuild complex components if missing or explicitly needed.
+            # Initialize lock details if not already preserved or if base_data dictates a structure
+            if is_lockable and "lock_details" not in new_state: # Check new_state
+                lock_init = base_data.get("lock_details", {}).copy() # Start with base_data.lock_details if present
+
+                # If 'locked' is not in lock_init (either from base_data.lock_details or it was empty)
+                # AND the object is lockable (e.g. has a lock_type defined at base_data level),
+                # then initialize 'locked' status from base_data.is_locked.
+                # Also, ensure lock_type and lock_key_id are populated from base_data if not in lock_init.
+                if 'locked' not in lock_init and base_data.get("lock_type"):
+                    lock_init['locked'] = base_data.get("is_locked", False) # Default to False if is_locked missing in base_data
+
+                if 'key_id' not in lock_init and base_data.get("lock_key_id"):
+                    lock_init['key_id'] = base_data.get("lock_key_id")
+                
+                if 'type' not in lock_init and base_data.get("lock_type"): # Store the lock type
+                    lock_init['type'] = base_data.get("lock_type")
+
+                # Clean up None values that might have been added by base_data.get() if the keys existed but were null
+                if lock_init.get("key_id") is None: lock_init.pop("key_id", None)
+                # No need to pop 'type' or 'locked' if None, as they can be validly None/False.
+
+                new_state["lock_details"] = lock_init
+                logging.debug(f" > Initialized/Rebuilt lock_details for '{object_id}': {lock_init}")
+
+            # Initialize container contents if not already preserved or if base_data dictates
+            if is_container and "contains" not in new_state: # Check new_state
+                initial_items = base_data.get("storage_contents")
+                log_source = "storage_contents"
+                if initial_items is None:
+                    initial_items = base_data.get("contains")
+                    log_source = "contains" if initial_items is not None else "storage_contents_was_None->contains_was_None"
+                if initial_items is None:
+                     initial_items = base_data.get("state", {}).get("contains") # Legacy from base_data.state
+                     log_source = "state.contains" if initial_items is not None else (log_source + "->state.contains_was_None")
+                if initial_items is None:
+                    initial_items = []
+                    log_source = log_source if log_source.endswith("None") else (log_source + "->default_empty")
+                new_state["contains"] = list(initial_items)
+                logging.debug(f" > Initialized/Rebuilt contains for '{object_id}': {new_state['contains']} (Source: {log_source})")
+            
+            # Priority 3: Initialize simple properties from base_data IF NOT ALREADY in new_state (i.e., not preserved from current_state)
+            if "is_open" in base_data and "is_open" not in new_state:
+                new_state["is_open"] = base_data["is_open"]
+                logging.debug(f" > Initialized is_open for '{object_id}' from base_data (was not in current_state): {new_state['is_open']}")
+            
+            # Example for 'is_visible' (if you want it to default from base_data if not in current_state)
+            # This is important for items that might not have had state before but have an initial_state in YAML.
+            if "initial_state" in base_data and "is_visible" not in new_state: # 'initial_state' in YAML often means 'is_visible'
+                 new_state["is_visible"] = base_data["initial_state"]
+                 logging.debug(f" > Initialized is_visible for '{object_id}' from base_data.initial_state (was not in current_state): {new_state['is_visible']}")
+            elif "is_visible" in base_data and "is_visible" not in new_state: # Direct 'is_visible' in YAML
+                 new_state["is_visible"] = base_data["is_visible"]
+                 logging.debug(f" > Initialized is_visible for '{object_id}' from base_data.is_visible (was not in current_state): {new_state['is_visible']}")
 
             # Replace the old state (or add the new one)
             self.object_states[object_id] = new_state
@@ -330,103 +367,89 @@ class GameState:
         obj_data = self.get_object_by_id(object_id)
         return obj_data.get("name", object_id) if obj_data else object_id # Fallback to ID
 
-    def find_object_id_by_name_in_location(self, object_name: str) -> Optional[str]:
-        """Finds an object ID by name/alias within the current room or area (partial match allowed)."""
+    def find_object_id_by_name_in_location(self, object_name: str, room_id: str, area_id: Optional[str] = None, visible_only: bool = True) -> Optional[str]:
+        """Finds an object ID by name/alias within the specified room or area (partial match allowed),
+           considering dynamic visibility."""
         normalized_name = object_name.lower().strip()
-        logging.debug(f"Searching for '{normalized_name}' in location {self.current_room_id}/{self.current_area_id or 'room'}")
+        logging.debug(f"Searching for '{normalized_name}' in location {room_id}/{area_id or 'room'} (visible_only={visible_only})")
 
-        current_room_data = self.rooms_data.get(self.current_room_id)
+        current_room_data = self.rooms_data.get(room_id)
         if not current_room_data:
-            logging.error(f"Cannot search location: Room data missing for {self.current_room_id}")
+            logging.error(f"Cannot search location: Room data missing for {room_id}")
             return None
 
-        search_list = []
-        # Search current area first if applicable
-        if self.current_area_id:
-             areas = current_room_data.get("areas", [])
-             if isinstance(areas, list):
-                 for area in areas:
-                     if isinstance(area, dict) and area.get("area_id") == self.current_area_id:
-                         # Use the stateful list if available, otherwise fallback to base data
-                         # This assumes area state might eventually track object presence
-                         # For now, using base area['objects_present']
-                         search_list = area.get("objects_present", [])
-                         logging.debug(f"Searching within area '{self.current_area_id}', using base objects_present: {search_list}")
-                         break # Found the area
-                 if not search_list and self.current_area_id in [a.get("area_id") for a in areas if isinstance(a, dict)]:
-                     logging.debug(f"Area '{self.current_area_id}' found, but no 'objects_present' list or list is empty.")
-             else:
-                 logging.warning(f"Room '{self.current_room_id}' has 'areas' but it is not a list.")
+        potential_ids_in_location: Set[str] = set()
+        static_objects_present_refs: List[Any] = []
+
+        if area_id:
+            areas = current_room_data.get("areas", [])
+            if isinstance(areas, list):
+                for area_data_item in areas: # Renamed to avoid conflict
+                    if isinstance(area_data_item, dict) and area_data_item.get("area_id") == area_id:
+                        static_objects_present_refs = area_data_item.get("objects_present", [])
+                        break
         else:
-            # If not in an area, search room's base objects_present list
-            search_list = current_room_data.get("objects_present", [])
-            logging.debug(f"Searching within room '{self.current_room_id}', using base objects_present: {search_list}")
+            static_objects_present_refs = current_room_data.get("objects_present", [])
+
+        for item_ref in static_objects_present_refs:
+            if isinstance(item_ref, str):
+                potential_ids_in_location.add(item_ref)
+            elif isinstance(item_ref, dict) and 'id' in item_ref:
+                potential_ids_in_location.add(item_ref['id'])
+
+        for obj_id_global, obj_data_global in self.objects_data.items():
+            if obj_data_global.get("initial_room_id") == room_id: # Check against the passed room_id
+                potential_ids_in_location.add(obj_id_global)
+        
+        dynamic_ids_for_room = self.dynamic_room_objects.get(room_id, []) # Check against the passed room_id
+        for dyn_obj_id in dynamic_ids_for_room:
+            potential_ids_in_location.add(dyn_obj_id)
+
+        exact_match_found_id: Optional[str] = None
+        for obj_id in potential_ids_in_location:
+            obj_data = self.get_object_by_id(obj_id)
+            if not obj_data: continue
+
+            current_obj_state = self.get_object_state(obj_id)
+            default_visibility = obj_data.get('initial_state', True)
+            is_visible = current_obj_state.get('is_visible', default_visibility)
+
+            if not visible_only or is_visible:
+                name = obj_data.get('name', '').lower()
+                # CHANGED: Use 'synonyms' instead of 'command_aliases'
+                aliases = [s.lower() for s in obj_data.get('synonyms', []) if isinstance(s, str)]
+                if normalized_name == obj_id.lower() or normalized_name == name or normalized_name in aliases:
+                    if exact_match_found_id and exact_match_found_id != obj_id:
+                        logging.warning(f"Ambiguous exact object name '{normalized_name}' (Matches: {exact_match_found_id}, {obj_id}) in location {room_id}.")
+                        return None # Ambiguity
+                    exact_match_found_id = obj_id
+        
+        if exact_match_found_id:
+            return exact_match_found_id
+
+        partial_match_ids: List[str] = []
+        for obj_id in potential_ids_in_location:
+            obj_data = self.get_object_by_id(obj_id)
+            if not obj_data: continue
+            current_obj_state = self.get_object_state(obj_id)
+            default_visibility = obj_data.get('initial_state', True)
+            is_visible = current_obj_state.get('is_visible', default_visibility)
+
+            if not visible_only or is_visible:
+                name = obj_data.get('name', '').lower()
+                # CHANGED: Use 'synonyms' instead of 'command_aliases'
+                aliases = [s.lower() for s in obj_data.get('synonyms', []) if isinstance(s, str)]
+                if normalized_name in name or any(normalized_name in alias for alias in aliases):
+                    if obj_id not in partial_match_ids:
+                        partial_match_ids.append(obj_id)
+        
+        if len(partial_match_ids) == 1:
+            return partial_match_ids[0]
+        elif len(partial_match_ids) > 1:
+            logging.warning(f"Ambiguous partial object name '{normalized_name}' (Matches: {partial_match_ids}) in location {room_id}.")
+            return None # Ambiguity
             
-        # Now search the list (either from area or room)
-        logging.debug(f"[find_in_loc] Attempting to search through list: {search_list}")
-        found_id = None
-        # --- ADDED: Prioritize exact matches first --- 
-        # Pass 1: Exact Matches
-        if isinstance(search_list, list):
-             for item_ref in search_list:
-                 object_id = None
-                 if isinstance(item_ref, str):
-                     object_id = item_ref
-                 elif isinstance(item_ref, dict) and 'id' in item_ref:
-                     object_id = item_ref['id']
-                 
-                 if object_id:
-                     obj_data = self.get_object_by_id(object_id)
-                     if obj_data:
-                         name = obj_data.get('name', '').lower()
-                         aliases = [a.lower() for a in obj_data.get('command_aliases', []) if isinstance(a, str)]
-                         # Exact match ID, name, or alias
-                         if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
-                             logging.debug(f"[find_in_loc] EXACT Match FOUND for '{normalized_name}' with ID '{object_id}'")
-                             if found_id and found_id != object_id:
-                                 logging.warning(f"Ambiguous exact object name '{normalized_name}' in location (Matches: {found_id}, {object_id}). Returning None.")
-                                 return None
-                             found_id = object_id
-                             
-        # If an exact match was found, return it immediately
-        if found_id:
-             logging.debug(f"Returning exact match: {found_id}")
-             return found_id
-             
-        # Pass 2: Partial Matches (if no exact match found)
-        logging.debug(f"[find_in_loc] No exact match found for '{normalized_name}'. Checking partial matches.")
-        partial_matches = []
-        if isinstance(search_list, list):
-             for item_ref in search_list:
-                 object_id = None
-                 if isinstance(item_ref, str):
-                     object_id = item_ref
-                 elif isinstance(item_ref, dict) and 'id' in item_ref:
-                     object_id = item_ref['id']
-                     
-                 if object_id:
-                     obj_data = self.get_object_by_id(object_id)
-                     if obj_data:
-                         name = obj_data.get('name', '').lower()
-                         aliases = [a.lower() for a in obj_data.get('command_aliases', []) if isinstance(a, str)]
-                         # Check if normalized_name is IN name or any alias
-                         if normalized_name in name or any(normalized_name in alias for alias in aliases):
-                             logging.debug(f"[find_in_loc] PARTIAL Match FOUND for '{normalized_name}' with ID '{object_id}' (Name: '{name}', Aliases: {aliases})")
-                             if object_id not in partial_matches:
-                                 partial_matches.append(object_id)
-                                 
-        # Handle partial match results
-        if len(partial_matches) == 1:
-             found_id = partial_matches[0]
-             logging.debug(f"Found unique partial match: {found_id}")
-        elif len(partial_matches) > 1:
-             logging.warning(f"Ambiguous partial object name '{normalized_name}' in location (Matches: {partial_matches}). Returning None.")
-             return None # Ambiguous partial match
-             
-        if not found_id:
-             logging.debug(f"Object '{normalized_name}' not found in current location (exact or partial)." )
-             
-        return found_id
+        return None
 
     def _find_object_id_by_name_in_inventory(self, item_name_or_id: str) -> Optional[str]:
         """Finds the object ID in inventory by name, alias, or ID (partial match allowed)."""
@@ -441,7 +464,8 @@ class GameState:
             item_data = self.get_object_by_id(object_id)
             if not item_data: continue
             name = item_data.get('name', '').lower()
-            aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+            # CHANGED: Use 'synonyms' instead of 'command_aliases'
+            aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
             if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
                 if exact_match and exact_match != object_id:
                     logging.warning(f"Ambiguous exact item name '{normalized_name}' found in inventory (Matches: {exact_match}, {object_id}).")
@@ -455,7 +479,8 @@ class GameState:
             item_data = self.get_object_by_id(object_id)
             if not item_data: continue
             name = item_data.get('name', '').lower()
-            aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+            # CHANGED: Use 'synonyms' instead of 'command_aliases'
+            aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
             if normalized_name in name or any(normalized_name in alias for alias in aliases):
                  if object_id not in partial_matches:
                      partial_matches.append(object_id)
@@ -483,7 +508,8 @@ class GameState:
             item_data = self.get_object_by_id(object_id)
             if not item_data: continue
             name = item_data.get('name', '').lower()
-            aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+            # CHANGED: Use 'synonyms' instead of 'command_aliases'
+            aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
             if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
                  if exact_match and exact_match != object_id:
                      logging.warning(f"Ambiguous exact item name '{normalized_name}' found in worn items (Matches: {exact_match}, {object_id}).")
@@ -497,7 +523,8 @@ class GameState:
              item_data = self.get_object_by_id(object_id)
              if not item_data: continue
              name = item_data.get('name', '').lower()
-             aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+             # CHANGED: Use 'synonyms' instead of 'command_aliases'
+             aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
              if normalized_name in name or any(normalized_name in alias for alias in aliases):
                   if object_id not in partial_matches:
                       partial_matches.append(object_id)
@@ -525,7 +552,8 @@ class GameState:
                  logging.warning(f"Hand slot item ID '{held_id}' not found in objects data during find item search.")
                  continue
              name = item_data.get('name', '').lower()
-             aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+             # CHANGED: Use 'synonyms' instead of 'command_aliases'
+             aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
              if normalized_name == held_id.lower() or normalized_name == name or normalized_name in aliases:
                  logging.debug(f"Found item '{normalized_name}' (ID: {held_id}) in hand slot.")
                  return held_id # Found in hand
@@ -556,7 +584,8 @@ class GameState:
                          logging.warning(f"Item ID '{item_id_inside}' inside container '{worn_container_id}' not found in objects data.")
                          continue
                      name = item_data.get('name', '').lower()
-                     aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+                     # CHANGED: Use 'synonyms' instead of 'command_aliases'
+                     aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
                      if normalized_name == item_id_inside.lower() or normalized_name == name or normalized_name in aliases:
                          logging.debug(f"Found item '{normalized_name}' (ID: {item_id_inside}) inside worn container '{worn_container_id}'.")
                          # Potential ambiguity: If multiple containers have the same item?
@@ -578,7 +607,7 @@ class GameState:
         logging.debug(f"Searching for container '{normalized_name}' in location, hand slot, and worn items.")
 
         # 1. Search current location (room/area)
-        found_id = self.find_object_id_by_name_in_location(normalized_name) # Use public method
+        found_id = self.find_object_id_by_name_in_location(normalized_name, self.current_room_id, self.current_area_id)
         if found_id:
             obj_data = self.get_object_by_id(found_id)
             if obj_data and obj_data.get('properties', {}).get('is_storage'):
@@ -594,7 +623,8 @@ class GameState:
              if not item_data or not item_data.get('properties', {}).get('is_storage'):
                  continue # Skip non-containers or missing data
              name = item_data.get('name', '').lower()
-             aliases = [a.lower() for a in item_data.get('command_aliases', []) if isinstance(a, str)]
+             # CHANGED: Use 'synonyms' instead of 'command_aliases'
+             aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
              if normalized_name == held_id.lower() or normalized_name == name or normalized_name in aliases:
                  logging.debug(f"Found container '{normalized_name}' (ID: {held_id}) in hand slot.")
                  return held_id
@@ -621,42 +651,166 @@ class GameState:
         return None
 
     def take_object(self, object_id: str) -> str:
-        """Moves an object from the location to the player's hand slot."""
-        # Check 1: Hand Capacity
-        if len(self.hand_slot) >= 2:
-            # TODO: Add response key take_fail_hands_full
-            # Try to list items currently held
-            held_items_str = " and ".join([self._get_object_name(item) or "something" for item in self.hand_slot])
-            return f"Your hands are full (holding the {held_items_str})."
+        """Moves an object from its current location (room or container) into the player's hand_slot."""
+        logging.debug(f"[take_object] Attempting to take object ID: {object_id}")
+        # Ensure the object is 'takeable' based on its properties
+        obj_data = self.get_object_by_id(object_id)
+        if not obj_data:
+            logging.error(f"[take_object] No base data found for {object_id}.")
+            return "You can't find that item to take."
 
-        # Check 2: If object exists in location (redundant if GameLoop checks?)
-        if self.find_object_id_by_name_in_location(object_id) != object_id:
-             # Attempt lookup by ID directly if name search failed but ID was passed
-             if self.get_object_by_id(object_id) and self.find_object_id_by_name_in_location(self._get_object_name(object_id)) == object_id:
-                 pass # Object found by ID/name lookup
-             else:
-                logging.warning(f"take_object called for '{object_id}' not found in location.")
-                return f"You don't see a {self._get_object_name(object_id)} here."
-        
-        object_data = self.get_object_by_id(object_id)
-        if not object_data:
-             return f"Cannot get data for {object_id}."
-             
-        if not object_data.get('properties', {}).get('is_takeable', False):
-             return f"You cannot take the {self._get_object_name(object_id)}."
-        
-        # Remove object from room/area
-        removed = self._remove_object_from_location(object_id)
-        if not removed:
-            # This shouldn't happen if find_object_id worked, but handle defensively
-            logging.error(f"Failed to remove '{object_id}' from location {self.current_room_id}/{self.current_area_id} after finding it.")
-            return f"You try to take the {self._get_object_name(object_id)}, but it seems stuck."
+        if not obj_data.get("properties", {}).get("is_takeable", False):
+            logging.warning(f"[take_object] Attempt to take non-takeable item {object_id} denied by properties.")
+            return f"You cannot take the {obj_data.get('name', object_id)}."
 
+        item_taken_from_container_id: Optional[str] = None
+
+        # Check if the item is in any open, visible container in the current location
+        # MODIFICATION START: Changed to use the new get_containers_in_location method parameters
+        open_visible_containers_ids = self.get_containers_in_location(must_be_open=True, must_be_visible=True)
+        # MODIFICATION END
+        logging.debug(f"[take_object] Checking open visible containers in location: {open_visible_containers_ids}")
+
+        for container_id_check in open_visible_containers_ids:
+            container_state = self.get_object_state(container_id_check)
+            if container_state and object_id in container_state.get("contains", []):
+                # Item is in this open, visible container.
+                # Ensure the item *itself* is visible within that container (if such a state exists)
+                item_state_in_container = self.get_object_state(object_id)
+                if item_state_in_container.get("is_visible", True): # Default to true if no specific visibility for item itself
+                    logging.info(f"[take_object] Item '{object_id}' found in open container '{container_id_check}'. Removing.")
+                    current_contents = list(container_state.get("contains", []))
+                    if object_id in current_contents:
+                        current_contents.remove(object_id)
+                        self.object_states[container_id_check]["contains"] = current_contents # Directly update state
+                        item_taken_from_container_id = container_id_check
+                        logging.debug(f"[take_object] Updated container '{container_id_check}' contents: {current_contents}")
+                        break 
+                else:
+                    logging.debug(f"[take_object] Item '{object_id}' is in open container '{container_id_check}' but item's state is not visible.")
+        
+        # If not taken from a container, try removing from the room's general list
+        if not item_taken_from_container_id:
+            removed_from_room = self._remove_object_from_location(object_id) # This also handles dynamic visibility
+            if not removed_from_room:
+                # This could happen if the item was visible (e.g. from search) but not strictly in room's static list or dynamic list.
+                # Or if it was in a closed container and shouldn't have been found by find_object_id_by_name_in_location.
+                # If _remove_object_from_location couldn't find it, but properties said it was takeable & it was visible,
+                # it implies a possible discrepancy. For now, we proceed if properties are okay.
+                # Ensure its visibility state is updated if it was a dynamically revealed item not in a container.
+                obj_state = self.get_object_state(object_id)
+                if obj_state.get('is_visible', False) and not self.is_object_statically_in_room(object_id, self.current_room_id):
+                    # If it was dynamically visible and not static, its removal is essentially making it not part of the room anymore.
+                    # self.set_object_state(object_id, "is_visible", False) # No, taking it makes it possessed, not invisible in room
+                    logging.debug(f"[take_object] Taking dynamically visible item '{object_id}' not found in a container or static/dynamic room lists.")
+                else:
+                    logging.warning(f"[take_object] Item '{object_id}' was not taken from a known open container and _remove_object_from_location failed or did not apply. Proceeding based on takeable property.")
+        
         # Add object to hand slot
         self.hand_slot.append(object_id)
+        # Ensure the taken object itself is marked as visible (if it has such a state key)
+        self.set_object_state(object_id, "is_visible", True) 
         object_name = self._get_object_name(object_id)
-        logging.info(f"Player took '{object_id}' ({object_name}) into hand_slot from location.")
+        logging.info(f"Player took '{object_id}' ({object_name}) into hand_slot. Source: {'container ' + item_taken_from_container_id if item_taken_from_container_id else 'location'}.")
         return f"You take the {object_name}."
+
+    def get_containers_in_location(self, must_be_open: bool = False, must_be_visible: bool = True) -> List[str]:
+        """
+        Gets IDs of all storage containers in the current location (room/area) 
+        that meet the specified criteria.
+        """
+        # Determine which set of objects to check based on visibility requirement.
+        # _get_all_object_ids_in_current_location already handles filtering out held/worn items.
+        # If must_be_visible is True (default), we only care about already visible objects.
+        # If must_be_visible is False, we consider all objects in location regardless of their current visibility state.
+        object_ids_to_check = self._get_all_object_ids_in_current_location(visible_only=must_be_visible)
+        
+        logging.debug(f"[get_containers_in_location] Checking IDs: {object_ids_to_check} (must_be_open={must_be_open}, must_be_visible={must_be_visible})")
+        
+        valid_container_ids: List[str] = []
+        for obj_id in object_ids_to_check:
+            obj_base_data = self.get_object_by_id(obj_id)
+            if not obj_base_data:
+                logging.warning(f"[get_containers_in_location] No base data for object ID '{obj_id}'. Skipping.")
+                continue
+
+            # Check if it's a storage container
+            if not obj_base_data.get("properties", {}).get("is_storage", False):
+                continue # Not a container
+
+            obj_state = self.get_object_state(obj_id) # Ensure state is initialized
+
+            # Check visibility if required (this is a bit redundant if visible_only=True was passed to _get_all_object_ids_in_current_location,
+            # but good for explicit clarity and covers if must_be_visible=False but then we still want to check its state for some reason)
+            if must_be_visible:
+                # The object ID is already from a visible list if must_be_visible=True was used for object_ids_to_check.
+                # However, its own state.is_visible is the ultimate truth for the object itself.
+                # _get_all_object_ids_in_current_location(visible_only=True) checks this state.
+                # So, if it's in object_ids_to_check when must_be_visible=True, it IS visible.
+                pass # Already confirmed visible by the initial list generation if must_be_visible is True.
+
+            # Check if it needs to be open and if it is
+            if must_be_open:
+                if not obj_state.get("is_open", False): # Default to False if is_open not set
+                    logging.debug(f"[get_containers_in_location] Container '{obj_id}' skipped: must_be_open=True, but is_open={obj_state.get('is_open')}")
+                    continue # Not open, and must be open
+
+            valid_container_ids.append(obj_id)
+            logging.debug(f"[get_containers_in_location] Container '{obj_id}' is valid with current criteria.")
+            
+        logging.debug(f"[get_containers_in_location] Returning valid containers: {valid_container_ids}")
+        return valid_container_ids
+
+    def _get_all_object_ids_in_current_location(self, visible_only: bool = False) -> Set[str]:
+        """Helper to get all object IDs in the current room/area, optionally filtered by visibility."""
+        current_room_data = self.rooms_data.get(self.current_room_id)
+        if not current_room_data:
+            return set()
+
+        potential_ids: Set[str] = set()
+        static_refs: List[Any] = []
+        if self.current_area_id:
+            areas = current_room_data.get("areas", [])
+            if isinstance(areas, list):
+                for area in areas:
+                    if isinstance(area, dict) and area.get("area_id") == self.current_area_id:
+                        static_refs = area.get("objects_present", [])
+                        break
+        else:
+            static_refs = current_room_data.get("objects_present", [])
+        
+        for item_ref in static_refs:
+            if isinstance(item_ref, str):
+                potential_ids.add(item_ref)
+            elif isinstance(item_ref, dict) and 'id' in item_ref:
+                potential_ids.add(item_ref['id'])
+        
+        for obj_id_global, obj_data_global in self.objects_data.items():
+            if obj_data_global.get("initial_room_id") == self.current_room_id:
+                potential_ids.add(obj_id_global)
+        
+        dynamic_ids = self.dynamic_room_objects.get(self.current_room_id, [])
+        for dyn_id in dynamic_ids:
+            potential_ids.add(dyn_id)
+        
+        # Exclude items currently held or worn by the player
+        # as they are not considered "in the location" for description purposes.
+        items_to_exclude = set(self.hand_slot) | set(self.worn_items)
+        potential_ids -= items_to_exclude
+        logging.debug(f"[GameState._get_all_object_ids_in_current_location] After excluding held/worn ({items_to_exclude}), potential_ids: {potential_ids}")
+        
+        if not visible_only:
+            return potential_ids
+        
+        visible_ids: Set[str] = set()
+        for obj_id in potential_ids:
+            obj_data = self.get_object_by_id(obj_id)
+            if not obj_data: continue
+            obj_state = self.get_object_state(obj_id)
+            default_visibility = obj_data.get('initial_state', True)
+            if obj_state.get('is_visible', default_visibility):
+                visible_ids.add(obj_id)
+        return visible_ids
 
     def drop_object(self, object_id: str) -> Dict[str, Any]:
         """Moves an object from hand_slot to the current location."""
@@ -667,8 +821,8 @@ class GameState:
             return {"success": False, "message": f"You aren't holding the {self._get_object_name(object_id)}."} 
 
         # Attempt to add the object to the current location FIRST
-        added = self._add_object_to_location(object_id)
-        if not added:
+        added_to_location = self._add_object_to_location(object_id)
+        if not added_to_location:
             logging.error(f"Failed to add '{object_id}' to location {self.current_room_id}/{self.current_area_id} when dropping.")
             # Keep the item in hand if adding to location fails
             return {"success": False, "message": f"You try to drop the {self._get_object_name(object_id)}, but can't find a place for it here."} 
@@ -676,7 +830,11 @@ class GameState:
         # If adding to location succeeded, now remove from hand_slot
         object_name = self._get_object_name(object_id) # Get name before removing
         self.hand_slot.remove(object_id)
-        logging.info(f"Player dropped '{object_id}' ({object_name}) from hand_slot into location.")
+        
+        # Explicitly set the dropped object's state to visible in the room
+        self.set_object_state(object_id, "is_visible", True)
+        logging.info(f"Player dropped '{object_id}' ({object_name}) from hand_slot into location. Set is_visible=True.")
+        
         return {"success": True, "message": f"You drop the {object_name}."}
 
     def wear_item(self, object_id: str) -> str:
@@ -932,6 +1090,7 @@ class GameState:
 
         target_list = target_list_container[target_list_key]
         original_length = len(target_list)
+        item_was_in_static_list = False
 
         # Create a new list excluding the object_id (handles both str and dict formats)
         new_list = [item for item in target_list if not (isinstance(item, str) and item == object_id) and 
@@ -940,9 +1099,82 @@ class GameState:
         if len(new_list) < original_length:
             # Update the list in the container
             target_list_container[target_list_key] = new_list
-            logging.debug(f"Removed '{object_id}' from {target_list_key} in {self.current_area_id or self.current_room_id}")
-            # Again, modification should be reflected if container was area_data
-            return True
+            logging.debug(f"Removed '{object_id}' from static list '{target_list_key}' in {self.current_area_id or self.current_room_id}")
+            item_was_in_static_list = True
         else:
-            logging.warning(f"_remove_object_from_location: Object '{object_id}' not found in list '{target_list_key}' for {self.current_area_id or self.current_room_id}.")
-            return False 
+            logging.debug(f"Object '{object_id}' was not found in static list '{target_list_key}' for {self.current_area_id or self.current_room_id}. (This is okay for dynamically visible items)")
+            item_was_in_static_list = False # Ensure this is false if not found in static list
+
+        # --- BEGIN MODIFICATION for dynamic objects ---
+        item_was_in_dynamic_list = False
+        if self.current_room_id in self.dynamic_room_objects and \
+           object_id in self.dynamic_room_objects[self.current_room_id]:
+            try:
+                self.dynamic_room_objects[self.current_room_id].remove(object_id)
+                logging.debug(f"Removed '{object_id}' from dynamic_room_objects for room '{self.current_room_id}'.")
+                item_was_in_dynamic_list = True
+                if not self.dynamic_room_objects[self.current_room_id]: # If list is now empty
+                    del self.dynamic_room_objects[self.current_room_id]
+                    logging.debug(f"Dynamic object list for room '{self.current_room_id}' is now empty and removed.")
+            except ValueError:
+                # This case should ideally not be hit if the check `object_id in list` was True
+                logging.warning(f"Attempted to remove '{object_id}' from dynamic list of '{self.current_room_id}', but it was not found (race condition?).")
+        # --- END MODIFICATION ---
+
+        # If the object is native to this room (has initial_room_id set to current_room_id)
+        obj_base_data = self.get_object_by_id(object_id)
+        if obj_base_data and obj_base_data.get("initial_room_id") == self.current_room_id:
+            # This object is intrinsically part of the room's definition, even if taken.
+            # We set its visibility to False here to signify it's no longer 'visible loose in the room'
+            # The 'take_object' method will separately handle making it visible in the player's hand.
+            logging.debug(f"Marking native object '{object_id}' as not visible in room '{self.current_room_id}' after being taken/removed from lists.")
+            self.set_object_state(object_id, "is_visible", False)
+        elif item_was_in_static_list or item_was_in_dynamic_list:
+            # If it was in the static or dynamic list and removed, its "presence" in the room is gone.
+            # The 'take_object' or 'drop_object' methods will manage the object's specific 'is_visible' state.
+            logging.debug(f"Object '{object_id}' removed from static or dynamic lists for room '{self.current_room_id}'. Its visibility is managed by take/drop.")
+
+        # The operation is considered successful if it was removed from static list OR dynamic list.
+        return item_was_in_static_list or item_was_in_dynamic_list
+
+    def _get_objects_in_room(self, room_id: str) -> List[Dict[str, Any]]:
+        # This method is not provided in the original file or the code block
+        # It's assumed to exist as it's called in the take_object method
+        # Implement the logic to retrieve objects in a room based on the room_id
+        # This is a placeholder and should be implemented according to your specific requirements
+        return [] 
+
+    def is_object_statically_in_room(self, object_id: str, room_id: str) -> bool:
+        """Checks if an object_id is part of a room's static definition (rooms.yaml)."""
+        room_data = self.rooms_data.get(room_id) # Assuming self.rooms_data holds loaded room structures
+        if room_data:
+            # The structure for objects in a room might be a list of dicts {'id': 'obj_id'}
+            # or a list of strings (object_ids). Adjust based on actual structure.
+            # Assuming 'objects' is the key in room_data for the list of object references.
+            static_objects_refs = room_data.get("objects", []) # Check your rooms.yaml structure
+            if static_objects_refs: # Ensure the list exists
+                for obj_ref in static_objects_refs:
+                    if isinstance(obj_ref, dict) and obj_ref.get('id') == object_id:
+                        return True
+                    elif isinstance(obj_ref, str) and obj_ref == object_id: # If it's just a list of IDs
+                        return True
+        return False
+
+    def add_dynamic_object_to_room(self, room_id: str, object_id: str) -> None:
+        """Adds an object ID to a room's list of dynamically present objects."""
+        # from .schemas import ObjectInstance # <-- REMOVED IMPORT
+
+        if room_id not in self.dynamic_room_objects:
+            self.dynamic_room_objects[room_id] = []
+        
+        # Avoid duplicates if already there dynamically
+        if object_id not in self.dynamic_room_objects[room_id]: # <-- SIMPLIFIED CHECK
+            # Also ensure it's not a static object of the room already being managed that way
+            # This check might be redundant if callers already do it, but good for safety.
+            if not self.is_object_statically_in_room(object_id, room_id):
+                 self.dynamic_room_objects[room_id].append(object_id) # <-- APPEND STRING ID
+                 logging.debug(f"[GameState] Added dynamic object '{object_id}' to room '{room_id}'.")
+            else:
+                logging.debug(f"[GameState] Object '{object_id}' is static in room '{room_id}', not adding dynamically.")
+        else:
+            logging.debug(f"[GameState] Dynamic object '{object_id}' already present in room '{room_id}'.") 

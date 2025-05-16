@@ -41,119 +41,118 @@ def handle_unlock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Di
     """
     logging.debug(f"Handling UNLOCK command: {parsed_intent}")
 
-    target_name = parsed_intent.target
-    key_name = parsed_intent.secondary_target # The key specified, e.g., "unlock door with keycard"
-    
-    if not target_name:
-        logging.error("UNLOCK command missing target object.")
-        # Return dictionary directly
-        return [{'key': 'error_generic', 'data': {'reason': "Specify what you want to unlock."}}]
+    target_name = parsed_intent.target # Keep for messages
+    target_obj_id = parsed_intent.target_object_id # Use this ID directly
+    key_name_from_command = parsed_intent.secondary_target # Keep for messages
+    key_id_from_command = parsed_intent.secondary_target_id # Use this ID directly for the key specified in command
 
-    # --- Find the target object in the current location --- 
-    target_obj_id = game_state.find_object_id_by_name_in_location(target_name)
-    
-    if not target_obj_id:
-         logging.warning(f"Unlock target '{target_name}' not found in current location.")
-         # Return dictionary directly
-         return [{'key': UNLOCK_FAIL_TARGET_NOT_FOUND, 'data': {"target": target_name}}]
+    if not target_obj_id: # If parser didn't resolve the target
+        logging.warning(f"Unlock command failed: Target '{target_name}' could not be resolved to an ID by the parser.")
+        # Attempt to find by name as a fallback, now including room context
+        current_room_id, current_area_id = game_state.get_current_location()
+        target_obj_id = game_state.find_object_id_by_name_in_location(
+            object_name=target_name,
+            room_id=current_room_id,
+            area_id=current_area_id
+        )
+        if not target_obj_id:
+            logging.warning(f"Unlock target '{target_name}' not found in current location even after fallback search.")
+            return [{'key': UNLOCK_FAIL_TARGET_NOT_FOUND, 'data': {"target_name": target_name or "something"}}]
 
     # --- Get target object base data and runtime state ---
     target_obj_data = game_state.get_object_by_id(target_obj_id)
-    target_obj_state = game_state.get_object_state(target_obj_id)
-    
+    # target_obj_state = game_state.get_object_state(target_obj_id) # State fetched later when needed
+
     if not target_obj_data:
-        logging.error(f"Could not retrieve base data for target object ID '{target_obj_id}' despite finding it in location.")
-        # Return dictionary directly
-        return [{'key': 'error_internal', 'data': {'action': "unlock data missing"}}]
+        logging.error(f"Could not retrieve base data for target object ID '{target_obj_id}'.")
+        return [{'key': 'error_internal', 'data': {'action': "unlock data missing for " + (target_name or target_obj_id)}}]
 
-    # --- Check if the object is lockable (use lock_type presence) ---
-    # Reverted: Check top-level key
-    # --- Add Final Focused Logging --- 
-    raw_lockable_value = target_obj_data.get("lockable") # Get raw value without default
-    logging.debug(f"[handle_unlock] FINAL CHECK - Raw value for 'lockable': {raw_lockable_value} (Type: {type(raw_lockable_value)})")
-    # --- End Final Focused Logging ---
-    # MODIFIED CHECK: Determine lockable status based on presence of lock_type
+    # Use actual name from data for messages if available, fallback to parsed name
+    actual_target_name = target_obj_data.get("name", target_name)
+
+    # --- Check if the object is lockable ---
     lock_type_value = target_obj_data.get("lock_type")
-    is_lockable = bool(lock_type_value) 
-    logging.debug(f"[handle_unlock] Checking lockability based on lock_type: '{lock_type_value}'. Result: {is_lockable}")
-    # is_lockable = target_obj_data.get("lockable", False) # Previous check
-    # Remove extra logging
-    if not is_lockable:
-        logging.warning(f"Player tried to unlock non-lockable object (based on lock_type): '{target_name}' (ID: {target_obj_id})")
-        # Return dictionary directly
-        return [{'key': UNLOCK_FAIL_NOT_LOCKABLE, 'data': {"target": target_name}}]
+    is_lockable = bool(lock_type_value) # or bool(target_obj_data.get("lock_details")) # Consider if lock_details implies lockable
+    logging.debug(f"[handle_unlock] Checking lockability for '{actual_target_name}' (ID: {target_obj_id}) based on lock_type: '{lock_type_value}'. Result: {is_lockable}")
 
-    # --- Check lock status and required key --- 
-    # Use top-level is_locked for initial status, and top-level lock_key_id
+    if not is_lockable:
+        logging.warning(f"Player tried to unlock non-lockable object: '{actual_target_name}' (ID: {target_obj_id})")
+        return [{'key': UNLOCK_FAIL_NOT_LOCKABLE, 'data': {"target_name": actual_target_name}}]
+
+    # --- Check lock status and required key ---
     target_obj_state = game_state.get_object_state(target_obj_id) # Get runtime state
-    lock_details = target_obj_state.get("lock_details", {}) 
-    # Runtime state determines current lock status
-    is_currently_locked = lock_details.get("locked", target_obj_data.get("is_locked", False)) # Fallback to base data if needed
-    # Base data determines the key required
-    required_key_id = target_obj_data.get("lock_key_id") 
+    lock_details_state = target_obj_state.get("lock_details", {})
     
+    # is_currently_locked: Check runtime state first, then base data as fallback.
+    is_currently_locked = lock_details_state.get("locked", target_obj_data.get("is_locked", False))
+    
+    # required_key_id: This should primarily come from the object's base definition.
+    required_key_id_base = target_obj_data.get("lock_key_id") # Key defined in objects.yaml
+    # It could also be in lock_details from base data if that's the new pattern
+    if not required_key_id_base and isinstance(target_obj_data.get("lock_details"), dict):
+        required_key_id_base = target_obj_data.get("lock_details", {}).get("key_id") or target_obj_data.get("lock_details", {}).get("required_key")
+
+    logging.debug(f"Target '{actual_target_name}' (ID: {target_obj_id}): Currently locked: {is_currently_locked}. Base required key ID: {required_key_id_base}. Key specified in command: '{key_name_from_command}' (ID: {key_id_from_command}).")
+
     # --- Check if the object is already unlocked ---
     if not is_currently_locked:
-        logging.info(f"Object '{target_name}' (ID: {target_obj_id}) is already unlocked.")
-        # Return dictionary directly
-        return [{'key': UNLOCK_FAIL_NOT_LOCKED, 'data': {"target": target_name}}]
+        logging.info(f"Object '{actual_target_name}' (ID: {target_obj_id}) is already unlocked.")
+        return [{'key': UNLOCK_FAIL_NOT_LOCKED, 'data': {"target_name": actual_target_name}}]
 
-    # --- Handle unlocking logic --- 
+    # --- Handle unlocking logic ---
 
-    # Case 1: Lock requires a specific key ID
-    if required_key_id:
-        logging.debug(f"Lock '{target_name}' requires key ID: '{required_key_id}'. Player specified key: '{key_name}'")
-        # Check if the player specified a key in the command
-        if not key_name:
-             logging.warning(f"Player tried 'unlock {target_name}' but key '{required_key_id}' is required and none was specified.")
-             # Return dictionary directly
-             return [{'key': UNLOCK_FAIL_NO_KEY, 'data': {"target": target_name}}]
+    # Case 1: Lock requires a specific key ID (defined in its base data)
+    if required_key_id_base:
+        logging.debug(f"Lock '{actual_target_name}' requires key ID: '{required_key_id_base}'.")
+        
+        # Check if a key was specified in the command, and if it's the correct one
+        if not key_id_from_command: # Player typed "unlock door" but a key is needed
+            logging.warning(f"Player tried 'unlock {actual_target_name}' but key '{required_key_id_base}' is required and no key was specified in command.")
+            return [{'key': UNLOCK_FAIL_NO_KEY, 'data': {"target_name": actual_target_name}}]
 
-        # Player specified a key, try to find the *required* key in their possession
-        # Use required_key_id for the search, not the potentially ambiguous key_name
-        logging.debug(f"Searching player possession for required key ID: '{required_key_id}' (Player typed: '{key_name}')")
-        player_has_required_key = game_state.find_item_id_held_or_worn(required_key_id)
+        # Check if the key specified in the command is actually held by the player
+        # The parser provides key_id_from_command if it resolved a key name to an ID found in possession.
+        if not game_state.find_item_id_held_or_worn(key_id_from_command): # Double check possession
+             logging.warning(f"Player specified key '{key_name_from_command}' (resolved to ID: {key_id_from_command}), but it's not in their possession.")
+             return [{'key': UNLOCK_FAIL_KEY_NOT_FOUND, 'data': {"key_name": key_name_from_command or "the key"}}]
 
-        # if not player_key_id: # Old check using ambiguous key_name
-        if not player_has_required_key:
-            player_specified_key_actual_id = game_state.find_item_id_held_or_worn(key_name) # Check if they HAVE the key they named
-            if player_specified_key_actual_id:
-                logging.warning(f"Player tried to unlock with key '{key_name}', which they have (ID: {player_specified_key_actual_id}), but the required key '{required_key_id}' was not found in possession.")
-                # Give wrong key message if they specified a key they possess, but it's not the right one
-                return [{'key': UNLOCK_FAIL_WRONG_KEY, 'data': {"target": target_name, "key_name": key_name}}]
+        # Now, check if the key they specified (and possess) is the *correct* key
+        if key_id_from_command == required_key_id_base:
+            # Player has specified the correct key and possesses it.
+            logging.info(f"Unlocking '{actual_target_name}' with correct key (ID: {required_key_id_base}). Player specified '{key_name_from_command}'.")
+            success_update = game_state.update_object_lock_state(target_obj_id, locked=False)
+            if success_update:
+                actual_key_name_for_msg = game_state._get_object_name(required_key_id_base) or key_name_from_command or "the key"
+                return [{'key': UNLOCK_SUCCESS, 'data': {"target_name": actual_target_name, "key_name": actual_key_name_for_msg}}]
             else:
-                # Give not found message if the key they specified wasn't found either
-                logging.warning(f"Player tried to unlock with key '{key_name}', but the required key '{required_key_id}' was not found, AND '{key_name}' was not found in possession either.")
-                return [{'key': UNLOCK_FAIL_KEY_NOT_FOUND, 'data': {"key_name": key_name}}]
+                logging.error(f"Failed to update lock state for '{target_obj_id}' after successful key match.")
+                return [{'key': 'error_generic', 'data': {'reason': "Lock state update failed"}}]
+        else:
+            # Player specified a key they possess, but it's the wrong one for this lock.
+            logging.warning(f"Player tried to unlock '{actual_target_name}' with key '{key_name_from_command}' (ID: {key_id_from_command}), but required key is '{required_key_id_base}'.")
+            specified_key_actual_name = game_state._get_object_name(key_id_from_command) or key_name_from_command or "that key"
+            return [{'key': UNLOCK_FAIL_WRONG_KEY, 'data': {"target_name": actual_target_name, "key_name": specified_key_actual_name}}]
 
-        # Player has the required key, proceed with unlocking
-        # Use the required_key_id for logging consistency
-        logging.info(f"Unlocking '{target_name}' with required key (ID: {required_key_id}). Player specified '{key_name}'.")
-        # --- !!! Update Game State !!! ---
+    # Case 2: Lock does NOT require a specific key ID (e.g., a jammed lock, or just needs 'unlock' command)
+    else: # required_key_id_base is None or empty
+        logging.info(f"Object '{actual_target_name}' is locked but requires no specific key ID. Attempting generic unlock.")
+        # If a key was specified in the command but none is needed, it's a bit odd.
+        # For now, we'll ignore the specified key if none is required by the lock.
+        # A different response might be needed if "unlock door with key" is used on a keyless but locked door.
+        if key_id_from_command:
+            logging.info(f"Player specified key '{key_name_from_command}' (ID: {key_id_from_command}) but no key is required for '{actual_target_name}'. Proceeding with generic unlock.")
+            # Potentially add a response like "You don't need a key for that." if it remains locked.
+
         success_update = game_state.update_object_lock_state(target_obj_id, locked=False)
         if success_update:
-             # Use the actual name of the required key in the message if possible
-             actual_key_name = game_state._get_object_name(required_key_id) or key_name
-             return [{'key': UNLOCK_SUCCESS, 'data': {"target": target_name, "key_name": actual_key_name}}]
+            return [{'key': UNLOCK_SUCCESS, 'data': {"target_name": actual_target_name, "key_name": None}}] # No key was used/needed
         else:
-             logging.error(f"Failed to update lock state for '{target_obj_id}' after successful key match.")
-             # Return dictionary directly (using error_generic for now)
-             return [{'key': 'error_generic', 'data': {'reason': "Lock state update failed"}}]
-
-    # Case 2: Lock does NOT require a specific key ID (e.g., maybe a puzzle lock, or just needs 'unlock')
-    else: # required_key_id is None or empty
-         logging.info(f"Object '{target_name}' is locked but requires no specific key ID. Attempting generic unlock.")
-         # If the lock requires no key, simply attempting to unlock it might be enough.
-         # Or, this could be where a skill check (like lockpicking) would go.
-         # For now, let's assume unlocking succeeds if no key is required.
-         success_update = game_state.update_object_lock_state(target_obj_id, locked=False)
-         if success_update:
-             # Return dictionary directly, passing key_name=None
-             return [{'key': UNLOCK_SUCCESS, 'data': {"target": target_name, "key_name": None}}]
-         else:
-             logging.error(f"Failed to update lock state for '{target_obj_id}' (no key required case).")
-             # Return dictionary directly
-             return [{'key': 'error_generic', 'data': {'reason': "Lock state update failed (no key)"}}]
+            # This might happen if update_object_lock_state fails for other reasons,
+            # or if the object isn't just "locked" but has a more complex state.
+            logging.error(f"Failed to update lock state for '{target_obj_id}' (no specific key required case).")
+            # Provide a more specific failure if possible, e.g. if it's "jammed" not just "locked"
+            # For now, a generic failure.
+            return [{'key': UNLOCK_FAIL_NOT_LOCKABLE, 'data': {"target_name": actual_target_name}}] # Or a new "unlock_fail_generic"
 
 
 def handle_lock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
@@ -170,109 +169,98 @@ def handle_lock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     """
     logging.debug(f"Handling LOCK command: {parsed_intent}")
 
-    target_name = parsed_intent.target
-    key_name = parsed_intent.secondary_target # The key specified, e.g., "lock door with keycard"
-    
-    if not target_name:
-        logging.error("LOCK command missing target object.")
-        # Return dictionary directly
-        return [{'key': 'error_generic', 'data': {'reason': "Specify what you want to lock."}}]
+    target_name = parsed_intent.target # Keep for messages
+    target_obj_id = parsed_intent.target_object_id # Use this ID directly
+    key_name_from_command = parsed_intent.secondary_target # Keep for messages
+    key_id_from_command = parsed_intent.secondary_target_id # Use this ID directly
 
-    # --- Find the target object in the current location --- 
-    target_obj_id = game_state.find_object_id_by_name_in_location(target_name)
-    
-    if not target_obj_id:
-         logging.warning(f"Lock target '{target_name}' not found in current location.")
-         # Return dictionary directly
-         return [{'key': LOCK_FAIL_TARGET_NOT_FOUND, 'data': {"target": target_name}}]
+    if not target_obj_id: # If parser didn't resolve the target
+        logging.warning(f"Lock command failed: Target '{target_name}' could not be resolved to an ID by the parser.")
+        # Attempt to find by name as a fallback, now including room context
+        current_room_id, current_area_id = game_state.get_current_location()
+        target_obj_id = game_state.find_object_id_by_name_in_location(
+            object_name=target_name,
+            room_id=current_room_id,
+            area_id=current_area_id
+        )
+        if not target_obj_id:
+            logging.warning(f"Lock target '{target_name}' not found in current location even after fallback search.")
+            return [{'key': LOCK_FAIL_TARGET_NOT_FOUND, 'data': {"target_name": target_name or "something"}}]
 
     # --- Get target object base data and runtime state ---
     target_obj_data = game_state.get_object_by_id(target_obj_id)
-    target_obj_state = game_state.get_object_state(target_obj_id)
-    
+    # target_obj_state = game_state.get_object_state(target_obj_id) # State fetched later
+
     if not target_obj_data:
         logging.error(f"Could not retrieve base data for target object ID '{target_obj_id}'.")
-        # Return dictionary directly
-        return [{'key': 'error_internal', 'data': {'action': "lock data missing"}}]
+        return [{'key': 'error_internal', 'data': {'action': "lock data missing for " + (target_name or target_obj_id)}}]
 
-    # --- Check if the object is lockable (use lock_type presence) ---
-    # Reverted: Check top-level key
-    # --- Add Final Focused Logging --- 
-    raw_lockable_value = target_obj_data.get("lockable") # Get raw value without default
-    logging.debug(f"[handle_lock] FINAL CHECK - Raw value for 'lockable': {raw_lockable_value} (Type: {type(raw_lockable_value)})")
-    # --- End Final Focused Logging ---
-    # MODIFIED CHECK: Determine lockable status based on presence of lock_type
+    actual_target_name = target_obj_data.get("name", target_name)
+
+    # --- Check if the object is lockable ---
     lock_type_value = target_obj_data.get("lock_type")
-    is_lockable = bool(lock_type_value)
-    logging.debug(f"[handle_lock] Checking lockability based on lock_type: '{lock_type_value}'. Result: {is_lockable}")
-    # is_lockable = target_obj_data.get("lockable", False) # Previous check
-    # Remove extra logging
-    if not is_lockable:
-        logging.warning(f"Player tried to lock non-lockable object (based on lock_type): '{target_name}' (ID: {target_obj_id})")
-        # Return dictionary directly
-        return [{'key': LOCK_FAIL_NOT_LOCKABLE, 'data': {"target": target_name}}]
+    is_lockable = bool(lock_type_value) # or bool(target_obj_data.get("lock_details"))
+    logging.debug(f"[handle_lock] Checking lockability for '{actual_target_name}' (ID: {target_obj_id}) based on lock_type: '{lock_type_value}'. Result: {is_lockable}")
 
-    # --- Check lock status and required key --- 
-    lock_details = target_obj_state.get("lock_details", {})
-    # Runtime state determines current lock status
-    is_currently_locked = lock_details.get("locked", target_obj_data.get("is_locked", False)) # Fallback to base data if needed
-    # Base data determines the key required
-    required_key_id = target_obj_data.get("lock_key_id")
+    if not is_lockable:
+        logging.warning(f"Player tried to lock non-lockable object: '{actual_target_name}' (ID: {target_obj_id})")
+        return [{'key': LOCK_FAIL_NOT_LOCKABLE, 'data': {"target_name": actual_target_name}}]
+
+    # --- Check lock status and required key ---
+    target_obj_state = game_state.get_object_state(target_obj_id) # Get runtime state
+    lock_details_state = target_obj_state.get("lock_details", {})
+    is_currently_locked = lock_details_state.get("locked", target_obj_data.get("is_locked", False)) # Fallback to base
     
+    required_key_id_base = target_obj_data.get("lock_key_id")
+    if not required_key_id_base and isinstance(target_obj_data.get("lock_details"), dict):
+        required_key_id_base = target_obj_data.get("lock_details", {}).get("key_id") or target_obj_data.get("lock_details", {}).get("required_key")
+
+    logging.debug(f"Target '{actual_target_name}' (ID: {target_obj_id}): Currently locked: {is_currently_locked}. Base required key ID: {required_key_id_base}. Key specified in command: '{key_name_from_command}' (ID: {key_id_from_command}).")
+
     # --- Check if the object is already locked ---
     if is_currently_locked:
-        logging.info(f"Object '{target_name}' (ID: {target_obj_id}) is already locked.")
-        # Return dictionary directly
-        return [{'key': LOCK_FAIL_ALREADY_LOCKED, 'data': {"target": target_name}}]
+        logging.info(f"Object '{actual_target_name}' (ID: {target_obj_id}) is already locked.")
+        return [{'key': LOCK_FAIL_ALREADY_LOCKED, 'data': {"target_name": actual_target_name}}]
 
-    # --- Handle locking logic --- 
+    # --- Handle locking logic ---
 
     # Case 1: Lock requires a specific key ID
-    if required_key_id:
-        logging.debug(f"Lock '{target_name}' requires key ID: '{required_key_id}'. Player specified key: '{key_name}'")
-        if not key_name:
-             logging.warning(f"Player tried 'lock {target_name}' but key '{required_key_id}' is required and none was specified.")
-             # Return dictionary directly
-             return [{'key': LOCK_FAIL_NO_KEY, 'data': {"target": target_name}}]
+    if required_key_id_base:
+        logging.debug(f"Lock '{actual_target_name}' requires key ID: '{required_key_id_base}'.")
+        if not key_id_from_command:
+            logging.warning(f"Player tried 'lock {actual_target_name}' but key '{required_key_id_base}' is required and no key was specified.")
+            return [{'key': LOCK_FAIL_NO_KEY, 'data': {"target_name": actual_target_name}}]
 
-        # Player specified a key, try to find it
-        player_key_id = game_state.find_item_id_held_or_worn(key_name)
-        
-        if not player_key_id:
-            logging.warning(f"Player tried to lock with key '{key_name}', but they don't have it accessible.")
-            # Return dictionary directly, using new key 'key_name'
-            return [{'key': LOCK_FAIL_KEY_NOT_FOUND, 'data': {"key_name": key_name}}]
+        if not game_state.find_item_id_held_or_worn(key_id_from_command): # Double check possession
+             logging.warning(f"Player specified key '{key_name_from_command}' (resolved to ID: {key_id_from_command}), but it's not in their possession.")
+             return [{'key': LOCK_FAIL_KEY_NOT_FOUND, 'data': {"key_name": key_name_from_command or "the key"}}]
 
-        # Player has the key, check if it's the right one
-        if player_key_id == required_key_id:
-            logging.info(f"Locking '{target_name}' with matching key '{key_name}' (ID: {player_key_id})")
-            # --- !!! Update Game State !!! ---
-            success_update = game_state.update_object_lock_state(target_obj_id, locked=True) # Set locked to True
+        if key_id_from_command == required_key_id_base:
+            logging.info(f"Locking '{actual_target_name}' with correct key (ID: {required_key_id_base}). Player specified '{key_name_from_command}'.")
+            success_update = game_state.update_object_lock_state(target_obj_id, locked=True)
             if success_update:
-                 # Return dictionary directly, using new key 'key_name'
-                 return [{'key': LOCK_SUCCESS, 'data': {"target": target_name, "key_name": key_name}}]
+                actual_key_name_for_msg = game_state._get_object_name(required_key_id_base) or key_name_from_command or "the key"
+                return [{'key': LOCK_SUCCESS, 'data': {"target_name": actual_target_name, "key_name": actual_key_name_for_msg}}]
             else:
-                 logging.error(f"Failed to update lock state for '{target_obj_id}' after successful key match.")
-                 # Return dictionary directly
-                 return [{'key': 'error_generic', 'data': {'reason': "Lock state update failed"}}]
+                logging.error(f"Failed to update lock state for '{target_obj_id}' after successful key match for lock.")
+                return [{'key': 'error_generic', 'data': {'reason': "Lock state update failed"}}]
         else:
-            # Wrong key
-            logging.warning(f"Player tried to lock '{target_name}' with wrong key '{key_name}' (ID: {player_key_id}). Required: '{required_key_id}'")
-            # Return dictionary directly, using new key 'key_name'
-            return [{'key': LOCK_FAIL_WRONG_KEY, 'data': {"target": target_name, "key_name": key_name}}]
+            logging.warning(f"Player tried to lock '{actual_target_name}' with key '{key_name_from_command}' (ID: {key_id_from_command}), but required key is '{required_key_id_base}'.")
+            specified_key_actual_name = game_state._get_object_name(key_id_from_command) or key_name_from_command or "that key"
+            return [{'key': LOCK_FAIL_WRONG_KEY, 'data': {"target_name": actual_target_name, "key_name": specified_key_actual_name}}]
 
     # Case 2: Lock does NOT require a specific key ID
-    else: # required_key_id is None or empty
-         logging.info(f"Object '{target_name}' is unlockable but requires no specific key ID. Attempting generic lock.")
-         # If the lock requires no key, simply attempting to lock it might be enough.
-         success_update = game_state.update_object_lock_state(target_obj_id, locked=True) # Set locked to True
-         if success_update:
-             # Return dictionary directly, passing key_name=None
-             return [{'key': LOCK_SUCCESS, 'data': {"target": target_name, "key_name": None}}]
-         else:
-             logging.error(f"Failed to update lock state for '{target_obj_id}' (no key required case).")
-             # Return dictionary directly
-             return [{'key': 'error_generic', 'data': {'reason': "Lock state update failed (no key)"}}]
+    else: # required_key_id_base is None or empty
+        logging.info(f"Object '{actual_target_name}' can be locked without a specific key ID. Attempting generic lock.")
+        if key_id_from_command:
+            logging.info(f"Player specified key '{key_name_from_command}' (ID: {key_id_from_command}) but no key is required to lock '{actual_target_name}'. Proceeding with generic lock.")
+        
+        success_update = game_state.update_object_lock_state(target_obj_id, locked=True)
+        if success_update:
+            return [{'key': LOCK_SUCCESS, 'data': {"target_name": actual_target_name, "key_name": None}}]
+        else:
+            logging.error(f"Failed to update lock state for '{target_obj_id}' (no specific key required case for lock).")
+            return [{'key': LOCK_FAIL_NOT_LOCKABLE, 'data': {"target_name": actual_target_name}}] # Or a new "lock_fail_generic"
 
 
 # Ensure the functions are registered in game_loop.py map

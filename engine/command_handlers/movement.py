@@ -1,7 +1,7 @@
 """Command handler for player movement."""
 
 import logging
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional, Dict, Any, Tuple, List, Set
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
 
@@ -12,60 +12,102 @@ def _get_indefinite_article(word: str) -> str:
     # Simple vowel check, ignoring silent 'h' etc.
     return "an" if word.lower().startswith(('a', 'e', 'i', 'o', 'u')) else "a"
 
-def _format_object_list(game_state: GameState, object_ids: list) -> str:
-    """Formats a list of object IDs (or dicts with 'id') into a readable sentence,
-       correctly handling plurals and articles."""
-    logging.debug(f"[_format_object_list] Received object ID list: {object_ids}")
-    if not object_ids:
-        return ""
+def _format_object_list(game_state: GameState, static_object_refs: list, current_room_id: str) -> str:
+    """Formats a list of object IDs into a readable sentence,
+       correctly handling plurals, articles, and dynamic visibility."""
+    logging.debug(f"[_format_object_list] Formatting for room: {current_room_id}, Static refs: {static_object_refs}")
+    
+    potential_object_ids: Set[str] = set()
 
-    processed_ids = []
-    for item in object_ids:
-        if isinstance(item, str):
-            processed_ids.append(item)
-        elif isinstance(item, dict) and 'id' in item:
-            processed_ids.append(item['id'])
+    # Step 1: Add IDs from the room's static 'objects_present' list
+    for item_ref in static_object_refs:
+        if isinstance(item_ref, str):
+            potential_object_ids.add(item_ref)
+        elif isinstance(item_ref, dict) and 'id' in item_ref:
+            potential_object_ids.add(item_ref['id'])
         else:
-            logging.warning(f"_format_object_list: Skipping unknown item format in object list: {item}")
+            logging.warning(f"_format_object_list: Skipping unknown item format in static list: {item_ref}")
+    logging.debug(f"[_format_object_list] IDs from static list: {potential_object_ids}")
 
-    logging.debug(f"[_format_object_list] Processed IDs: {processed_ids}")
-    if not processed_ids:
+    # Step 2: Add IDs from global objects_data if they belong to this room and might be visible
+    for obj_id, obj_data_global in game_state.objects_data.items():
+        # Check if 'initial_room_id' matches the current room.
+        # Objects without 'initial_room_id' are not considered statically locatable here for room descriptions.
+        # (They might be in inventory, or their location is handled by other means).
+        if obj_data_global.get("initial_room_id") == current_room_id:
+            potential_object_ids.add(obj_id) 
+            # Log if it was added dynamically and not in static list for clarity
+            if obj_id not in (item['id'] if isinstance(item, dict) else item for item in static_object_refs):
+                 logging.debug(f"[_format_object_list] Dynamically considered object '{obj_id}' for room '{current_room_id}' based on initial_room_id.")
+        # Alternative: if an object is NOT portable and its current location state is this room. (More complex)
+
+    # Step 2b: Add IDs from dynamically added objects for this room
+    dynamic_ids_for_room = game_state.dynamic_room_objects.get(current_room_id, [])
+    if dynamic_ids_for_room:
+        logging.debug(f"[_format_object_list] Considering dynamic objects for room '{current_room_id}': {dynamic_ids_for_room}")
+        for dyn_obj_id in dynamic_ids_for_room:
+            potential_object_ids.add(dyn_obj_id)
+
+    logging.debug(f"[_format_object_list] All potential IDs for room '{current_room_id}': {potential_object_ids}")
+    if not potential_object_ids:
         return ""
 
-    formatted_names = []
-    for pid in processed_ids:
-        object_data = game_state.objects_data.get(pid)
-        if not object_data:
-            logging.warning(f"[_format_object_list] Object data not found for ID '{pid}'")
-            continue # Skip objects not found in main data
-
-        name = object_data.get("name", pid) # Fallback to ID if name missing
-        is_plural = object_data.get("is_plural", False)
-
-        # Skip if name is still just the ID (data likely incomplete)
-        if name == pid and " " not in name: # Check if name is just the ID
-            logging.debug(f"[_format_object_list] Filtering out ID-like name '{name}' for ID '{pid}'")
+    # Step 3: Filter by visibility and get nameable objects
+    visible_and_nameable_object_ids: List[str] = []
+    for obj_id in potential_object_ids:
+        base_obj_data = game_state.objects_data.get(obj_id)
+        if not base_obj_data:
+            logging.warning(f"[_format_object_list] Data for potential object ID '{obj_id}' not found in objects_data. Skipping.")
             continue
 
-        logging.debug(f"[_format_object_list] ID: {pid}, Name: '{name}', Plural: {is_plural}")
+        obj_state = game_state.get_object_state(obj_id) # Ensures state is initialized
+        
+        # Visibility: Check 'is_visible' in state. If not present, fallback to 'initial_state' from base data.
+        # 'initial_state' (bool) should define if an object is visible by default when the game starts.
+        # 'is_visible' (bool) in object_states overrides this dynamically.
+        default_visibility = base_obj_data.get('initial_state', True) # Default to True if initial_state not defined
+        is_visible = obj_state.get('is_visible', default_visibility)
+
+        if is_visible:
+            name = base_obj_data.get("name", obj_id)
+            # Filter out objects that only have an ID as their name (likely not for display)
+            # and ensure the name is not empty.
+            if name and name != obj_id or " " in name: # A name with a space is likely descriptive
+                visible_and_nameable_object_ids.append(obj_id)
+            else:
+                logging.debug(f"[_format_object_list] Filtering out non-descriptive or ID-like name '{name}' for visible object '{obj_id}'")
+        else:
+            logging.debug(f"[_format_object_list] Object '{obj_id}' is not visible. State: {obj_state}, Base initial_state: {default_visibility}")
+            
+    logging.debug(f"[_format_object_list] Visible and nameable IDs: {visible_and_nameable_object_ids}")
+    if not visible_and_nameable_object_ids:
+        return ""
+
+    # Step 4: Format names for the final sentence
+    formatted_names = []
+    for pid in visible_and_nameable_object_ids: # Iterate using the filtered list
+        object_data = game_state.objects_data.get(pid) # We know this exists from above
+        
+        name = object_data.get("name", pid) # Fallback to ID, though unlikely by now
+        is_plural = object_data.get("is_plural", False)
+
+        logging.debug(f"[_format_object_list] Formatting name for ID: {pid}, Name: '{name}', Plural: {is_plural}")
 
         if is_plural:
             formatted_names.append(name)
         else:
             article = _get_indefinite_article(name)
             formatted_names.append(f"{article} {name}")
-
-    logging.debug(f"[_format_object_list] Filtered & Formatted Names: {formatted_names}")
+    
+    logging.debug(f"[_format_object_list] Final list of formatted names for sentence: {formatted_names}")
     if not formatted_names:
-        return "" # Nothing nameable found
+        return ""
 
-    # Format the final sentence
     if len(formatted_names) == 1:
         return f"You see {formatted_names[0]} here."
     elif len(formatted_names) == 2:
         return f"You see {formatted_names[0]} and {formatted_names[1]} here."
     else:
-        # Oxford comma for lists of 3+
         all_but_last = ", ".join(formatted_names[:-1])
         last = formatted_names[-1]
         return f"You see {all_but_last}, and {last} here."
@@ -162,7 +204,7 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
          object_list_str = ""
     else:
          logging.debug(f"Formatting object list for {location_id_for_log}: {objects_present_ids}")
-         object_list_str = _format_object_list(game_state, objects_present_ids)
+         object_list_str = _format_object_list(game_state, objects_present_ids, room_id)
          logging.debug(f"Formatted object string: '{object_list_str}'")
 
     # Format exit list
@@ -277,3 +319,111 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     else:
          logging.error("handle_move reached unexpected state.")
          return [{'key': "invalid_command", 'data': {}}] 
+
+def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+    """Handles the LOOK command intent.
+    If no target, describes the room.
+    If target, describes the object if found in room, hands, or worn items."""
+    target_name = parsed_intent.target
+    target_object_id_from_parser = parsed_intent.target_object_id # This is the ID resolved by NLP
+
+    logging.debug(f"[handle_look] Target Name: '{target_name}', Target ID from Parser: '{target_object_id_from_parser}'")
+
+    if not target_name and not target_object_id_from_parser: # General "look around"
+        description = get_location_description(game_state, game_state.current_room_id, game_state.current_area_id)
+        return [{ "key": "look_success_room", "data": {"description": description} }]
+    else:
+        # Player is looking AT something specific.
+        obj_data_to_describe: Optional[Dict[str, Any]] = None
+        found_in = None # To log where it was found
+
+        # Priority 1: If parser gave us a specific ID, check hands and worn items using that ID first.
+        if target_object_id_from_parser:
+            # Check hand slot
+            if target_object_id_from_parser in game_state.player_status.hand_slot:
+                obj_data_to_describe = game_state.get_object_by_id(target_object_id_from_parser)
+                found_in = "hand_slot (by ID)"
+                logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in hand_slot by ID.")
+            
+            # Check worn items
+            if not obj_data_to_describe:
+                for worn_item_instance in game_state.player_status.worn_items:
+                    if worn_item_instance.id == target_object_id_from_parser:
+                        obj_data_to_describe = game_state.get_object_by_id(target_object_id_from_parser)
+                        found_in = "worn_items (by ID)"
+                        logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in worn_items by ID.")
+                        break
+        
+        # Priority 2: Search in the current location (room/area) using name or ID.
+        if not obj_data_to_describe:
+            # Determine the best name to search for in the room
+            search_term_for_room = target_name if target_name else None
+            if not search_term_for_room and target_object_id_from_parser:
+                # If no target_name from parser, but we have an ID, get its actual name for room search
+                temp_obj_data = game_state.get_object_by_id(target_object_id_from_parser)
+                if temp_obj_data:
+                    search_term_for_room = temp_obj_data.get("name")
+
+            if search_term_for_room:
+                obj_id_found_in_room = game_state.find_object_id_by_name_in_location(
+                    search_term_for_room, 
+                    game_state.current_room_id, 
+                    area_id=game_state.current_area_id,
+                    visible_only=True,
+                    # Optionally pass target_object_id_from_parser to help disambiguate if find_object_id_by_name_in_location supports it
+                )
+                if obj_id_found_in_room:
+                    # If parser gave an ID, it should ideally match what's found by name.
+                    # If they differ, it might be a synonym match. Prioritize parser's ID if consistent.
+                    if target_object_id_from_parser and target_object_id_from_parser != obj_id_found_in_room:
+                        logging.warning(f"[handle_look] Parser ID '{target_object_id_from_parser}' and room found ID '{obj_id_found_in_room}' differ for name '{search_term_for_room}'. Using parser ID.")
+                        obj_data_to_describe = game_state.get_object_by_id(target_object_id_from_parser)
+                    else:
+                        obj_data_to_describe = game_state.get_object_by_id(obj_id_found_in_room)
+                    
+                    if obj_data_to_describe: # Check if successfully got data
+                        found_in = "room"
+                        logging.debug(f"[handle_look] Found '{obj_data_to_describe.get('id')}' in room using search term '{search_term_for_room}'.")
+                    else: # obj_id_found_in_room was not None, but get_object_by_id failed
+                        logging.error(f"[handle_look] Found ID '{obj_id_found_in_room}' in room but failed to get its data.")
+
+
+        # Priority 3: Fallback to original broader inventory search if not found by ID in hands/worn or in room.
+        # This is a more general search across the player's abstract inventory (if applicable beyond hands/worn).
+        if not obj_data_to_describe and target_name: # Requires a target_name for this broader search
+            # This part replicates the original logic for searching player's general inventory
+            # (which might be distinct from explicitly held/worn items in some game designs)
+            # For now, we assume inventory primarily means hand_slot and worn_items for "look at"
+            # If your game_state.player_status.inventory is a distinct list of ObjectInstances:
+            # for item_instance in game_state.player_status.inventory:
+            #    if item_instance.name.lower() == target_name.lower() or target_name.lower() in item_instance.synonyms:
+            #        obj_data_to_describe = game_state.get_object_by_id(item_instance.id)
+            #        found_in = "inventory (general)"
+            #        break
+            # This section is commented out as hand_slot and worn_items are primary for "examine"
+            pass
+
+
+        if obj_data_to_describe:
+            description = obj_data_to_describe.get("description", f"You see a {obj_data_to_describe.get('name', 'mysterious object')}, but can't make out any details.")
+            # Add stateful descriptions (open/closed, locked/unlocked)
+            obj_id = obj_data_to_describe.get("id")
+            if obj_id:
+                obj_state = game_state.get_object_state(obj_id)
+                if obj_data_to_describe.get("properties", {}).get("is_openable_closable"):
+                    description += " It is " + ("open." if obj_state.get("is_open") else "closed.")
+                if obj_data_to_describe.get("properties", {}).get("is_lockable"): # Assuming is_lockable property exists
+                    lock_details = obj_state.get("lock_details", {})
+                    description += " It is " + ("locked." if lock_details.get("locked") else "unlocked.")
+                # TODO: Add other stateful details as needed (e.g., power, charge for devices)
+
+            logging.debug(f"[handle_look] Describing '{obj_data_to_describe.get('name')}' (found in {found_in}). Desc: {description[:100]}...")
+            return [{ "key": "look_success_item", "data": {"description": description, "item_name": obj_data_to_describe.get('name')} }]
+        else:
+            final_search_term = target_name or target_object_id_from_parser or "something"
+            logging.warning(f"[handle_look] FAILED - Target '{final_search_term}' not found after checking hands (by ID), worn (by ID), and room (by name/ID).")
+            return [{"key": "look_fail_not_found", "data": {"item_name": final_search_term}}]
+
+def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+    # Implementation of handle_inventory method
+    pass 
