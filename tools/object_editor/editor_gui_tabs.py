@@ -1166,9 +1166,9 @@ def main():
         [sg.HorizontalSeparator()],
         [sg.Checkbox("Is Open?", key=KEY_OBJECT_IS_OPEN, default=False, tooltip="Is the object initially in an open state?")],
         [sg.Checkbox("Is Locked?", key=KEY_OBJECT_IS_LOCKED, enable_events=True, tooltip="Check if the object starts locked")],
-        [sg.Text("Lock Type:"), sg.Input(key=KEY_OBJECT_LOCK_TYPE, tooltip="Mechanism: key, code, biometric (if Locked)", size=(20,1), disabled=True)],
-        [sg.Text("Lock Code:"), sg.Input(key=KEY_OBJECT_LOCK_CODE, tooltip="Required code (if Lock Type is 'code' and Locked)", size=(20,1), disabled=True)],
-        [sg.Text("Key Object ID:"), sg.Combo(all_key_ids, key=KEY_OBJECT_LOCK_KEY_ID, tooltip="Object ID of the key required (if Lock Type is 'key' and Locked)", size=(30,1), disabled=True)],
+        [sg.Text("Lock Type:"), sg.Combo(values=['', 'key', 'code', 'biometric'], key=KEY_OBJECT_LOCK_TYPE, tooltip="Mechanism: key, code, biometric (if Locked)", size=(20,1), readonly=True)],
+        [sg.Text("Lock Code:"), sg.Input(key=KEY_OBJECT_LOCK_CODE, tooltip="Required code (if Lock Type is 'code' and Locked)", size=(20,1))],
+        [sg.Text("Key Object ID:"), sg.Combo(all_key_ids, key=KEY_OBJECT_LOCK_KEY_ID, tooltip="Object ID of the key required (if Lock Type is 'key' and Locked)", size=(30,1), readonly=True)],
         [sg.HorizontalSeparator()],
         # Moved State Descriptions here
         [sg.Text("State Descriptions (state_name:description:)"), sg.Multiline(key=KEY_OBJECT_STATE_DESCRIPTIONS, tooltip="Descriptions for different object states (one per line, e.g., broken:It is shattered)", size=(60, 4))]
@@ -1238,15 +1238,12 @@ def main():
             break
 
         elif event == KEY_OBJECT_IS_LOCKED:
-            is_locked = values[KEY_OBJECT_IS_LOCKED]
-            window[KEY_OBJECT_LOCK_TYPE].update(disabled=not is_locked)
-            window[KEY_OBJECT_LOCK_CODE].update(disabled=not is_locked)
-            window[KEY_OBJECT_LOCK_KEY_ID].update(disabled=not is_locked)
-            if not is_locked:
-                window[KEY_OBJECT_LOCK_TYPE].update("")
-                window[KEY_OBJECT_LOCK_CODE].update("")
-                window[KEY_OBJECT_LOCK_KEY_ID].update("")
-
+            # This event now only toggles the conceptual state.
+            # The lock definition fields (type, code, key_id) remain enabled
+            # so the user can define *how* an object locks, even if it starts unlocked.
+            is_locked_checked = values[KEY_OBJECT_IS_LOCKED]
+            logging.debug(f"'{KEY_OBJECT_IS_LOCKED}' checkbox toggled to: {is_locked_checked}")
+            # No longer disabling/enabling or clearing other lock fields here.
 
         elif event == KEY_OBJECT_DROPDOWN or event == KEY_LOAD_BUTTON:
             object_id = values[KEY_OBJECT_DROPDOWN]

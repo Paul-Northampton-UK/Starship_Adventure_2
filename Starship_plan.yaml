@@ -8,6 +8,14 @@
 # =====================================================================
 # Version: 1.0.0
 # Last Updated: 2025-02-12
+# CURRENT STATUS (As of May 2025): This document serves as an initial design plan and 
+# contains many valuable concepts. However, the primary, up-to-date game data for 
+# rooms, objects, responses, and initial configuration is now managed in the 
+# separate YAML files located in the `data/` directory (e.g., `objects.yaml`, 
+# `rooms.yaml`, `responses.yaml`, `game_config.yaml`). Game logic and state 
+# management are implemented in the Python files within the `engine/` directory.
+# This document should be referenced for historical design context and potential
+# future feature ideas rather than as the current source of truth for game content.
 # =====================================================================
 # Change Log:
 # - 2025-02-12: V1.0.0  - Initial version of the Starship Plan.

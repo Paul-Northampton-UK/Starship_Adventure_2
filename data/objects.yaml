@@ -4,6 +4,7 @@ objects:
   is_plural: false
   category: equipment
   location: ship_bridge
+  area_location: captains_chair
   count: 1
   weight: 50.0
   size: 30.0
@@ -106,6 +107,7 @@ objects:
   is_plural: false
   category: device
   location: ship_bridge
+  area_location: navigation_station
   count: 3
   weight: 250.0
   size: 50.0
@@ -162,6 +164,7 @@ objects:
   is_plural: false
   category: readable
   location: ship_bridge
+  area_location: navigation_station
   count: 4
   weight: 0.01
   size: 1.0
@@ -203,12 +206,13 @@ objects:
     is_modular: false
     requires_item: false
     is_secret: false
-    is_openable_closable: false
+    is_openable_closable: true
 - id: nav_compartment
   name: Hidden Storage Compartment
   is_plural: false
   category: container
   location: ship_bridge
+  area_location: navigation_station
   count: 5
   weight: 10.0
   size: 50.0
@@ -264,6 +268,7 @@ objects:
   is_plural: false
   category: readable
   location: ship_bridge
+  area_location: navigation_station
   count: 6
   weight: 0.01
   size: 1.0
@@ -312,6 +317,7 @@ objects:
   is_plural: false
   category: furniture
   location: ship_bridge
+  area_location: navigation_station
   count: 7
   weight: 0.4
   size: 1.0

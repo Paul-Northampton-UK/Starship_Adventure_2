@@ -5,14 +5,14 @@
 ✅ Set up folder structure: engine/, ui/, data/, saves/, logs/, assets/
 ✅ Create main.py entry point
 ✅ Implement YAML loader (for rooms, objects, settings)
-✅ Design central game loop and state machine (Initial implementation done)
+✅ Design central game loop and state machine (GameState now robustly manages current_room_id, current_area_id, object states, and visibility logic)
 ✅ Integrate spaCy for command parsing
 ✅ Create alias/action translation system (e.g. n, go north, walk north) - Handled by NLP parser
 ✅ Build modular command handler (actions, movement, examine, etc.) - Handlers created
 ✅ Integrate loguru for dev/system logging
 ✅ Implement loading of initial game state (start room, power state) from game_config.yaml (Basic loading done)
 
-🖥️ GUI & Interface
+��️ GUI & Interface
 
 🔄 Build main game window with pygame
 🔄 Add GUI components:
@@ -41,7 +41,7 @@
 🔄 Add player-to-narrator interactions (e.g. help, insult, ask, hint)
 ✅ Handle invalid/gibberish commands with unique narrator responses (Implemented via responses.yaml)
 ✅ Ensure command vocabulary is easily expandable via YAML (Objects/synonyms loaded)
-✅ Improve target extraction (handle prepositions like "with", "on") - Improved via entity ruler
+✅ Improve target extraction (handle prepositions like "with", "on", and also recognizes AREA entities as targets) - Improved via entity ruler and parser logic
 🔄 Refine command parsing logic (e.g., disambiguation, error handling)
 🔄 Implement profanity filtering for player input (Data files created, logic pending)
 🔄 Implement fuzzy matching/typo tolerance (using fuzzywuzzy) - Potential future step
@@ -57,8 +57,8 @@
 
 🎮 Gameplay Mechanics
 
-✅ Define object structure (ID, name, description, size, weight, visibility, etc.)
-✅ Build inventory management system (Core implemented: take, drop, wear, remove, put, take_from, wear_from)
+✅ Define object structure (ID, name, description, size, weight, visibility, location, area_location, properties like is_takeable, is_openable_closable, etc.)
+✅ Build inventory management system (Core implemented: take, drop, wear, remove, put, take_from, wear_from; take/drop logic now correctly handles object visibility in rooms/areas)
 ✅ Backpack system with size/weight constraints -> (Partially addressed by container logic, capacity check TODO)
 ✅ Carried object tracking (In hand slot / worn items)
 🔄 Implement environmental mechanics:
@@ -67,7 +67,7 @@
   - Handle death scenarios and narrator warnings
 ✅ Object container logic (Core implemented: put items in, take items out, wear items from held/worn containers)
    - TODO: Implement container capacity checks (size/weight/count).
-   - TODO: Implement container open/close states and check in commands.
+   ✅ Implement container open/close states and check in commands (is_openable_closable property added, open/close handlers updated).
 🔄 Enable object activation, assembly, disassembly
 🔄 Implement HELP system (discuss approach: datapad vs command list)
 

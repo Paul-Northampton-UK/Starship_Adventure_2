@@ -56,12 +56,6 @@ rooms:
 
   objects_present:
   - id: bridge_torch
-  - id: cap_captains_chair
-  - id: nav_compartment
-  - id: nav_console
-  - id: nav_fish_delivery_log
-  - id: nav_fish_photo
-  - id: nav_officer_log
   exits:
   - direction: "up"
     destination: "captains_door"
@@ -139,7 +133,12 @@ rooms:
         data."
       torch_light: "The torch reveals dormant controls and a locked navigation screen."
 
-    objects_present: []
+    objects_present:
+    - id: nav_compartment
+    - id: nav_console
+    - id: nav_fish_delivery_log
+    - id: nav_fish_photo
+    - id: nav_officer_log
   - area_id: science_station
     name: "Science Station"
     command_aliases: ["sci", "ss", "science", "scie"]
@@ -404,7 +403,8 @@ rooms:
       main_power: "A fully operational seat of command, brimming with data."
       torch_light: "A regal chair, partially illuminated by your torch."
 
-    objects_present: []
+    objects_present:
+    - id: cap_captains_chair
   - area_id: large_bridge_viewer
     name: "Bridge Viewer"
     command_aliases: ["bv", "bridge_viewer", "large_bridge_viewer", "viewer", "bridge

@@ -74,9 +74,9 @@ Available categories include:
     *   **Behavior:** Selecting a room here dynamically updates the "Area Location" dropdown below it.
 
 *   **Area Location (Dropdown):**
-    *   **Purpose:** Specifies the unique `area_id` *within the selected Room* where this object is located. If the object is in the room generally, but not tied to a specific area, leave this blank.
-    *   **Data Type:** String (selected from the list of `area_id`s defined for the currently selected Room Location).
-    *   **Rules/Importance:** Optional. Only relevant if the object should be associated with a specific sub-location (area) within a room. If an Area is selected, saving will place the object's ID in that Area's `objects_present` list, otherwise it goes in the Room's list.
+    *   **Purpose:** Specifies the unique `area_id` *within the selected Room* where this object is initially located. If the object is in the room generally, but not tied to a specific sub-area, this should be left blank or set to a specific "None" or empty option if available. This value is saved as the `area_location` key in the object's entry in `data/objects.yaml`.
+    *   **Data Type:** String (selected from the list of `area_id`s defined for the currently selected Room Location, plus an option for None/blank).
+    *   **Rules/Importance:** Optional. Only relevant if the object should be associated with a specific sub-location (area) within a room. The game engine uses the `location` (room) and this `area_location` (sub-area, if specified) from `objects.yaml` to determine where the object appears and how it's listed in room/area descriptions.
     *   **Behavior:** This dropdown's choices are filtered based on the selection in "Room Location".
 
 *   **Count (Input Text):**
@@ -220,6 +220,13 @@ This large section contains numerous checkboxes and a few input fields that defi
     *   **Rules/Importance:** Enables commands like `OPEN`, `CLOSE`, `PUT ITEM IN CONTAINER`, `LOOK IN CONTAINER`. Requires the `Storage Contents` field (in "Other Details") to be managed and potentially the `Storage Capacity` property below.
     *   **Do:** Check for lockers, backpacks, crates, drawers, pockets.
     *   **Don't:** Check for solid objects that cannot contain others.
+
+*   **Openable/Closable (`is_openable_closable`, Checkbox):**
+    *   **Purpose:** Can this object be opened and closed using `OPEN` and `CLOSE` commands? This applies to containers (if `Is Storage` is also true) but also to non-storage items like doors, panels, or even readable items like books or scrolls that can be opened.
+    *   **Default:** `False` (Unchecked).
+    *   **Rules/Importance:** Enables `OPEN` and `CLOSE` commands. If an object is `Is Storage`, this property should generally also be `True` if it can be opened/closed. For non-storage items, this allows them to have an open/closed state that might affect their description or interactivity.
+    *   **Do:** Check for containers that can be opened/closed, doors, panels, books, viewports, etc.
+    *   **Don't:** Check if the object has no concept of an open/closed state.
 
 *   **Operational (`is_operational`, Checkbox):**
     *   **Purpose:** Represents the general functional state of a device or tool. Is it currently working or broken/disabled? (Separate from power requirements).

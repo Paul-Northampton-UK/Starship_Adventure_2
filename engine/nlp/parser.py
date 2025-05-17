@@ -566,41 +566,46 @@ class NLPCommandParser:
 
     def _extract_fallback_target(self, nlp_result: NlpProcessingResult, token_to_look_after: Optional[spacy.tokens.Token]) -> FallbackTargetResult:
         """Extracts a primary target if structured parsing failed or wasn't applicable.
-           Looks for GAME_OBJECT entities after the main action verb/keyword.
+           Looks for GAME_OBJECT or AREA entities after the main action verb/keyword.
         """
         doc = nlp_result.doc
-        game_object_ents = nlp_result.game_object_ents
+        # Use all entities from nlp_result, not just game_object_ents
+        all_found_entities = nlp_result.entities # This is {text: span} for ALL entities
         
-        logging.debug("Using general fallback target extraction logic.")
+        logging.debug("Using general fallback target extraction logic (checking GAME_OBJECT and AREA).")
 
-        # Try to find the most relevant GAME_OBJECT entity
-        # Option 1: Look for a GAME_OBJECT entity immediately after the verb/keyword
+        # Option 1: Look for a GAME_OBJECT or AREA entity immediately after the verb/keyword
         if token_to_look_after:
             for i in range(token_to_look_after.i + 1, len(doc)):
-                token_span = doc[i:i+1] # Check single tokens first
-                if token_span.text in game_object_ents:
-                    ent_span = game_object_ents[token_span.text]
-                    logging.debug(f"Fallback - Primary target from GAME_OBJECT entity after verb: '{ent_span.text}' (ID: {ent_span.ent_id_})")
-                    return FallbackTargetResult(primary_target=ent_span.text, target_object_id=ent_span.ent_id_)
-                # Check for multi-token entities that start here
-                for ent_text, ent_span in game_object_ents.items():
+                # Check for multi-token entities that start here first
+                # Iterate through a copy of items for safe modification or just direct use
+                for ent_text, ent_span in list(all_found_entities.items()): # Use list() if modifying, else direct iter is fine
                      if ent_span.start == i: # Entity starts at current token
-                         logging.debug(f"Fallback - Primary target from multi-token GAME_OBJECT entity after verb: '{ent_span.text}' (ID: {ent_span.ent_id_})")
-                         return FallbackTargetResult(primary_target=ent_span.text, target_object_id=ent_span.ent_id_)
+                         if ent_span.label_ in ["GAME_OBJECT", "AREA"]:
+                             logging.debug(f"Fallback - Primary target from multi-token {ent_span.label_} entity after verb: '{ent_span.text}' (ID: {ent_span.ent_id_})")
+                             return FallbackTargetResult(primary_target=ent_span.text, target_object_id=ent_span.ent_id_)
+                
+                # Check single tokens (often caught by multi-token if entity is multi-token and starts here)
+                # This can catch single-word entities if not caught above or if preferred.
+                token_span_text = doc[i:i+1].text
+                if token_span_text in all_found_entities:
+                    ent_span = all_found_entities[token_span_text]
+                    if ent_span.label_ in ["GAME_OBJECT", "AREA"]:
+                        logging.debug(f"Fallback - Primary target from single-token {ent_span.label_} entity after verb: '{ent_span.text}' (ID: {ent_span.ent_id_})")
+                        return FallbackTargetResult(primary_target=ent_span.text, target_object_id=ent_span.ent_id_)
 
-
-        # Option 2: If none after verb, take the last GAME_OBJECT entity in the command
-        # (This can be problematic if there are multiple, e.g. "take red key with blue key")
-        last_game_object_ent: Optional[spacy.tokens.Span] = None
-        for ent_text, ent_span in game_object_ents.items():
-            if not last_game_object_ent or ent_span.start > last_game_object_ent.start:
-                last_game_object_ent = ent_span
+        # Option 2: If none after verb, take the last GAME_OBJECT or AREA entity in the command
+        last_targetable_ent: Optional[spacy.tokens.Span] = None
+        for ent_text, ent_span in all_found_entities.items():
+            if ent_span.label_ in ["GAME_OBJECT", "AREA"]:
+                if not last_targetable_ent or ent_span.start > last_targetable_ent.start:
+                    last_targetable_ent = ent_span
         
-        if last_game_object_ent:
-            logging.debug(f"Fallback - Primary target from last GAME_OBJECT entity: '{last_game_object_ent.text}' (ID: {last_game_object_ent.ent_id_})")
-            return FallbackTargetResult(primary_target=last_game_object_ent.text, target_object_id=last_game_object_ent.ent_id_)
+        if last_targetable_ent:
+            logging.debug(f"Fallback - Primary target from last {last_targetable_ent.label_} entity: '{last_targetable_ent.text}' (ID: {last_targetable_ent.ent_id_})")
+            return FallbackTargetResult(primary_target=last_targetable_ent.text, target_object_id=last_targetable_ent.ent_id_)
 
-        # Option 3: No GAME_OBJECT entities found, use noun chunks after the verb
+        # Option 3: No GAME_OBJECT or AREA entities found, use noun chunks after the verb
         if token_to_look_after:
             for chunk in doc.noun_chunks:
                 if chunk.start > token_to_look_after.i:

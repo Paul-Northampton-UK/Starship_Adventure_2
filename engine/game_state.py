@@ -398,7 +398,7 @@ class GameState:
                 potential_ids_in_location.add(item_ref['id'])
 
         for obj_id_global, obj_data_global in self.objects_data.items():
-            if obj_data_global.get("initial_room_id") == room_id: # Check against the passed room_id
+            if obj_data_global.get("location") == room_id: # Check against the passed room_id
                 potential_ids_in_location.add(obj_id_global)
         
         dynamic_ids_for_room = self.dynamic_room_objects.get(room_id, []) # Check against the passed room_id
@@ -785,19 +785,40 @@ class GameState:
             elif isinstance(item_ref, dict) and 'id' in item_ref:
                 potential_ids.add(item_ref['id'])
         
+        # Iterate through global objects_data and add if they belong to the current room/area
         for obj_id_global, obj_data_global in self.objects_data.items():
-            if obj_data_global.get("initial_room_id") == self.current_room_id:
-                potential_ids.add(obj_id_global)
+            obj_global_room = obj_data_global.get("location")
+            obj_global_area = obj_data_global.get("area_location") # Get object's defined area
+
+            if obj_global_room == self.current_room_id:
+                if self.current_area_id:  # Player is in a specific area
+                    if obj_global_area == self.current_area_id:
+                        potential_ids.add(obj_id_global)
+                else:  # Player is in the room generally (not a specific area)
+                    if obj_global_area is None: # Object is for the room, not a sub-area
+                        potential_ids.add(obj_id_global)
         
         dynamic_ids = self.dynamic_room_objects.get(self.current_room_id, [])
         for dyn_id in dynamic_ids:
             potential_ids.add(dyn_id)
         
-        # Exclude items currently held or worn by the player
-        # as they are not considered "in the location" for description purposes.
-        items_to_exclude = set(self.hand_slot) | set(self.worn_items)
+        # Exclude items currently held, worn, or inside worn containers
+        items_to_exclude = set(self.hand_slot) | set(self.worn_items) # Start with hands and directly worn
+        for worn_item_id in self.worn_items:
+            worn_item_data = self.get_object_by_id(worn_item_id)
+            # Check if this worn item IS a container
+            if worn_item_data and worn_item_data.get("properties", {}).get("is_storage", False):
+                # Get the container's current state (its contents)
+                # get_object_state ensures state is initialized and returns it
+                worn_container_state = self.get_object_state(worn_item_id) 
+                contained_item_ids = worn_container_state.get('contains', [])
+                if isinstance(contained_item_ids, list):
+                    for item_id_inside in contained_item_ids:
+                        items_to_exclude.add(item_id_inside)
+        
+        logging.debug(f"[GameState._get_all_object_ids_in_current_location] Before exclude: {potential_ids}, To exclude: {items_to_exclude}")
         potential_ids -= items_to_exclude
-        logging.debug(f"[GameState._get_all_object_ids_in_current_location] After excluding held/worn ({items_to_exclude}), potential_ids: {potential_ids}")
+        logging.debug(f"[GameState._get_all_object_ids_in_current_location] After excluding held/worn/in_worn_container ({items_to_exclude}), potential_ids: {potential_ids}")
         
         if not visible_only:
             return potential_ids
@@ -1123,7 +1144,7 @@ class GameState:
 
         # If the object is native to this room (has initial_room_id set to current_room_id)
         obj_base_data = self.get_object_by_id(object_id)
-        if obj_base_data and obj_base_data.get("initial_room_id") == self.current_room_id:
+        if obj_base_data and obj_base_data.get("location") == self.current_room_id:
             # This object is intrinsically part of the room's definition, even if taken.
             # We set its visibility to False here to signify it's no longer 'visible loose in the room'
             # The 'take_object' method will separately handle making it visible in the player's hand.

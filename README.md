@@ -19,12 +19,18 @@ A sci-fi text adventure game with a GUI interface, featuring a sarcastic AI narr
 - Core data loading from YAML files (`engine/yaml_loader.py`)
 - Schema validation for YAML data (`engine/schemas.py`)
 - Natural Language command parsing using spaCy (`engine/nlp_command_parser.py`) including custom patterns and two-word direction handling.
-- Basic game state tracking (`engine/game_state.py`)
+- Basic game state tracking (`engine/game_state.py`) including:
+    - Inventory system (held, worn, and general inventory).
+    - Tracking of object states (e.g., open/closed, locked/unlocked, visibility).
+    - Management of player's current room and specific area within a room.
 - Logging setup using Loguru
 - Initial testing framework for core components (Refinement needed)
-- Central Game Loop (`engine/game_loop.py`) with modular command handling (Move, Look, Take, Drop, Equip, Inventory, Quit).
-- Movement between rooms and automatic display of location descriptions.
+- Central Game Loop (`engine/game_loop.py`) with modular command handling (Move, Look, Take, Drop, Equip, Inventory, Quit, Open, Close, Lock, Unlock, Search).
+- Movement between rooms and into/out of defined sub-areas within rooms (e.g., `ship_bridge` -> `navigation_station`).
 - Room/Area descriptions with `first_visit_description` and `short_description` logic.
+- Dynamic object listing in descriptions based on current room/area, object state (e.g., `is_visible`), and whether an item has been taken.
+- Object definitions in `data/objects.yaml` use `location` and `area_location` to specify initial placement.
+- Objects can have properties like `is_takeable`, `is_wearable`, `is_storage`, and `is_openable_closable` defined in their schemas (`engine/schemas.py`) and data (`data/objects.yaml`).
 - Response variation system using `responses.yaml`.
 - Grammatically correct handling of singular vs. plural items.
 

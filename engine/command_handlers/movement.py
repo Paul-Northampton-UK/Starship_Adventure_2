@@ -12,78 +12,48 @@ def _get_indefinite_article(word: str) -> str:
     # Simple vowel check, ignoring silent 'h' etc.
     return "an" if word.lower().startswith(('a', 'e', 'i', 'o', 'u')) else "a"
 
-def _format_object_list(game_state: GameState, static_object_refs: list, current_room_id: str) -> str:
+def _format_object_list(game_state: GameState, static_object_refs: list, current_room_id: str, current_area_id: Optional[str]) -> str:
     """Formats a list of object IDs into a readable sentence,
-       correctly handling plurals, articles, and dynamic visibility."""
-    logging.debug(f"[_format_object_list] Formatting for room: {current_room_id}, Static refs: {static_object_refs}")
+       correctly handling plurals, articles, dynamic visibility, and areas."""
+    logging.debug(f"[_format_object_list] Formatting for room: {current_room_id}, area: {current_area_id}")
     
-    potential_object_ids: Set[str] = set()
+    # Get the definitive list of visible object IDs in the current location from GameState.
+    # This list already accounts for:
+    # - Objects defined statically in rooms.yaml for the room/area.
+    # - Objects defined globally in objects.yaml and matching the current room/area.
+    # - Dynamically added/moved objects.
+    # - Exclusion of items held by the player, worn, or inside worn containers.
+    # - The 'is_visible' state of each object.
+    # The 'static_object_refs' argument is no longer directly used here as GameState handles it.
+    
+    object_ids_in_location = game_state._get_all_object_ids_in_current_location(visible_only=True)
+    
+    logging.debug(f"[_format_object_list] IDs from GameState for room '{current_room_id}', area '{current_area_id}': {object_ids_in_location}")
 
-    # Step 1: Add IDs from the room's static 'objects_present' list
-    for item_ref in static_object_refs:
-        if isinstance(item_ref, str):
-            potential_object_ids.add(item_ref)
-        elif isinstance(item_ref, dict) and 'id' in item_ref:
-            potential_object_ids.add(item_ref['id'])
-        else:
-            logging.warning(f"_format_object_list: Skipping unknown item format in static list: {item_ref}")
-    logging.debug(f"[_format_object_list] IDs from static list: {potential_object_ids}")
-
-    # Step 2: Add IDs from global objects_data if they belong to this room and might be visible
-    for obj_id, obj_data_global in game_state.objects_data.items():
-        # Check if 'initial_room_id' matches the current room.
-        # Objects without 'initial_room_id' are not considered statically locatable here for room descriptions.
-        # (They might be in inventory, or their location is handled by other means).
-        if obj_data_global.get("initial_room_id") == current_room_id:
-            potential_object_ids.add(obj_id) 
-            # Log if it was added dynamically and not in static list for clarity
-            if obj_id not in (item['id'] if isinstance(item, dict) else item for item in static_object_refs):
-                 logging.debug(f"[_format_object_list] Dynamically considered object '{obj_id}' for room '{current_room_id}' based on initial_room_id.")
-        # Alternative: if an object is NOT portable and its current location state is this room. (More complex)
-
-    # Step 2b: Add IDs from dynamically added objects for this room
-    dynamic_ids_for_room = game_state.dynamic_room_objects.get(current_room_id, [])
-    if dynamic_ids_for_room:
-        logging.debug(f"[_format_object_list] Considering dynamic objects for room '{current_room_id}': {dynamic_ids_for_room}")
-        for dyn_obj_id in dynamic_ids_for_room:
-            potential_object_ids.add(dyn_obj_id)
-
-    logging.debug(f"[_format_object_list] All potential IDs for room '{current_room_id}': {potential_object_ids}")
-    if not potential_object_ids:
+    if not object_ids_in_location:
         return ""
 
-    # Step 3: Filter by visibility and get nameable objects
+    # Step 3 (now Step 1 after refactor): Filter by nameable objects (already filtered by visibility by GameState)
     visible_and_nameable_object_ids: List[str] = []
-    for obj_id in potential_object_ids:
+    for obj_id in object_ids_in_location: # Iterate the list from GameState
         base_obj_data = game_state.objects_data.get(obj_id)
         if not base_obj_data:
             logging.warning(f"[_format_object_list] Data for potential object ID '{obj_id}' not found in objects_data. Skipping.")
             continue
 
-        obj_state = game_state.get_object_state(obj_id) # Ensures state is initialized
-        
-        # Visibility: Check 'is_visible' in state. If not present, fallback to 'initial_state' from base data.
-        # 'initial_state' (bool) should define if an object is visible by default when the game starts.
-        # 'is_visible' (bool) in object_states overrides this dynamically.
-        default_visibility = base_obj_data.get('initial_state', True) # Default to True if initial_state not defined
-        is_visible = obj_state.get('is_visible', default_visibility)
-
-        if is_visible:
-            name = base_obj_data.get("name", obj_id)
-            # Filter out objects that only have an ID as their name (likely not for display)
-            # and ensure the name is not empty.
-            if name and name != obj_id or " " in name: # A name with a space is likely descriptive
-                visible_and_nameable_object_ids.append(obj_id)
-            else:
-                logging.debug(f"[_format_object_list] Filtering out non-descriptive or ID-like name '{name}' for visible object '{obj_id}'")
+        # Visibility check is already done by _get_all_object_ids_in_current_location(visible_only=True)
+        # We just need to check if it's "nameable" for description purposes.
+        name = base_obj_data.get("name", obj_id)
+        if name and name != obj_id or " " in name: # A name with a space is likely descriptive
+            visible_and_nameable_object_ids.append(obj_id)
         else:
-            logging.debug(f"[_format_object_list] Object '{obj_id}' is not visible. State: {obj_state}, Base initial_state: {default_visibility}")
+            logging.debug(f"[_format_object_list] Filtering out non-descriptive or ID-like name '{name}' for object '{obj_id}'")
             
     logging.debug(f"[_format_object_list] Visible and nameable IDs: {visible_and_nameable_object_ids}")
     if not visible_and_nameable_object_ids:
         return ""
 
-    # Step 4: Format names for the final sentence
+    # Step 4 (now Step 2): Format names for the final sentence
     formatted_names = []
     for pid in visible_and_nameable_object_ids: # Iterate using the filtered list
         object_data = game_state.objects_data.get(pid) # We know this exists from above
@@ -204,7 +174,8 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
          object_list_str = ""
     else:
          logging.debug(f"Formatting object list for {location_id_for_log}: {objects_present_ids}")
-         object_list_str = _format_object_list(game_state, objects_present_ids, room_id)
+         # Pass current area_id (which can be None) to _format_object_list
+         object_list_str = _format_object_list(game_state, objects_present_ids, room_id, area_id)
          logging.debug(f"Formatted object string: '{object_list_str}'")
 
     # Format exit list

@@ -24,7 +24,7 @@ Primary storyline: discover why the ship is abandoned and rescue the crew.
 
 Semi-linear progression with interconnected puzzles.
 
-Players explore the ship room by room. Some larger rooms (e.g., Bridge) are further divided into distinct Areas (e.g., Navigation Station, Helm) which function like sub-locations. Players can move between these Areas within a room, and interact with objects specific to an Area. Room exits are accessible from both the main room level and any Area within that room.
+Players explore the ship room by room. Some larger rooms (e.g., Bridge) are further divided into distinct Areas (e.g., Navigation Station, Helm) which function like sub-locations. Players can move between these Areas within a room. Objects can be specifically placed within these Areas (using `area_location` in their definitions) and are only visible/interactive when the player is in that Area. Room exits are accessible from both the main room level and any Area within that room.
 
 Multiple puzzle difficulty tiers:
 
@@ -99,7 +99,7 @@ Inventory system with:
    - Items can be stored in container objects (e.g., backpack, locker).
    - Carrying limits by weight and size (Pending implementation).
    - Containers (e.g., backpack) logic implemented for storing/retrieving items, but capacity limits/expansion are Pending implementation.
-   - Item handling commands implemented: `take`, `drop`, `wear`, `remove`, `put [item] in [container]`, `take [item] from [container]`.
+   - Item handling commands implemented: `take`, `drop`, `wear`, `remove`, `put [item] in [container]`, `take [item] from [container]`. The `take` and `drop` commands now correctly update object visibility based on whether the object is in the current room or a specific area within it.
    - Note: A general `inventory` list exists in the code but is not currently used for core item interactions.
 
 Environmental mechanics:
@@ -108,7 +108,7 @@ Environmental mechanics:
 
 Object properties:
 
-Weight, size, power requirements, visibility (based on light), wearability (area/layer), takeability, etc.
+Weight, size, power requirements, visibility (based on light), wearability (area/layer), takeability, `is_openable_closable`, `location` (initial room), `area_location` (initial sub-area within a room), etc.
 
 Includes `is_plural` flag for correct grammatical handling.
 

@@ -433,3 +433,12 @@ ALREADY_CLOSED:
 CLOSE_SUCCESS:
   - "You close the '{target_name}'."
   - "With a soft click, the '{target_name}' is now closed."
+
+move_fail_target_not_found:
+  - "You can't see any '{target_name}' to go to from here."
+  - "I don't think '{target_name}' is a place you can go right now."
+
+move_fail_no_direction: # Added new response key
+  - "Where are you trying to go? Please specify a direction or a valid area."
+  - "You'll need to specify a direction (like north, south, up) or a known area name to move."
+  - "Go where?"
