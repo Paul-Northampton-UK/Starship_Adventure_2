@@ -1,6 +1,6 @@
 """Command handler for equipping and unequipping items."""
 
-import logging
+from loguru import logger # Changed from logging
 from typing import Tuple, Dict, List
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
@@ -15,7 +15,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
     wear_verbs = {"wear", "equip", "don", "puton", "put"} # Added "put"
     remove_verbs = {"remove", "unequip", "doff", "takeoff", "take"} # Added "take"
 
-    logging.debug(f"[handle_equip] Target: '{target_item_name}', Action: '{action_verb}'")
+    logger.debug(f"[handle_equip] Target: '{target_item_name}', Action: '{action_verb}'")
 
     if not target_item_name:
         # Return List[Dict]
@@ -38,33 +38,33 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
                 
         if match_in_hand:
             object_id_to_wear = match_in_hand
-            logging.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) in hand slot.")
+            logger.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) in hand slot.")
         
         # If not in hand, check worn containers SECOND
         if not object_id_to_wear:
-            logging.debug(f"[handle_equip] Item not in hand slot. Checking worn containers...")
+            logger.debug(f"[handle_equip] Item not in hand slot. Checking worn containers...")
             for worn_container_id in game_state.worn_items:
                 container_data = game_state.get_object_by_id(worn_container_id)
                 if container_data and container_data.get('properties', {}).get('is_storage'):
                     container_state = game_state.get_object_state(worn_container_id)
                     if container_state and 'contains' in container_state:
-                        logging.debug(f"[handle_equip] Checking container {worn_container_id} with contents: {container_state['contains']}")
+                        logger.debug(f"[handle_equip] Checking container {worn_container_id} with contents: {container_state['contains']}")
                         # Find item within container's 'contains' list
                         for item_id_in_container in container_state['contains']:
                             if item_matches_name(game_state, item_id_in_container, target_item_name):
                                 object_id_to_wear = item_id_in_container
                                 source_container_id = worn_container_id # Remember where we found it
-                                logging.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) inside worn container '{source_container_id}'.")
+                                logger.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) inside worn container '{source_container_id}'.")
                                 break # Found the item in this container
                         if object_id_to_wear:
                             break # Found the item, stop checking containers
                     else:
-                        logging.debug(f"[handle_equip] Worn item {worn_container_id} is storage but has no state or 'contains' key.")
+                        logger.debug(f"[handle_equip] Worn item {worn_container_id} is storage but has no state or 'contains' key.")
                 # else: Not storage or no data, skip
 
         # If not in hand or worn containers, check HELD containers THIRD
         if not object_id_to_wear:
-            logging.debug(f"[handle_equip] Item not in worn containers. Checking held containers...")
+            logger.debug(f"[handle_equip] Item not in worn containers. Checking held containers...")
             for held_container_id in game_state.hand_slot:
                 # Avoid trying to wear the container itself if it matches target name by mistake
                 if held_container_id == object_id_to_wear: continue 
@@ -74,12 +74,12 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
                 if container_data and container_data.get('properties', {}).get('is_storage'):
                     container_state = game_state.get_object_state(held_container_id) or {}
                     if container_state and 'contains' in container_state:
-                        logging.debug(f"[handle_equip] Checking HELD container {held_container_id} with contents: {container_state['contains']}")
+                        logger.debug(f"[handle_equip] Checking HELD container {held_container_id} with contents: {container_state['contains']}")
                         for item_id_in_container in container_state['contains']:
                             if item_matches_name(game_state, item_id_in_container, target_item_name):
                                 object_id_to_wear = item_id_in_container
                                 source_container_id = held_container_id # Remember where we found it (now could be held or worn)
-                                logging.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) inside HELD container '{source_container_id}'.")
+                                logger.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) inside HELD container '{source_container_id}'.")
                                 break
                         if object_id_to_wear:
                             break 
@@ -88,18 +88,18 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
 
         # If not found anywhere yet, check general inventory FOURTH (less likely path now)
         if not object_id_to_wear:
-            logging.debug(f"[handle_equip] Item not in hand, worn, or held containers. Checking inventory...")
+            logger.debug(f"[handle_equip] Item not in hand, worn, or held containers. Checking inventory...")
             inventory_item_id = game_state._find_object_id_by_name_in_inventory(target_item_name)
             if inventory_item_id:
                 object_id_to_wear = inventory_item_id
-                logging.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) in inventory.")
+                logger.debug(f"[handle_equip] Found target '{target_item_name}' (ID: {object_id_to_wear}) in inventory.")
 
         # Now, attempt to wear if we found an ID
         if object_id_to_wear:
             # Get object data (we need this regardless of source)
             object_data = game_state.get_object_by_id(object_id_to_wear)
             if not object_data:
-                logging.error(f"[handle_equip] Wear target ID '{object_id_to_wear}' has no data!")
+                logger.error(f"[handle_equip] Wear target ID '{object_id_to_wear}' has no data!")
                 # Return List[Dict]
                 return [{'key': "error_internal", 'data': {"action": "wear data missing"}}]
             
@@ -111,11 +111,11 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
             if source_container_id:
                 # Call the new GameState method for wearing from a container
                 result_message = game_state.wear_item_from_container(object_id_to_wear, source_container_id)
-                logging.debug(f"[handle_equip] wear_item_from_container result: {result_message}")
+                logger.debug(f"[handle_equip] wear_item_from_container result: {result_message}")
             else:
                 # Call the original GameState method for wearing from hand/inventory
                 result_message = game_state.wear_item(object_id_to_wear)
-                logging.debug(f"[handle_equip] wear_item result: {result_message}")
+                logger.debug(f"[handle_equip] wear_item result: {result_message}")
             
             # Map message to key/kwargs (using item_name_actual identified above)
             if "You put on the" in result_message:
@@ -138,7 +138,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
                     end_index = result_message.index(" which occupies that space/layer.")
                     conflicting_item_name = result_message[start_index:end_index]
                  except ValueError:
-                    logging.warning(f"Could not extract conflicting item name from message: {result_message}")
+                    logger.warning(f"Could not extract conflicting item name from message: {result_message}")
                     conflicting_item_name = "something else" # Fallback
                  key = "wear_fail_conflict_plural" if is_plural else "wear_fail_conflict_singular"
                  # Return List[Dict]
@@ -155,7 +155,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
                  # Return List[Dict]
                  return [{'key': "error_internal", 'data': {"action": "wear container missing"}}]
             else:
-                 logging.warning(f"Unexpected message from wear attempt: {result_message}")
+                 logger.warning(f"Unexpected message from wear attempt: {result_message}")
                  # Return List[Dict]
                  return [{'key': "error_internal", 'data': {"action": "wear general fail"}}]
         else:
@@ -197,7 +197,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
         # Get data for the item being removed
         object_data = game_state.objects_data.get(object_id_to_remove)
         if not object_data:
-            logging.error(f"[handle_equip] Remove target ID '{object_id_to_remove}' has no data!")
+            logger.error(f"[handle_equip] Remove target ID '{object_id_to_remove}' has no data!")
             # Return List[Dict]
             return [{'key': "error_internal", 'data': {"action": "remove data missing"}}]
         
@@ -206,7 +206,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
         item_name_actual = object_data.get('name', 'unknown object')
 
         result_message = game_state.remove_item(object_id_to_remove)
-        logging.debug(f"[handle_equip] remove_item result: {result_message}")
+        logger.debug(f"[handle_equip] remove_item result: {result_message}")
         
         # Map message to key/kwargs
         if "take off the" in result_message and "hold it" in result_message:
@@ -221,12 +221,12 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
             # Return List[Dict]
             return [{'key': key, 'data': {"item_name": item_name_actual, "held_item_name": held_items_str}}]
         else:
-            logging.warning(f"Unexpected message from remove_item: {result_message}")
+            logger.warning(f"Unexpected message from remove_item: {result_message}")
             # Return List[Dict]
             return [{'key': "error_internal", 'data': {"action": "remove"}}]
 
     else:
         # If the NLP parser returned EQUIP intent but the action wasn't recognized
-        logging.warning(f"handle_equip received EQUIP intent but unclear action verb: '{action_verb}'")
+        logger.warning(f"handle_equip received EQUIP intent but unclear action verb: '{action_verb}'")
         # Return List[Dict]
         return [{'key': "invalid_command", 'data': {}}] # Placeholder 

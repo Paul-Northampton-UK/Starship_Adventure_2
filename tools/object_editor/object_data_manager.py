@@ -1,5 +1,5 @@
 # Handles loading, saving, and managing object and room YAML data.
-import logging
+from loguru import logger
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from ruamel.yaml import YAML
@@ -9,15 +9,17 @@ from ruamel.yaml.scanner import ScannerError
 class ObjectDataManager:
     """Manages loading, accessing, and saving object and room data from YAML files."""
 
-    def __init__(self, data_dir: Path = Path("../../data")): # Assume running from tools/object_editor
+    def __init__(self, data_dir: Optional[Path] = None):
         """
         Initializes the manager and loads data.
-
-        Args:
-            data_dir: The path to the directory containing rooms.yaml and objects.yaml.
-                      Defaults assuming the script runs from tools/object_editor.
+        If data_dir is not provided, it defaults to the 'data' directory
+        in the project root.
         """
-        self.data_dir = data_dir
+        if data_dir is None:
+            # Assumes the script is in tools/object_editor, so ../../data
+            self.data_dir = Path(__file__).parent.parent.parent / "data"
+        else:
+            self.data_dir = data_dir
         self.objects_file = self.data_dir / "objects.yaml"
         self.rooms_file = self.data_dir / "rooms.yaml"
 
@@ -43,27 +45,27 @@ class ObjectDataManager:
         self.rooms_data = {room.get('room_id'): room for room in rooms_list if isinstance(room, dict) and 'room_id' in room}
 
         if not self.objects_data:
-            logging.warning(f"No objects found or loaded from {self.objects_file}. Check format (expected list under 'objects:' key).")
+            logger.warning(f"No objects found or loaded from {self.objects_file}. Check format (expected list under 'objects:' key).")
         if not self.rooms_data:
-             logging.warning(f"No rooms found or loaded from {self.rooms_file}. Check format (expected list under 'rooms:' key).")
+             logger.warning(f"No rooms found or loaded from {self.rooms_file}. Check format (expected list under 'rooms:' key).")
 
-        logging.info(f"Loaded {len(self.objects_data)} objects and {len(self.rooms_data)} rooms.")
+        logger.info(f"Loaded {len(self.objects_data)} objects and {len(self.rooms_data)} rooms.")
 
     def _load_yaml_file(self, file_path: Path) -> Optional[Any]:
         """Loads a single YAML file using ruamel.yaml."""
         try:
             if not file_path.is_file():
-                logging.error(f"Data file not found: {file_path}")
+                logger.error(f"Data file not found: {file_path}")
                 return None
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = self.yaml.load(f)
-                logging.info(f"Successfully loaded YAML file: {file_path}")
+                logger.info(f"Successfully loaded YAML file: {file_path}")
                 return data
         except (ParserError, ScannerError) as e:
-            logging.error(f"Error parsing YAML file {file_path}: {e}")
+            logger.error(f"Error parsing YAML file {file_path}: {e}")
             return None
         except Exception as e:
-            logging.error(f"An unexpected error occurred loading {file_path}: {e}")
+            logger.error(f"An unexpected error occurred loading {file_path}: {e}")
             return None
 
     # --- Methods for accessing data will go here ---
@@ -74,7 +76,7 @@ class ObjectDataManager:
     def get_object_ids(self) -> List[str]:
         """Returns a sorted list of all object IDs from the loaded list."""
         if not self.objects_data or not isinstance(self.objects_data, list):
-            logging.warning("get_object_ids: No objects_data list found.")
+            logger.warning("get_object_ids: No objects_data list found.")
             return []
         ids = []
         for i, obj in enumerate(self.objects_data):
@@ -83,12 +85,12 @@ class ObjectDataManager:
                 if obj_id:
                     ids.append(obj_id)
                 else:
-                    logging.warning(f"get_object_ids: Found empty ID in object at index {i}.")
+                    logger.warning(f"get_object_ids: Found empty ID in object at index {i}.")
             else:
-                logging.warning(f"get_object_ids: Item at index {i} is not a dict or lacks 'id' key.")
+                logger.warning(f"get_object_ids: Item at index {i} is not a dict or lacks 'id' key.")
         
         sorted_ids = sorted(ids)
-        logging.info(f"get_object_ids: Returning IDs: {sorted_ids}") # DEBUG LOG
+        logger.info(f"get_object_ids: Returning IDs: {sorted_ids}") # DEBUG LOG
         return sorted_ids
 
     def get_room_ids(self) -> List[str]:
@@ -101,7 +103,7 @@ class ObjectDataManager:
     def get_room_name(self, room_id: str) -> Optional[str]:
         """Returns the name of the room with the given ID."""
         if not self.rooms_data or room_id not in self.rooms_data:
-            logging.warning(f"get_room_name: Room ID '{room_id}' not found in rooms_data.")
+            logger.warning(f"get_room_name: Room ID '{room_id}' not found in rooms_data.")
             return None
         room_data = self.rooms_data.get(room_id, {})
         return room_data.get('name') # Return the name or None if key missing
@@ -109,10 +111,10 @@ class ObjectDataManager:
     def get_object_by_id(self, object_id: str) -> Optional[Dict[str, Any]]:
          """Retrieves the data for a specific object by its ID."""
          if not self.objects_data or not isinstance(self.objects_data, list): # Added type check
-             logging.warning("get_object_by_id: objects_data is not a list or is empty.")
+             logger.warning("get_object_by_id: objects_data is not a list or is empty.")
              return None
          if not object_id: # Prevent comparing against None/empty string
-              logging.warning("get_object_by_id: received empty object_id to search for.")
+              logger.warning("get_object_by_id: received empty object_id to search for.")
               return None
 
          search_id = object_id.strip() # Strip whitespace from the ID we are searching for
@@ -123,20 +125,20 @@ class ObjectDataManager:
                  if isinstance(obj_id_val, str):
                      # --- Compare stripped versions ---
                      if obj_id_val.strip() == search_id:
-                         logging.debug(f"get_object_by_id: Match found for '{search_id}' at index {i}.")
+                         logger.debug(f"get_object_by_id: Match found for '{search_id}' at index {i}.")
                          return obj
                  else:
-                     logging.warning(f"get_object_by_id: Object at index {i} has non-string ID: {obj_id_val}")
+                     logger.warning(f"get_object_by_id: Object at index {i} has non-string ID: {obj_id_val}")
              else:
-                  logging.warning(f"get_object_by_id: Item at index {i} is not a dictionary.")
+                  logger.warning(f"get_object_by_id: Item at index {i} is not a dictionary.")
 
-         logging.warning(f"get_object_by_id: No match found for '{search_id}'.")
+         logger.warning(f"get_object_by_id: No match found for '{search_id}'.")
          return None
 
     def get_key_object_ids(self) -> List[str]:
         """Returns a sorted list of object IDs for objects categorized as 'key'."""
         if not self.objects_data or not isinstance(self.objects_data, list):
-            logging.warning("get_key_object_ids: No objects_data list found.")
+            logger.warning("get_key_object_ids: No objects_data list found.")
             return []
         key_ids = []
         for obj in self.objects_data:
@@ -148,7 +150,7 @@ class ObjectDataManager:
                     key_ids.append(str(obj_id)) # Ensure it's a string
         
         sorted_key_ids = sorted(key_ids)
-        logging.debug(f"get_key_object_ids: Found key IDs: {sorted_key_ids}")
+        logger.debug(f"get_key_object_ids: Found key IDs: {sorted_key_ids}")
         return sorted_key_ids
 
     def get_area_ids_for_room(self, room_id: str) -> List[str]:
@@ -158,7 +160,7 @@ class ObjectDataManager:
         room_data = self.rooms_data.get(room_id, {})
         areas_list = room_data.get("areas", [])
         if not isinstance(areas_list, list):
-            logging.warning(f"Areas data for room '{room_id}' is not a list.")
+            logger.warning(f"Areas data for room '{room_id}' is not a list.")
             return []
 
         area_ids = [
@@ -177,10 +179,10 @@ class ObjectDataManager:
             but not within a specific area, or if areas aren't defined properly.
             Both are None if the object is not found in any room's/area's objects_present list.
         """
-        logging.debug(f"find_object_location: Entered for object_id='{object_id}'. Checking self.rooms_data (len={len(self.rooms_data) if self.rooms_data else 0}). Is dict? {isinstance(self.rooms_data, dict)}")
+        logger.debug(f"find_object_location: Entered for object_id='{object_id}'. Checking self.rooms_data (len={len(self.rooms_data) if self.rooms_data else 0}). Is dict? {isinstance(self.rooms_data, dict)}")
 
         if not self.rooms_data or not object_id:
-            logging.debug("find_object_location: Exiting early because self.rooms_data is empty or object_id is missing.") # Log the early exit
+            logger.debug("find_object_location: Exiting early because self.rooms_data is empty or object_id is missing.") # Log the early exit
             return None, None
 
         search_id = object_id.strip()
@@ -192,18 +194,18 @@ class ObjectDataManager:
             room_objects = room_data.get("objects_present", [])
             if isinstance(room_objects, list):
                 # --- Log the raw list content ---
-                logging.debug(f"Room '{room_id}' room_objects: {room_objects}")
+                logger.debug(f"Room '{room_id}' room_objects: {room_objects}")
                 for obj_dict in room_objects:
                     if isinstance(obj_dict, dict):
                          obj_id_val = obj_dict.get('id', '')
                          # --- Log extracted ID and comparison ---
-                         logging.debug(f"  Checking room obj: ID='{obj_id_val}' (Type: {type(obj_id_val)}), Comparing '{obj_id_val.strip() if isinstance(obj_id_val, str) else obj_id_val}' == '{search_id}'")
+                         logger.debug(f"  Checking room obj: ID='{obj_id_val}' (Type: {type(obj_id_val)}), Comparing '{obj_id_val.strip() if isinstance(obj_id_val, str) else obj_id_val}' == '{search_id}'")
                          if isinstance(obj_id_val, str) and obj_id_val.strip() == search_id:
-                            logging.debug(f"Object '{search_id}' found directly in room '{room_id}'.")
+                            logger.debug(f"Object '{search_id}' found directly in room '{room_id}'.")
                             return room_id, None
                     else:
                         # Log items that are not dictionaries
-                        logging.debug(f"  Skipping non-dict room obj: {obj_dict} (Type: {type(obj_dict)}) ")
+                        logger.debug(f"  Skipping non-dict room obj: {obj_dict} (Type: {type(obj_dict)}) ")
 
 
             # Check area-level objects_present
@@ -215,20 +217,20 @@ class ObjectDataManager:
                     area_objects = area_data.get("objects_present", [])
                     if isinstance(area_objects, list):
                          # --- Log the raw list content ---
-                         logging.debug(f"Area '{area_id}' in room '{room_id}' area_objects: {area_objects}")
+                         logger.debug(f"Area '{area_id}' in room '{room_id}' area_objects: {area_objects}")
                          for obj_dict in area_objects:
                              if isinstance(obj_dict, dict):
                                  obj_id_val = obj_dict.get('id', '')
                                  # --- Log extracted ID and comparison ---
-                                 logging.debug(f"    Checking area obj: ID='{obj_id_val}' (Type: {type(obj_id_val)}), Comparing '{obj_id_val.strip() if isinstance(obj_id_val, str) else obj_id_val}' == '{search_id}'")
+                                 logger.debug(f"    Checking area obj: ID='{obj_id_val}' (Type: {type(obj_id_val)}), Comparing '{obj_id_val.strip() if isinstance(obj_id_val, str) else obj_id_val}' == '{search_id}'")
                                  if isinstance(obj_id_val, str) and obj_id_val.strip() == search_id:
-                                     logging.debug(f"Object '{search_id}' found in area '{area_id}' of room '{room_id}'.")
+                                     logger.debug(f"Object '{search_id}' found in area '{area_id}' of room '{room_id}'.")
                                      return room_id, area_id
                              else:
                                  # Log items that are not dictionaries
-                                 logging.debug(f"    Skipping non-dict area obj: {obj_dict} (Type: {type(obj_dict)}) ")
+                                 logger.debug(f"    Skipping non-dict area obj: {obj_dict} (Type: {type(obj_dict)}) ")
 
-        logging.debug(f"Object '{search_id}' not found in any room or area 'objects_present' list.")
+        logger.debug(f"Object '{search_id}' not found in any room or area 'objects_present' list.")
         return None, None
 
     # --- Methods for modifying and saving data will go here ---
@@ -237,198 +239,240 @@ class ObjectDataManager:
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 self.yaml.dump(data, f)
-            logging.info(f"Successfully saved YAML file: {file_path}")
+            logger.info(f"Successfully saved YAML file: {file_path}")
             return True
         except Exception as e:
-            logging.exception(f"An error occurred saving {file_path}")
+            logger.exception(f"An error occurred saving {file_path}")
             return False
 
     def add_object(self, new_object_data: dict) -> bool:
         """Adds a new object dictionary to the internal list."""
         if not self.objects_data or not isinstance(self.objects_data, list):
-            logging.error("Cannot add object: objects_data not loaded or not a list.")
+            logger.error("Cannot add object: objects_data not loaded or not a list.")
             return False
-        if not isinstance(new_object_data, dict) or 'id' not in new_object_data:
-             logging.error("Cannot add object: Invalid data provided.")
-             return False
-        # Check for duplicate ID just in case
-        if self.get_object_by_id(new_object_data['id']):
-             logging.error(f"Cannot add object: ID '{new_object_data['id']}' already exists.")
-             return False
+        if not new_object_data or not isinstance(new_object_data, dict) or 'id' not in new_object_data:
+            logger.error("Cannot add object: Invalid data provided.")
+            return False
+        
+        new_id = new_object_data['id']
+        if any(obj.get('id') == new_id for obj in self.objects_data if isinstance(obj, dict)):
+            logger.error(f"Cannot add object: ID '{new_id}' already exists.")
+            return False
 
         self.objects_data.append(new_object_data)
-        logging.info(f"Added new object '{new_object_data['id']}' to internal list.")
+        logger.info(f"Added new object '{new_id}' to internal list.")
         return True
 
     def update_object(self, object_id: str, updated_object_data: dict) -> bool:
-        """Updates an existing object dictionary in the internal list."""
+        """Updates an existing object's data in the internal list."""
         if not self.objects_data or not isinstance(self.objects_data, list):
-            logging.error("Cannot update object: objects_data not loaded or not a list.")
+            logger.error("Cannot update object: objects_data not loaded or not a list.")
             return False
         if not object_id:
-             logging.error("Cannot update object: No object_id specified.")
-             return False
+            logger.error("Cannot update object: No object_id specified.")
+            return False
 
         for i, obj in enumerate(self.objects_data):
-            if isinstance(obj, dict) and obj.get('id', '').strip() == object_id.strip():
-                # Replace the old dict with the new one, preserving list order
+            if isinstance(obj, dict) and obj.get('id') == object_id:
                 self.objects_data[i] = updated_object_data
-                # Ensure the ID in the new data matches (should already, but good practice)
-                self.objects_data[i]['id'] = object_id.strip()
-                logging.info(f"Updated object '{object_id}' in internal list.")
+                # Ensure the ID in the updated data matches, if it was changed it's more complex
+                if updated_object_data.get('id') != object_id:
+                    logger.warning(f"Object ID in updated_object_data ('{updated_object_data.get('id')}') differs from original object_id ('{object_id}'). The list is updated, but this might be unintended.")
+                logger.info(f"Updated object '{object_id}' in internal list.")
                 return True
-
-        logging.error(f"Cannot update object: ID '{object_id}' not found.")
+        logger.error(f"Cannot update object: ID '{object_id}' not found.")
         return False
 
     def _update_object_location_in_rooms(self, object_id: str, new_room_id: Optional[str], new_area_id: Optional[str]) -> bool:
-        """Internal helper to remove object from old location and add to new location in rooms_data."""
-        if not self.rooms_data: return False
-        if not object_id: return False
+        """
+        Removes the object_id from its old location (if any) in rooms_data
+        and adds it to its new location (if specified).
+        This method directly manipulates self.rooms_data.
+        """
+        if not self.rooms_data or not isinstance(self.rooms_data, dict):
+            logger.error("_update_object_location_in_rooms: rooms_data is not loaded or is not a dictionary.")
+            return False
 
-        object_id_to_save = {'id': object_id} # Store as dict in rooms.yaml
+        object_id_to_move = object_id.strip()
+        found_and_removed_from_old = False
+        operation_successful = True # Assume success unless an error occurs
 
-        # 1. Find and remove from old location(s)
+        # Phase 1: Remove from all previous locations
         for room_id, room_data in self.rooms_data.items():
             if not isinstance(room_data, dict): continue
-            # Remove from room level
-            if "objects_present" in room_data and isinstance(room_data["objects_present"], list):
-                room_data["objects_present"][:] = [obj for obj in room_data["objects_present"] if not (isinstance(obj, dict) and obj.get('id') == object_id)]
-            # Remove from area level
-            if "areas" in room_data and isinstance(room_data["areas"], list):
-                for area_data in room_data["areas"]:
-                    if isinstance(area_data, dict) and "objects_present" in area_data and isinstance(area_data["objects_present"], list):
-                         area_data["objects_present"][:] = [obj for obj in area_data["objects_present"] if not (isinstance(obj, dict) and obj.get('id') == object_id)]
 
-        # 2. Add to new location
-        if new_room_id and new_room_id in self.rooms_data:
-            target_room_data = self.rooms_data[new_room_id]
-            if new_area_id: # Add to specific area
-                found_area = False
-                if "areas" in target_room_data and isinstance(target_room_data["areas"], list):
-                    for area_data in target_room_data["areas"]:
-                        if isinstance(area_data, dict) and area_data.get("area_id") == new_area_id:
-                             # Ensure objects_present list exists
-                             if "objects_present" not in area_data or not isinstance(area_data["objects_present"], list):
-                                 area_data["objects_present"] = []
-                             # Add if not already present (shouldn't be, but safe check)
-                             if object_id_to_save not in area_data["objects_present"]:
-                                 area_data["objects_present"].append(object_id_to_save)
-                                 logging.info(f"Added object '{object_id}' to area '{new_area_id}' in room '{new_room_id}'.")
-                             found_area = True
-                             break
-                if not found_area:
-                     logging.error(f"Could not add object '{object_id}' to area '{new_area_id}': Area not found in room '{new_room_id}'.")
-                     return False
-            else: # Add to room level
-                 # Ensure objects_present list exists
-                 if "objects_present" not in target_room_data or not isinstance(target_room_data["objects_present"], list):
-                     target_room_data["objects_present"] = []
-                 # Add if not already present
-                 if object_id_to_save not in target_room_data["objects_present"]:
-                     target_room_data["objects_present"].append(object_id_to_save)
-                     logging.info(f"Added object '{object_id}' directly to room '{new_room_id}'.")
-                 return True # Added to room level successfully
+            # Check and remove from room's direct objects_present
+            room_objects = room_data.get("objects_present", [])
+            if isinstance(room_objects, list):
+                original_len = len(room_objects)
+                room_data["objects_present"] = [
+                    obj for obj in room_objects
+                    if not (isinstance(obj, dict) and obj.get('id', '').strip() == object_id_to_move)
+                ]
+                if len(room_data["objects_present"]) < original_len:
+                    logger.debug(f"Removed '{object_id_to_move}' from room '{room_id}' direct objects.")
+                    found_and_removed_from_old = True
 
-        elif new_room_id:
-            logging.error(f"Could not add object '{object_id}' to room '{new_room_id}': Room ID not found.")
-            return False
-        else:
-            # No new room specified, object just removed from old location (or was never placed)
-            logging.info(f"Object '{object_id}' location cleared (not assigned to a new room/area).")
-            return True # Successfully handled clearing location
 
-        return True # Reached here if added to area successfully
+            # Check and remove from areas within the room
+            areas_list = room_data.get("areas", [])
+            if isinstance(areas_list, list):
+                for area_data in areas_list:
+                    if not isinstance(area_data, dict): continue
+                    area_objects = area_data.get("objects_present", [])
+                    if isinstance(area_objects, list):
+                        original_len = len(area_objects)
+                        area_data["objects_present"] = [
+                            obj for obj in area_objects
+                            if not (isinstance(obj, dict) and obj.get('id', '').strip() == object_id_to_move)
+                        ]
+                        if len(area_data["objects_present"]) < original_len:
+                            logger.debug(f"Removed '{object_id_to_move}' from area '{area_data.get('area_id')}' in room '{room_id}'.")
+                            found_and_removed_from_old = True
+        
+        if found_and_removed_from_old:
+            logger.info(f"Successfully cleared old locations for object '{object_id_to_move}'.")
+
+        # Phase 2: Add to new location (if specified)
+        if new_room_id:
+            new_room_id_stripped = new_room_id.strip()
+            target_room_data = self.rooms_data.get(new_room_id_stripped)
+
+            if target_room_data and isinstance(target_room_data, dict):
+                object_ref_dict = {"id": object_id_to_move} # Store as a dict with an 'id' key
+
+                if new_area_id:
+                    new_area_id_stripped = new_area_id.strip()
+                    areas_list = target_room_data.get("areas", [])
+                    target_area_data = None
+                    if isinstance(areas_list, list):
+                        for area in areas_list:
+                            if isinstance(area, dict) and area.get("area_id", "").strip() == new_area_id_stripped:
+                                target_area_data = area
+                                break
+                    
+                    if target_area_data and isinstance(target_area_data, dict):
+                        area_objects = target_area_data.setdefault("objects_present", [])
+                        if not isinstance(area_objects, list): # ensure it's a list
+                            logger.warning(f"Area '{new_area_id_stripped}' objects_present was not a list, re-initializing for object '{object_id_to_move}'.")
+                            area_objects = []
+                            target_area_data["objects_present"] = area_objects
+                        
+                        # Add if not already present (idempotent add)
+                        if not any(isinstance(obj, dict) and obj.get('id', '').strip() == object_id_to_move for obj in area_objects):
+                            area_objects.append(object_ref_dict)
+                            logger.info(f"Added object '{object_id_to_move}' to area '{new_area_id_stripped}' in room '{new_room_id_stripped}'.")
+                        else:
+                            logger.debug(f"Object '{object_id_to_move}' already present in area '{new_area_id_stripped}'.")
+                    else:
+                        logger.error(f"Could not add object '{object_id_to_move}' to area '{new_area_id_stripped}': Area not found in room '{new_room_id_stripped}'.")
+                        operation_successful = False
+                else: # Add to room's direct objects_present
+                    room_objects = target_room_data.setdefault("objects_present", [])
+                    if not isinstance(room_objects, list): # ensure it's a list
+                        logger.warning(f"Room '{new_room_id_stripped}' objects_present was not a list, re-initializing for object '{object_id_to_move}'.")
+                        room_objects = []
+                        target_room_data["objects_present"] = room_objects
+
+                    # Add if not already present (idempotent add)
+                    if not any(isinstance(obj, dict) and obj.get('id', '').strip() == object_id_to_move for obj in room_objects):
+                        room_objects.append(object_ref_dict)
+                        logger.info(f"Added object '{object_id_to_move}' directly to room '{new_room_id_stripped}'.")
+                    else:
+                        logger.debug(f"Object '{object_id_to_move}' already present in room '{new_room_id_stripped}'.")
+            else:
+                logger.error(f"Could not add object '{object_id_to_move}' to room '{new_room_id_stripped}': Room ID not found.")
+                operation_successful = False
+        else: # No new_room_id means the object is being unplaced
+            logger.info(f"Object '{object_id_to_move}' location cleared (not assigned to a new room/area).")
+
+        return operation_successful
 
     def delete_object(self, object_id: str) -> bool:
-        """Deletes an object from internal lists and saves changes."""
-        if not object_id: return False
+        """Deletes an object by its ID from the internal list and attempts to remove it from rooms."""
+        if not self.objects_data or not isinstance(self.objects_data, list) or not object_id:
+            logger.error(f"Cannot delete object: Data not loaded or invalid object_id ('{object_id}').")
+            return False
 
-        original_object_index = -1
-        for i, obj in enumerate(self.objects_data):
-             if isinstance(obj, dict) and obj.get('id', '').strip() == object_id.strip():
-                 original_object_index = i
-                 break
+        original_len = len(self.objects_data)
+        self.objects_data = [obj for obj in self.objects_data if not (isinstance(obj, dict) and obj.get('id') == object_id)]
 
-        if original_object_index == -1:
-             logging.error(f"Cannot delete object: ID '{object_id}' not found in objects list.")
-             return False
-
-        # Remove from objects list
-        deleted_obj_data = self.objects_data.pop(original_object_index)
-        logging.info(f"Removed object '{object_id}' from internal objects list.")
-
-        # Remove from room/area location
-        if not self._update_object_location_in_rooms(object_id, None, None):
-             logging.warning(f"Could not definitively remove '{object_id}' from room locations during delete (might not have been placed).")
-             # Continue deletion from objects.yaml anyway
-
-        # Save changes to both files
-        return self.save_all_changes() # Use the new combined save method
+        if len(self.objects_data) < original_len:
+            logger.info(f"Removed object '{object_id}' from internal objects list.")
+            # Attempt to remove from rooms as well
+            if not self._update_object_location_in_rooms(object_id, None, None):
+                # This method now returns bool, but a warning here is still useful
+                logger.warning(f"Could not definitively remove '{object_id}' from room locations during delete (might not have been placed or error occurred). Check logs.")
+            return True
+        else:
+            logger.error(f"Cannot delete object: ID '{object_id}' not found in objects list.")
+            return False
 
     def save_all_changes(self) -> bool:
-         """Saves the current state of objects_data and rooms_data to their files."""
-         objects_to_save = {'objects': self.objects_data} # Structure for file
-         # Convert rooms dict back to list structure for saving
-         rooms_list_to_save = list(self.rooms_data.values())
-         rooms_to_save = {'rooms': rooms_list_to_save} # Structure for file
+        """Saves the current state of objects_data and rooms_data to their respective YAML files."""
+        objects_payload = {'objects': self.objects_data if self.objects_data else []}
+        # For rooms, we need to convert our internal dictionary back to a list of room dicts
+        rooms_list = list(self.rooms_data.values()) if self.rooms_data else []
+        rooms_payload = {'rooms': rooms_list}
 
-         objects_saved = self._save_yaml_file(self.objects_file, objects_to_save)
-         rooms_saved = self._save_yaml_file(self.rooms_file, rooms_to_save)
+        obj_saved = self._save_yaml_file(self.objects_file, objects_payload)
+        room_saved = self._save_yaml_file(self.rooms_file, rooms_payload)
 
-         if objects_saved and rooms_saved:
-             logging.info("All changes saved successfully to objects.yaml and rooms.yaml.")
-             return True
-         else:
-             logging.error("Failed to save changes to one or both YAML files.")
-             # TODO: Consider rollback or backup mechanism?
-             return False
+        if obj_saved and room_saved:
+            logger.info("All changes saved successfully to objects.yaml and rooms.yaml.")
+            return True
+        else:
+            logger.error("Failed to save changes to one or both YAML files.")
+            return False
 
     def save_object_and_location(self, object_id: str, new_room_id: Optional[str], new_area_id: Optional[str]) -> bool:
-        """Updates the location lists in rooms_data and saves all changes."""
+        """
+        Specialized save: Updates object location in rooms_data, then saves both files.
+        This is useful if the object's own data hasn't changed but its location has.
+        Assumes the object itself (in objects_data) is already up-to-date if it needed changes.
+        """
         if not object_id:
-             logging.error("save_object_and_location: Missing object_id.")
-             return False
-        # REMOVED the check requiring new_room_id. It's now okay to save an object without a location.
-        # if not new_room_id:
-        #      logging.error("save_object_and_location: Missing new_room_id. Cannot save object without assigning to a room.")
-        #      return False
-
-        # Update location in the rooms data structure.
-        # This will remove the object from any old location.
-        # If new_room_id is None, it simply won't be added to any new location.
-        # The function should return True if the update was successful (including successfully clearing location),
-        # and False only if there was an error (e.g., trying to add to an invalid room/area).
-        location_updated_successfully = self._update_object_location_in_rooms(object_id, new_room_id, new_area_id)
-
-        # --- ADJUSTED LOGIC --- 
-        # Only prevent saving if _update_object_location_in_rooms explicitly failed (returned False).
-        # If it returned True (meaning location was updated OR successfully cleared), proceed to save.
-        if not location_updated_successfully:
-            logging.error(f"Failed to update location for object '{object_id}' in rooms data. Aborting save.")
-            # Don't save if location update failed critically (e.g., target room/area invalid)
+            logger.error("save_object_and_location: Missing object_id.")
             return False
-        else:
-             logging.info(f"Location update for object '{object_id}' handled (new location: Room='{new_room_id}', Area='{new_area_id}'). Proceeding to save.")
-             # Save changes to both files (objects.yaml and rooms.yaml)
-             return self.save_all_changes()
+        
+        # if not new_room_id: # Objects MUST be in a room. Area is optional.
+        # #      logger.error("save_object_and_location: Missing new_room_id. Cannot save object without assigning to a room.")
+        # #      return False
+        # Allow unplacing by passing None for new_room_id
 
-# Example Usage (for testing)
-if __name__ == '__main__':
-    # Adjust the path if running this file directly from its own directory
-    manager = ObjectDataManager(data_dir=Path("..", "..", "data"))
+        logger.info(f"Attempting to update location for object '{object_id}' to Room: '{new_room_id}', Area: '{new_area_id}'.")
+        location_updated = self._update_object_location_in_rooms(object_id, new_room_id, new_area_id)
 
-    if manager.objects_data and manager.rooms_data:
+        if not location_updated:
+            logger.error(f"Failed to update location for object '{object_id}' in rooms data. Aborting save.")
+            # No, we should still try to save the objects file even if location update had issues
+            # return False 
+            # Let's proceed to save, but the error about location is logged.
+
+        logger.info(f"Location update for object '{object_id}' handled (new location: Room='{new_room_id}', Area='{new_area_id}'). Proceeding to save.")
+        return self.save_all_changes()
+
+
+# Example usage (for testing this module directly)
+if __name__ == "__main__":
+    # Adjust the path if running from a different directory
+    # Assuming this script is in tools/object_editor, data is ../../data
+    manager = ObjectDataManager(data_dir=Path(__file__).parent.parent.parent / "data")
+    
+    if manager.objects_data is not None and manager.rooms_data is not None:
         print("Data loaded successfully!")
         print("Object IDs:", manager.get_object_ids())
         print("Room IDs:", manager.get_room_ids())
 
-        test_id = "cab_locker" # Example ID, change if needed
-        obj = manager.get_object_by_id(test_id)
-        if obj:
+        # Test get_object_by_id
+        test_id = "flashlight" # Change to an ID you expect to find or not find
+        obj_data = manager.get_object_by_id(test_id)
+        if obj_data:
             print(f"\nData for '{test_id}':")
-            # Print object data using yaml.dump to see formatting
-            manager.yaml.dump([obj], Path.cwd() / "temp_object_output.yaml") # Dump to a temp file to view
+            # For pretty printing the dict:
+            from ruamel.yaml import YAML
+            yaml_out = YAML()
+            yaml_out.dump(obj_data, Path("temp_object_output.yaml")) # Save to temp file
             print(f"(See temp_object_output.yaml for formatted details of {test_id})")
 
         else:

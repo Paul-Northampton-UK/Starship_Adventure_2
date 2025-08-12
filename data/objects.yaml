@@ -786,8 +786,8 @@ objects:
   lock_key_id: cab_locker_keycard
   is_open: false
   properties:
-    is_takeable: true
-    is_interactive: true
+    is_takeable: false
+    is_interactive: false
     is_movable: false
     is_destroyable: false
     has_durability: false
@@ -820,7 +820,6 @@ objects:
     storage_capacity: 10
     is_openable_closable: true
   storage_contents:
-  - cab_tablet
   - cab_phaser
 - id: cab_locker_keycard
   name: Blue KeyCard
@@ -999,3 +998,27 @@ objects:
     damage: 100
     range: 100
     is_openable_closable: false
+- id: cabin_book
+  name: Comic Book
+  is_plural: false
+  description: 'The cover explodes with color—a rugged space marine stands atop a
+    jagged alien cliff, muscles flexing beneath a battle-worn exo-suit. His helmet
+    is tucked under one arm, and in the other hand, he defiantly plants a tattered
+    blue flag emblazoned with a silver star encircled by the words "United Federation
+    of Planets." Behind him, twin suns blaze over a horizon filled with hostile alien
+    ships and looming monoliths. Bold lettering arcs across the top: “TO INFINITY
+    AND BEYOND...” with an overly dramatic ellipsis, naturally.'
+  synonyms:
+  - book
+  - comic
+  - magazine
+  category: readable
+  weight: 1.0
+  size: 1
+  is_locked: false
+  properties:
+    has_durability: true
+    is_destroyable: true
+    is_interactive: true
+    is_movable: true
+    is_takeable: true

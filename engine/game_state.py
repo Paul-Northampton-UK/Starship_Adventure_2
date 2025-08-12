@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict, field
 from enum import Enum
 import json
 from datetime import datetime, timedelta
-import logging
+from loguru import logger
 
 class PowerState(Enum):
     """Enum for different power states in the game."""
@@ -197,7 +197,7 @@ class GameState:
         """Get the current runtime state of an object, ensuring it's fully initialized."""
         base_data = self.get_object_by_id(object_id)
         if not base_data:
-            logging.warning(f"get_object_state: Cannot find base data for '{object_id}'. Returning potentially empty state.")
+            logger.warning(f"get_object_state: Cannot find base data for '{object_id}'. Returning potentially empty state.")
             # Ensure at least an empty dict exists in object_states before returning
             return self.object_states.setdefault(object_id, {})
 
@@ -210,21 +210,21 @@ class GameState:
 
         # Check if state exists and is complete
         if current_state is None:
-            logging.debug(f"State for '{object_id}' not found. Will create.")
+            logger.debug(f"State for '{object_id}' not found. Will create.")
             needs_rebuild = True
         else:
             # Check for missing essential components
             if is_lockable and "lock_details" not in current_state:
-                logging.warning(f"State for lockable object '{object_id}' exists but missing 'lock_details'. Rebuilding.")
+                logger.warning(f"State for lockable object '{object_id}' exists but missing 'lock_details'. Rebuilding.")
                 needs_rebuild = True
             if is_container and "contains" not in current_state:
-                logging.warning(f"State for container object '{object_id}' exists but missing 'contains'. Rebuilding.")
+                logger.warning(f"State for container object '{object_id}' exists but missing 'contains'. Rebuilding.")
                 needs_rebuild = True
             # Add checks for other essential state keys if needed
 
         # Build/Rebuild state if necessary
         if needs_rebuild:
-            logging.debug(f"Building/Rebuilding state for '{object_id}'.")
+            logger.debug(f"Building/Rebuilding state for '{object_id}'.")
             new_state = {}
 
             # Priority 1: Preserve simple existing state values from current_state
@@ -234,7 +234,7 @@ class GameState:
                 for key, value in current_state.items():
                     if key not in ["lock_details", "contains"]: # Don't blindly copy complex structures
                         new_state[key] = value
-                logging.debug(f" > Preserved simple keys from current_state: {new_state}")
+                logger.debug(f" > Preserved simple keys from current_state: {new_state}")
 
             # Priority 2: Initialize/Rebuild complex components if missing or explicitly needed.
             # Initialize lock details if not already preserved or if base_data dictates a structure
@@ -248,18 +248,23 @@ class GameState:
                 if 'locked' not in lock_init and base_data.get("lock_type"):
                     lock_init['locked'] = base_data.get("is_locked", False) # Default to False if is_locked missing in base_data
 
+                # Ensure lock_type from base_data is present if not in lock_init (and base_data has it)
+                # This handles cases where lock_details might exist from save but lacks 'type'
+                # or where lock_details is being built fresh.
+                if 'type' not in lock_init and base_data.get("lock_type"):
+                    lock_init['type'] = base_data.get("lock_type")
+                
+                # Ensure lock_key_id from base_data is present if not in lock_init (and base_data has it)
                 if 'key_id' not in lock_init and base_data.get("lock_key_id"):
                     lock_init['key_id'] = base_data.get("lock_key_id")
                 
-                if 'type' not in lock_init and base_data.get("lock_type"): # Store the lock type
-                    lock_init['type'] = base_data.get("lock_type")
-
-                # Clean up None values that might have been added by base_data.get() if the keys existed but were null
-                if lock_init.get("key_id") is None: lock_init.pop("key_id", None)
-                # No need to pop 'type' or 'locked' if None, as they can be validly None/False.
+                # Clean up key_id if it ended up as None after the above (e.g. base_data.get returned None)
+                # This ensures we don't store {'key_id': null} if it wasn't actually defined.
+                if lock_init.get('key_id') is None:
+                    lock_init.pop('key_id', None)
 
                 new_state["lock_details"] = lock_init
-                logging.debug(f" > Initialized/Rebuilt lock_details for '{object_id}': {lock_init}")
+                logger.debug(f" > Initialized/Rebuilt lock_details for '{object_id}': {lock_init}")
 
             # Initialize container contents if not already preserved or if base_data dictates
             if is_container and "contains" not in new_state: # Check new_state
@@ -274,30 +279,30 @@ class GameState:
                 if initial_items is None:
                     initial_items = []
                     log_source = log_source if log_source.endswith("None") else (log_source + "->default_empty")
-                new_state["contains"] = list(initial_items)
-                logging.debug(f" > Initialized/Rebuilt contains for '{object_id}': {new_state['contains']} (Source: {log_source})")
+                new_state["contains"] = list(initial_items) # Ensure it's a list copy
+                logger.debug(f" > Initialized/Rebuilt contains for '{object_id}': {new_state['contains']} (Source: {log_source})")
             
             # Priority 3: Initialize simple properties from base_data IF NOT ALREADY in new_state (i.e., not preserved from current_state)
             if "is_open" in base_data and "is_open" not in new_state:
                 new_state["is_open"] = base_data["is_open"]
-                logging.debug(f" > Initialized is_open for '{object_id}' from base_data (was not in current_state): {new_state['is_open']}")
+                logger.debug(f" > Initialized is_open for '{object_id}' from base_data (was not in current_state): {new_state['is_open']}")
             
             # Example for 'is_visible' (if you want it to default from base_data if not in current_state)
             # This is important for items that might not have had state before but have an initial_state in YAML.
             if "initial_state" in base_data and "is_visible" not in new_state: # 'initial_state' in YAML often means 'is_visible'
                  new_state["is_visible"] = base_data["initial_state"]
-                 logging.debug(f" > Initialized is_visible for '{object_id}' from base_data.initial_state (was not in current_state): {new_state['is_visible']}")
+                 logger.debug(f" > Initialized is_visible for '{object_id}' from base_data.initial_state (was not in current_state): {new_state['is_visible']}")
             elif "is_visible" in base_data and "is_visible" not in new_state: # Direct 'is_visible' in YAML
                  new_state["is_visible"] = base_data["is_visible"]
-                 logging.debug(f" > Initialized is_visible for '{object_id}' from base_data.is_visible (was not in current_state): {new_state['is_visible']}")
+                 logger.debug(f" > Initialized is_visible for '{object_id}' from base_data.is_visible (was not in current_state): {new_state['is_visible']}")
 
             # Replace the old state (or add the new one)
             self.object_states[object_id] = new_state
-            logging.debug(f"Final rebuilt state for '{object_id}': {self.object_states[object_id]}")
+            logger.debug(f"Final rebuilt state for '{object_id}': {self.object_states[object_id]}")
             return new_state # Return the newly built state
         else:
             # State exists and is considered complete
-            logging.debug(f"State for '{object_id}' exists and seems complete. Returning: {current_state}")
+            logger.debug(f"State for '{object_id}' exists and seems complete. Returning: {current_state}")
             return current_state
 
     def set_object_state(self, object_id: str, state_key: str, value: Any) -> None:
@@ -308,12 +313,12 @@ class GameState:
 
         # Check if the state dict exists after the call
         if object_id not in self.object_states or not isinstance(self.object_states[object_id], dict):
-             logging.error(f"set_object_state: Failed to get/initialize state dict for '{object_id}' via get_object_state. Cannot set key '{state_key}'.")
+             logger.error(f"set_object_state: Failed to get/initialize state dict for '{object_id}' via get_object_state. Cannot set key '{state_key}'.")
              return
 
         # Set the specific key in the object's state dictionary
         self.object_states[object_id][state_key] = value
-        logging.debug(f"Updated object state for '{object_id}': Set '{state_key}' = {value}")
+        logger.debug(f"Updated object state for '{object_id}': Set '{state_key}' = {value}")
 
     def update_object_lock_state(self, object_id: str, locked: bool) -> bool:
         """Updates the 'locked' status within an object's runtime lock_details."""
@@ -326,11 +331,11 @@ class GameState:
             obj_state["lock_details"]["locked"] = locked
             # No need to reassign self.object_states[object_id] = obj_state here, 
             # because obj_state is already the reference to the dictionary within self.object_states.
-            logging.info(f"Updated lock state for '{object_id}': set locked = {locked}. Current State: {self.object_states[object_id]}")
+            logger.info(f"Updated lock state for '{object_id}': set locked = {locked}. Current State: {self.object_states[object_id]}")
             return True
         else:
             # Log the failure with the state that was returned by get_object_state
-            logging.error(f"update_object_lock_state: Cannot update lock state for '{object_id}'. 'lock_details' dict not found in runtime state: {obj_state}")
+            logger.error(f"update_object_lock_state: Cannot update lock state for '{object_id}'. 'lock_details' dict not found in runtime state: {obj_state}")
             return False
 
     def is_object_interacted_with(self, object_id: str) -> bool:
@@ -371,11 +376,11 @@ class GameState:
         """Finds an object ID by name/alias within the specified room or area (partial match allowed),
            considering dynamic visibility."""
         normalized_name = object_name.lower().strip()
-        logging.debug(f"Searching for '{normalized_name}' in location {room_id}/{area_id or 'room'} (visible_only={visible_only})")
+        logger.debug(f"Searching for '{normalized_name}' in location {room_id}/{area_id or 'room'} (visible_only={visible_only})")
 
         current_room_data = self.rooms_data.get(room_id)
         if not current_room_data:
-            logging.error(f"Cannot search location: Room data missing for {room_id}")
+            logger.error(f"Cannot search location: Room data missing for {room_id}")
             return None
 
         potential_ids_in_location: Set[str] = set()
@@ -420,7 +425,7 @@ class GameState:
                 aliases = [s.lower() for s in obj_data.get('synonyms', []) if isinstance(s, str)]
                 if normalized_name == obj_id.lower() or normalized_name == name or normalized_name in aliases:
                     if exact_match_found_id and exact_match_found_id != obj_id:
-                        logging.warning(f"Ambiguous exact object name '{normalized_name}' (Matches: {exact_match_found_id}, {obj_id}) in location {room_id}.")
+                        logger.warning(f"Ambiguous exact object name '{normalized_name}' (Matches: {exact_match_found_id}, {obj_id}) in location {room_id}.")
                         return None # Ambiguity
                     exact_match_found_id = obj_id
         
@@ -446,7 +451,7 @@ class GameState:
         if len(partial_match_ids) == 1:
             return partial_match_ids[0]
         elif len(partial_match_ids) > 1:
-            logging.warning(f"Ambiguous partial object name '{normalized_name}' (Matches: {partial_match_ids}) in location {room_id}.")
+            logger.warning(f"Ambiguous partial object name '{normalized_name}' (Matches: {partial_match_ids}) in location {room_id}.")
             return None # Ambiguity
             
         return None
@@ -454,7 +459,7 @@ class GameState:
     def _find_object_id_by_name_in_inventory(self, item_name_or_id: str) -> Optional[str]:
         """Finds the object ID in inventory by name, alias, or ID (partial match allowed)."""
         normalized_name = item_name_or_id.lower().strip()
-        logging.debug(f"Searching base inventory for '{normalized_name}'. Inventory: {self.inventory}")
+        logger.debug(f"Searching base inventory for '{normalized_name}'. Inventory: {self.inventory}")
         
         exact_match = None
         partial_matches = []
@@ -468,7 +473,7 @@ class GameState:
             aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
             if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
                 if exact_match and exact_match != object_id:
-                    logging.warning(f"Ambiguous exact item name '{normalized_name}' found in inventory (Matches: {exact_match}, {object_id}).")
+                    logger.warning(f"Ambiguous exact item name '{normalized_name}' found in inventory (Matches: {exact_match}, {object_id}).")
                     return None
                 exact_match = object_id
                 
@@ -486,19 +491,19 @@ class GameState:
                      partial_matches.append(object_id)
                      
         if len(partial_matches) == 1:
-             logging.debug(f"Found unique partial match in inventory: {partial_matches[0]}")
+             logger.debug(f"Found unique partial match in inventory: {partial_matches[0]}")
              return partial_matches[0]
         elif len(partial_matches) > 1:
-             logging.warning(f"Ambiguous partial item name '{normalized_name}' found in inventory (Matches: {partial_matches}).")
+             logger.warning(f"Ambiguous partial item name '{normalized_name}' found in inventory (Matches: {partial_matches}).")
              return None
              
-        logging.debug(f"Item '{normalized_name}' not found in inventory (exact or partial).")
+        logger.debug(f"Item '{normalized_name}' not found in inventory (exact or partial).")
         return None
 
     def _find_object_id_by_name_worn(self, item_name_or_id: str) -> Optional[str]:
         """Finds the object ID of a directly worn item by name, alias, or ID (partial match allowed)."""
         normalized_name = item_name_or_id.lower().strip()
-        logging.debug(f"Searching directly worn items for '{normalized_name}'. Worn list: {self.worn_items}")
+        logger.debug(f"Searching directly worn items for '{normalized_name}'. Worn list: {self.worn_items}")
         
         exact_match = None
         partial_matches = []
@@ -512,7 +517,7 @@ class GameState:
             aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
             if normalized_name == object_id.lower() or normalized_name == name or normalized_name in aliases:
                  if exact_match and exact_match != object_id:
-                     logging.warning(f"Ambiguous exact item name '{normalized_name}' found in worn items (Matches: {exact_match}, {object_id}).")
+                     logger.warning(f"Ambiguous exact item name '{normalized_name}' found in worn items (Matches: {exact_match}, {object_id}).")
                      return None
                  exact_match = object_id
                  
@@ -530,42 +535,42 @@ class GameState:
                       partial_matches.append(object_id)
                       
         if len(partial_matches) == 1:
-              logging.debug(f"Found unique partial match in worn items: {partial_matches[0]}")
+              logger.debug(f"Found unique partial match in worn items: {partial_matches[0]}")
               return partial_matches[0]
         elif len(partial_matches) > 1:
-              logging.warning(f"Ambiguous partial item name '{normalized_name}' found in worn items (Matches: {partial_matches}).")
+              logger.warning(f"Ambiguous partial item name '{normalized_name}' found in worn items (Matches: {partial_matches}).")
               return None
               
-        logging.debug(f"Item '{normalized_name}' not found directly worn (exact or partial).")
+        logger.debug(f"Item '{normalized_name}' not found directly worn (exact or partial).")
         return None
 
     def find_item_id_held_or_worn(self, item_name_or_id: str) -> Optional[str]:
         """Finds an item ID by name/alias/ID in hands, directly worn, or inside worn containers."""
         normalized_name = item_name_or_id.lower().strip()
-        logging.debug(f"Searching for item '{normalized_name}' in hands, worn, and inside worn containers.")
+        logger.debug(f"Searching for item '{normalized_name}' in hands, worn, and inside worn containers.")
 
         # 1. Search hand slot
-        logging.debug(f"Checking hand slot: {self.hand_slot}")
+        logger.debug(f"Checking hand slot: {self.hand_slot}")
         for held_id in self.hand_slot:
              item_data = self.get_object_by_id(held_id)
              if not item_data:
-                 logging.warning(f"Hand slot item ID '{held_id}' not found in objects data during find item search.")
+                 logger.warning(f"Hand slot item ID '{held_id}' not found in objects data during find item search.")
                  continue
              name = item_data.get('name', '').lower()
              # CHANGED: Use 'synonyms' instead of 'command_aliases'
              aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
              if normalized_name == held_id.lower() or normalized_name == name or normalized_name in aliases:
-                 logging.debug(f"Found item '{normalized_name}' (ID: {held_id}) in hand slot.")
+                 logger.debug(f"Found item '{normalized_name}' (ID: {held_id}) in hand slot.")
                  return held_id # Found in hand
         
         # 2. Search directly worn items (using the helper)
         found_id = self._find_object_id_by_name_worn(normalized_name)
         if found_id:
-            logging.debug(f"Found item '{normalized_name}' (ID: {found_id}) directly worn.")
+            logger.debug(f"Found item '{normalized_name}' (ID: {found_id}) directly worn.")
             return found_id
 
         # 3. Search inside worn containers
-        logging.debug(f"Checking inside worn containers. Worn list: {self.worn_items}")
+        logger.debug(f"Checking inside worn containers. Worn list: {self.worn_items}")
         for worn_container_id in self.worn_items:
             container_data = self.get_object_by_id(worn_container_id)
             # Check if this worn item IS a container
@@ -575,19 +580,19 @@ class GameState:
             # Get the container's current state (its contents)
             container_state = self.get_object_state(worn_container_id) # Use state method
             contained_item_ids = container_state.get('contains', [])
-            logging.debug(f"Checking inside worn container '{worn_container_id}' ({container_data.get('name', '')}). Contains: {contained_item_ids}")
+            logger.debug(f"Checking inside worn container '{worn_container_id}' ({container_data.get('name', '')}). Contains: {contained_item_ids}")
             
             if isinstance(contained_item_ids, list):
                  for item_id_inside in contained_item_ids:
                      item_data = self.get_object_by_id(item_id_inside)
                      if not item_data:
-                         logging.warning(f"Item ID '{item_id_inside}' inside container '{worn_container_id}' not found in objects data.")
+                         logger.warning(f"Item ID '{item_id_inside}' inside container '{worn_container_id}' not found in objects data.")
                          continue
                      name = item_data.get('name', '').lower()
                      # CHANGED: Use 'synonyms' instead of 'command_aliases'
                      aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
                      if normalized_name == item_id_inside.lower() or normalized_name == name or normalized_name in aliases:
-                         logging.debug(f"Found item '{normalized_name}' (ID: {item_id_inside}) inside worn container '{worn_container_id}'.")
+                         logger.debug(f"Found item '{normalized_name}' (ID: {item_id_inside}) inside worn container '{worn_container_id}'.")
                          # Potential ambiguity: If multiple containers have the same item?
                          # For now, return the first match found.
                          return item_id_inside 
@@ -595,29 +600,29 @@ class GameState:
         # 4. Optional: Search base inventory as last resort? (Decide if keys can be loose)
         # found_id = self._find_object_id_by_name_in_inventory(normalized_name)
         # if found_id:
-        #     logging.debug(f"Found item '{normalized_name}' (ID: {found_id}) in base inventory as fallback.")
+        #     logger.debug(f"Found item '{normalized_name}' (ID: {found_id}) in base inventory as fallback.")
         #     return found_id
 
-        logging.debug(f"Item '{normalized_name}' not found in hands, worn, or inside worn containers.")
+        logger.debug(f"Item '{normalized_name}' not found in hands, worn, or inside worn containers.")
         return None
 
     def find_container_id_by_name(self, container_name: str) -> Optional[str]:
         """Finds a container object ID by name/alias, searching location, hand slot, and worn items."""
         normalized_name = container_name.lower().strip()
-        logging.debug(f"Searching for container '{normalized_name}' in location, hand slot, and worn items.")
+        logger.debug(f"Searching for container '{normalized_name}' in location, hand slot, and worn items.")
 
         # 1. Search current location (room/area)
         found_id = self.find_object_id_by_name_in_location(normalized_name, self.current_room_id, self.current_area_id)
         if found_id:
             obj_data = self.get_object_by_id(found_id)
             if obj_data and obj_data.get('properties', {}).get('is_storage'):
-                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in location.")
+                 logger.debug(f"Found container '{normalized_name}' (ID: {found_id}) in location.")
                  return found_id
             else:
-                 logging.debug(f"Found object '{normalized_name}' (ID: {found_id}) in location, but it is not a container.")
+                 logger.debug(f"Found object '{normalized_name}' (ID: {found_id}) in location, but it is not a container.")
 
         # 2. Search hand slot
-        logging.debug(f"Searching hand slot for container '{normalized_name}'. Hand slot: {self.hand_slot}")
+        logger.debug(f"Searching hand slot for container '{normalized_name}'. Hand slot: {self.hand_slot}")
         for held_id in self.hand_slot:
              item_data = self.get_object_by_id(held_id)
              if not item_data or not item_data.get('properties', {}).get('is_storage'):
@@ -626,7 +631,7 @@ class GameState:
              # CHANGED: Use 'synonyms' instead of 'command_aliases'
              aliases = [s.lower() for s in item_data.get('synonyms', []) if isinstance(s, str)]
              if normalized_name == held_id.lower() or normalized_name == name or normalized_name in aliases:
-                 logging.debug(f"Found container '{normalized_name}' (ID: {held_id}) in hand slot.")
+                 logger.debug(f"Found container '{normalized_name}' (ID: {held_id}) in hand slot.")
                  return held_id
 
         # 3. Search worn items (using the helper)
@@ -634,33 +639,33 @@ class GameState:
         if found_id:
             obj_data = self.get_object_by_id(found_id)
             if obj_data and obj_data.get('properties', {}).get('is_storage'):
-                 logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) worn.")
+                 logger.debug(f"Found container '{normalized_name}' (ID: {found_id}) worn.")
                  return found_id
             else:
-                 logging.debug(f"Found object '{normalized_name}' (ID: {found_id}) worn, but it is not a container.")
+                 logger.debug(f"Found object '{normalized_name}' (ID: {found_id}) worn, but it is not a container.")
 
         # 4. Optional: Search inventory? (If containers can be loose in inventory)
         # found_id = self._find_object_id_by_name_in_inventory(normalized_name)
         # if found_id:
         #    obj_data = self.get_object_by_id(found_id)
         #    if obj_data and obj_data.get('properties', {}).get('is_storage'):
-        #        logging.debug(f"Found container '{normalized_name}' (ID: {found_id}) in inventory as fallback.")
+        #        logger.debug(f"Found container '{normalized_name}' (ID: {found_id}) in inventory as fallback.")
         #        return found_id
 
-        logging.debug(f"Container '{normalized_name}' not found in location, hand slot, or worn items.")
+        logger.debug(f"Container '{normalized_name}' not found in location, hand slot, or worn items.")
         return None
 
     def take_object(self, object_id: str) -> str:
         """Moves an object from its current location (room or container) into the player's hand_slot."""
-        logging.debug(f"[take_object] Attempting to take object ID: {object_id}")
+        logger.debug(f"[take_object] Attempting to take object ID: {object_id}")
         # Ensure the object is 'takeable' based on its properties
         obj_data = self.get_object_by_id(object_id)
         if not obj_data:
-            logging.error(f"[take_object] No base data found for {object_id}.")
+            logger.error(f"[take_object] No base data found for {object_id}.")
             return "You can't find that item to take."
 
         if not obj_data.get("properties", {}).get("is_takeable", False):
-            logging.warning(f"[take_object] Attempt to take non-takeable item {object_id} denied by properties.")
+            logger.warning(f"[take_object] Attempt to take non-takeable item {object_id} denied by properties.")
             return f"You cannot take the {obj_data.get('name', object_id)}."
 
         item_taken_from_container_id: Optional[str] = None
@@ -669,7 +674,7 @@ class GameState:
         # MODIFICATION START: Changed to use the new get_containers_in_location method parameters
         open_visible_containers_ids = self.get_containers_in_location(must_be_open=True, must_be_visible=True)
         # MODIFICATION END
-        logging.debug(f"[take_object] Checking open visible containers in location: {open_visible_containers_ids}")
+        logger.debug(f"[take_object] Checking open visible containers in location: {open_visible_containers_ids}")
 
         for container_id_check in open_visible_containers_ids:
             container_state = self.get_object_state(container_id_check)
@@ -678,16 +683,16 @@ class GameState:
                 # Ensure the item *itself* is visible within that container (if such a state exists)
                 item_state_in_container = self.get_object_state(object_id)
                 if item_state_in_container.get("is_visible", True): # Default to true if no specific visibility for item itself
-                    logging.info(f"[take_object] Item '{object_id}' found in open container '{container_id_check}'. Removing.")
+                    logger.info(f"[take_object] Item '{object_id}' found in open container '{container_id_check}'. Removing.")
                     current_contents = list(container_state.get("contains", []))
                     if object_id in current_contents:
                         current_contents.remove(object_id)
                         self.object_states[container_id_check]["contains"] = current_contents # Directly update state
                         item_taken_from_container_id = container_id_check
-                        logging.debug(f"[take_object] Updated container '{container_id_check}' contents: {current_contents}")
+                        logger.debug(f"[take_object] Updated container '{container_id_check}' contents: {current_contents}")
                         break 
                 else:
-                    logging.debug(f"[take_object] Item '{object_id}' is in open container '{container_id_check}' but item's state is not visible.")
+                    logger.debug(f"[take_object] Item '{object_id}' is in open container '{container_id_check}' but item's state is not visible.")
         
         # If not taken from a container, try removing from the room's general list
         if not item_taken_from_container_id:
@@ -702,16 +707,17 @@ class GameState:
                 if obj_state.get('is_visible', False) and not self.is_object_statically_in_room(object_id, self.current_room_id):
                     # If it was dynamically visible and not static, its removal is essentially making it not part of the room anymore.
                     # self.set_object_state(object_id, "is_visible", False) # No, taking it makes it possessed, not invisible in room
-                    logging.debug(f"[take_object] Taking dynamically visible item '{object_id}' not found in a container or static/dynamic room lists.")
+                    logger.debug(f"[take_object] Taking dynamically visible item '{object_id}' not found in a container or static/dynamic room lists.")
                 else:
-                    logging.warning(f"[take_object] Item '{object_id}' was not taken from a known open container and _remove_object_from_location failed or did not apply. Proceeding based on takeable property.")
+                    logger.warning(f"[take_object] Item '{object_id}' was not taken from a known open container and _remove_object_from_location failed or did not apply. Proceeding based on takeable property.")
         
-        # Add object to hand slot
-        self.hand_slot.append(object_id)
+        # Add object to hand slot (avoid duplicates)
+        if object_id not in self.hand_slot:
+            self.hand_slot.append(object_id)
         # Ensure the taken object itself is marked as visible (if it has such a state key)
         self.set_object_state(object_id, "is_visible", True) 
         object_name = self._get_object_name(object_id)
-        logging.info(f"Player took '{object_id}' ({object_name}) into hand_slot. Source: {'container ' + item_taken_from_container_id if item_taken_from_container_id else 'location'}.")
+        logger.info(f"Player took '{object_id}' ({object_name}) into hand_slot. Source: {'container ' + item_taken_from_container_id if item_taken_from_container_id else 'location'}.")
         return f"You take the {object_name}."
 
     def get_containers_in_location(self, must_be_open: bool = False, must_be_visible: bool = True) -> List[str]:
@@ -725,13 +731,13 @@ class GameState:
         # If must_be_visible is False, we consider all objects in location regardless of their current visibility state.
         object_ids_to_check = self._get_all_object_ids_in_current_location(visible_only=must_be_visible)
         
-        logging.debug(f"[get_containers_in_location] Checking IDs: {object_ids_to_check} (must_be_open={must_be_open}, must_be_visible={must_be_visible})")
+        logger.debug(f"[get_containers_in_location] Checking IDs: {object_ids_to_check} (must_be_open={must_be_open}, must_be_visible={must_be_visible})")
         
         valid_container_ids: List[str] = []
         for obj_id in object_ids_to_check:
             obj_base_data = self.get_object_by_id(obj_id)
             if not obj_base_data:
-                logging.warning(f"[get_containers_in_location] No base data for object ID '{obj_id}'. Skipping.")
+                logger.warning(f"[get_containers_in_location] No base data for object ID '{obj_id}'. Skipping.")
                 continue
 
             # Check if it's a storage container
@@ -752,13 +758,13 @@ class GameState:
             # Check if it needs to be open and if it is
             if must_be_open:
                 if not obj_state.get("is_open", False): # Default to False if is_open not set
-                    logging.debug(f"[get_containers_in_location] Container '{obj_id}' skipped: must_be_open=True, but is_open={obj_state.get('is_open')}")
+                    logger.debug(f"[get_containers_in_location] Container '{obj_id}' skipped: must_be_open=True, but is_open={obj_state.get('is_open')}")
                     continue # Not open, and must be open
 
             valid_container_ids.append(obj_id)
-            logging.debug(f"[get_containers_in_location] Container '{obj_id}' is valid with current criteria.")
+            logger.debug(f"[get_containers_in_location] Container '{obj_id}' is valid with current criteria.")
             
-        logging.debug(f"[get_containers_in_location] Returning valid containers: {valid_container_ids}")
+        logger.debug(f"[get_containers_in_location] Returning valid containers: {valid_container_ids}")
         return valid_container_ids
 
     def _get_all_object_ids_in_current_location(self, visible_only: bool = False) -> Set[str]:
@@ -802,7 +808,7 @@ class GameState:
         for dyn_id in dynamic_ids:
             potential_ids.add(dyn_id)
         
-        # Exclude items currently held, worn, or inside worn containers
+        # Exclude items currently held, worn, or inside containers (worn/held/location)
         items_to_exclude = set(self.hand_slot) | set(self.worn_items) # Start with hands and directly worn
         for worn_item_id in self.worn_items:
             worn_item_data = self.get_object_by_id(worn_item_id)
@@ -815,10 +821,24 @@ class GameState:
                 if isinstance(contained_item_ids, list):
                     for item_id_inside in contained_item_ids:
                         items_to_exclude.add(item_id_inside)
+        # Held containers
+        for held_id in self.hand_slot:
+            held_data = self.get_object_by_id(held_id)
+            if held_data and held_data.get('properties', {}).get('is_storage', False):
+                held_state = self.get_object_state(held_id) or {}
+                for item_id_inside in held_state.get('contains', []) or []:
+                    items_to_exclude.add(item_id_inside)
+        # Containers in current location
+        for loc_obj_id in list(potential_ids):
+            loc_data = self.get_object_by_id(loc_obj_id)
+            if loc_data and loc_data.get('properties', {}).get('is_storage', False):
+                loc_state = self.get_object_state(loc_obj_id) or {}
+                for item_id_inside in loc_state.get('contains', []) or []:
+                    items_to_exclude.add(item_id_inside)
         
-        logging.debug(f"[GameState._get_all_object_ids_in_current_location] Before exclude: {potential_ids}, To exclude: {items_to_exclude}")
+        logger.debug(f"[GameState._get_all_object_ids_in_current_location] Before exclude: {potential_ids}, To exclude: {items_to_exclude}")
         potential_ids -= items_to_exclude
-        logging.debug(f"[GameState._get_all_object_ids_in_current_location] After excluding held/worn/in_worn_container ({items_to_exclude}), potential_ids: {potential_ids}")
+        logger.debug(f"[GameState._get_all_object_ids_in_current_location] After excluding held/worn/in_worn_container ({items_to_exclude}), potential_ids: {potential_ids}")
         
         if not visible_only:
             return potential_ids
@@ -844,7 +864,7 @@ class GameState:
         # Attempt to add the object to the current location FIRST
         added_to_location = self._add_object_to_location(object_id)
         if not added_to_location:
-            logging.error(f"Failed to add '{object_id}' to location {self.current_room_id}/{self.current_area_id} when dropping.")
+            logger.error(f"Failed to add '{object_id}' to location {self.current_room_id}/{self.current_area_id} when dropping.")
             # Keep the item in hand if adding to location fails
             return {"success": False, "message": f"You try to drop the {self._get_object_name(object_id)}, but can't find a place for it here."} 
 
@@ -854,18 +874,18 @@ class GameState:
         
         # Explicitly set the dropped object's state to visible in the room
         self.set_object_state(object_id, "is_visible", True)
-        logging.info(f"Player dropped '{object_id}' ({object_name}) from hand_slot into location. Set is_visible=True.")
+        logger.info(f"Player dropped '{object_id}' ({object_name}) from hand_slot into location. Set is_visible=True.")
         
         return {"success": True, "message": f"You drop the {object_name}."}
 
     def wear_item(self, object_id: str) -> str:
         """Attempts to wear an item from inventory OR hand_slot. Checks rules and conflicts."""
-        logging.debug(f"Attempting to wear item ID: {object_id}")
+        logger.debug(f"Attempting to wear item ID: {object_id}")
         
         # Check 1: Does the object exist?
         item_data = self.get_object_by_id(object_id)
         if not item_data:
-            logging.error(f"wear_item: Cannot find data for object ID: {object_id}")
+            logger.error(f"wear_item: Cannot find data for object ID: {object_id}")
             return "Cannot find data for that item." # Keep generic message for player
             
         item_name = item_data.get("name", object_id) # Use name in messages
@@ -876,7 +896,7 @@ class GameState:
         is_in_inventory = (object_id in self.inventory)
         
         if not is_in_hands and not is_in_inventory:
-             logging.warning(f"wear_item: Item {object_id} ({item_name}) not found in hand_slot or inventory.")
+             logger.warning(f"wear_item: Item {object_id} ({item_name}) not found in hand_slot or inventory.")
              # This message *shouldn't* be reached if _handle_equip works correctly.
              return f"You don't seem to have the {item_name} right now."
 
@@ -889,7 +909,7 @@ class GameState:
         wear_area = props.get('wear_area')
         wear_layer = props.get('wear_layer')
         if not wear_area or wear_layer is None:
-             logging.error(f"wear_item: Item {object_id} ({item_name}) is wearable but missing wear_area or wear_layer.")
+             logger.error(f"wear_item: Item {object_id} ({item_name}) is wearable but missing wear_area or wear_layer.")
              return f"The {item_name} isn't configured correctly for wearing."
              
         # Check 5: Does it conflict with currently worn items?
@@ -910,25 +930,25 @@ class GameState:
         # Remove from original location (hand or inventory)
         if is_in_hands:
             self.hand_slot.remove(object_id)
-            logging.info(f"Item '{object_id}' ({item_name}) removed from hand_slot.")
+            logger.info(f"Item '{object_id}' ({item_name}) removed from hand_slot.")
         elif is_in_inventory:
             self.inventory.remove(object_id)
-            logging.info(f"Item '{object_id}' ({item_name}) removed from inventory.")
+            logger.info(f"Item '{object_id}' ({item_name}) removed from inventory.")
             
         # Add to worn items
         self.worn_items.append(object_id)
-        logging.info(f"Item '{object_id}' ({item_name}) added to worn_items.")
+        logger.info(f"Item '{object_id}' ({item_name}) added to worn_items.")
         
         return f"You put on the {item_name}."
 
     def wear_item_from_container(self, item_id_to_wear: str, container_id: str) -> str:
         """Attempts to wear an item directly from a container's storage."""
-        logging.debug(f"Attempting to wear item '{item_id_to_wear}' from container '{container_id}'")
+        logger.debug(f"Attempting to wear item '{item_id_to_wear}' from container '{container_id}'")
 
         # Check 1: Does the item exist?
         item_data = self.get_object_by_id(item_id_to_wear)
         if not item_data:
-            logging.error(f"wear_item_from_container: Cannot find data for item ID: {item_id_to_wear}")
+            logger.error(f"wear_item_from_container: Cannot find data for item ID: {item_id_to_wear}")
             return "Cannot find data for that item."
         item_name = item_data.get("name", item_id_to_wear)
 
@@ -936,13 +956,13 @@ class GameState:
         container_data = self.get_object_by_id(container_id)
         container_state = self.get_object_state(container_id)
         if not container_data or not container_state or 'contains' not in container_state:
-            logging.error(f"wear_item_from_container: Container '{container_id}' data or state ('contains') missing.")
+            logger.error(f"wear_item_from_container: Container '{container_id}' data or state ('contains') missing.")
             return "Cannot access the container properly."
         container_name = container_data.get("name", container_id)
 
         # Check 3: Is the item actually in the container state?
         if item_id_to_wear not in container_state.get('contains', []): # Check state's list
-            logging.warning(f"wear_item_from_container: Item '{item_id_to_wear}' not found in container '{container_id}' state: {container_state.get('contains', [])}")
+            logger.warning(f"wear_item_from_container: Item '{item_id_to_wear}' not found in container '{container_id}' state: {container_state.get('contains', [])}")
             return f"You don't seem to have the {item_name} in the {container_name}."
         
         # Check 4: Is it wearable?
@@ -954,7 +974,7 @@ class GameState:
         wear_area = props.get('wear_area')
         wear_layer = props.get('wear_layer')
         if not wear_area or wear_layer is None:
-             logging.error(f"wear_item_from_container: Item {item_id_to_wear} ({item_name}) is wearable but missing wear_area or wear_layer.")
+             logger.error(f"wear_item_from_container: Item {item_id_to_wear} ({item_name}) is wearable but missing wear_area or wear_layer.")
              return f"The {item_name} isn't configured correctly for wearing."
              
         # Check 6: Does it conflict with currently worn items?
@@ -978,14 +998,14 @@ class GameState:
             current_contents.remove(item_id_to_wear)
             # Update the state using set_object_state 
             self.set_object_state(container_id, 'contains', current_contents) 
-            logging.info(f"Item '{item_id_to_wear}' ({item_name}) removed from container '{container_id}' ({container_name}).")
+            logger.info(f"Item '{item_id_to_wear}' ({item_name}) removed from container '{container_id}' ({container_name}).")
         except ValueError:
-            logging.error(f"wear_item_from_container: Failed to remove '{item_id_to_wear}' from container '{container_id}' state after check.")
+            logger.error(f"wear_item_from_container: Failed to remove '{item_id_to_wear}' from container '{container_id}' state after check.")
             return f"Something went wrong trying to take the {item_name} from the {container_name}."
             
         # Add to worn items
         self.worn_items.append(item_id_to_wear)
-        logging.info(f"Item '{item_id_to_wear}' ({item_name}) added to worn_items.")
+        logger.info(f"Item '{item_id_to_wear}' ({item_name}) added to worn_items.")
         
         return f"You take the {item_name} from the {container_name} and put it on."
 
@@ -1016,14 +1036,14 @@ class GameState:
         # Add to hand_slot list
         self.hand_slot.append(object_id)
         
-        logging.info(f"Item '{object_id}' ({item_name}) moved from worn_items to hand_slot.")
+        logger.info(f"Item '{object_id}' ({item_name}) moved from worn_items to hand_slot.")
         return f"You take off the {item_name} and hold it."
 
     def _add_object_to_location(self, object_id: str) -> bool:
         """Adds an object ID to the current room or area's object list."""
         room_data = self.rooms_data.get(self.current_room_id)
         if not room_data:
-            logging.error(f"_add_object_to_location: Cannot find room data for {self.current_room_id}")
+            logger.error(f"_add_object_to_location: Cannot find room data for {self.current_room_id}")
             return False
 
         target_list_key = ""
@@ -1034,7 +1054,7 @@ class GameState:
             # Add to area's objects_present list
             areas = room_data.get("areas")
             if not isinstance(areas, list):
-                logging.error(f"_add_object_to_location: Room {self.current_room_id} 'areas' is not a list.")
+                logger.error(f"_add_object_to_location: Room {self.current_room_id} 'areas' is not a list.")
                 return False
             
             found_area = False
@@ -1046,7 +1066,7 @@ class GameState:
                     found_area = True
                     break
             if not found_area:
-                logging.error(f"_add_object_to_location: Cannot find area {self.current_area_id} in room {self.current_room_id}.")
+                logger.error(f"_add_object_to_location: Cannot find area {self.current_area_id} in room {self.current_room_id}.")
                 return False
         else:
             # Add to room's objects_present
@@ -1062,19 +1082,19 @@ class GameState:
         # Add the object ID (as string) if not already present
         if object_id not in target_list and not any(isinstance(item, dict) and item.get('id') == object_id for item in target_list):
             target_list.append(object_id) # Append simple string ID
-            logging.debug(f"Added '{object_id}' to {target_list_key} in {self.current_area_id or self.current_room_id}")
+            logger.debug(f"Added '{object_id}' to {target_list_key} in {self.current_area_id or self.current_room_id}")
             # We might need to update the original rooms_data structure if areas list was modified
             # If we added to an area list directly from the iterated area_data, it should be reflected.
             return True
         else:
-             logging.warning(f"Object '{object_id}' already present in {target_list_key} for {self.current_area_id or self.current_room_id}.")
+             logger.warning(f"Object '{object_id}' already present in {target_list_key} for {self.current_area_id or self.current_room_id}.")
              return False # Or True if adding duplicates is acceptable?
 
     def _remove_object_from_location(self, object_id: str) -> bool:
         """Removes an object ID from the current room or area's object list."""
         room_data = self.rooms_data.get(self.current_room_id)
         if not room_data:
-            logging.error(f"_remove_object_from_location: Cannot find room data for {self.current_room_id}")
+            logger.error(f"_remove_object_from_location: Cannot find room data for {self.current_room_id}")
             return False
 
         target_list_key = ""
@@ -1085,7 +1105,7 @@ class GameState:
             # Remove from area's objects_present list
             areas = room_data.get("areas")
             if not isinstance(areas, list):
-                logging.error(f"_remove_object_from_location: Room {self.current_room_id} 'areas' is not a list.")
+                logger.error(f"_remove_object_from_location: Room {self.current_room_id} 'areas' is not a list.")
                 return False
                 
             found_area = False
@@ -1097,7 +1117,7 @@ class GameState:
                      found_area = True
                      break
             if not found_area:
-                 logging.error(f"_remove_object_from_location: Cannot find area {self.current_area_id} in room {self.current_room_id}.")
+                 logger.error(f"_remove_object_from_location: Cannot find area {self.current_area_id} in room {self.current_room_id}.")
                  return False
         else:
             # Remove from room's objects_present
@@ -1106,7 +1126,7 @@ class GameState:
 
         # Check if the list exists and is a list
         if target_list_key not in target_list_container or not isinstance(target_list_container[target_list_key], list):
-             logging.warning(f"_remove_object_from_location: List '{target_list_key}' not found or not a list in {self.current_area_id or self.current_room_id}.")
+             logger.warning(f"_remove_object_from_location: List '{target_list_key}' not found or not a list in {self.current_area_id or self.current_room_id}.")
              return False
 
         target_list = target_list_container[target_list_key]
@@ -1120,10 +1140,10 @@ class GameState:
         if len(new_list) < original_length:
             # Update the list in the container
             target_list_container[target_list_key] = new_list
-            logging.debug(f"Removed '{object_id}' from static list '{target_list_key}' in {self.current_area_id or self.current_room_id}")
+            logger.debug(f"Removed '{object_id}' from static list '{target_list_key}' in {self.current_area_id or self.current_room_id}")
             item_was_in_static_list = True
         else:
-            logging.debug(f"Object '{object_id}' was not found in static list '{target_list_key}' for {self.current_area_id or self.current_room_id}. (This is okay for dynamically visible items)")
+            logger.debug(f"Object '{object_id}' was not found in static list '{target_list_key}' for {self.current_area_id or self.current_room_id}. (This is okay for dynamically visible items)")
             item_was_in_static_list = False # Ensure this is false if not found in static list
 
         # --- BEGIN MODIFICATION for dynamic objects ---
@@ -1132,14 +1152,14 @@ class GameState:
            object_id in self.dynamic_room_objects[self.current_room_id]:
             try:
                 self.dynamic_room_objects[self.current_room_id].remove(object_id)
-                logging.debug(f"Removed '{object_id}' from dynamic_room_objects for room '{self.current_room_id}'.")
+                logger.debug(f"Removed '{object_id}' from dynamic_room_objects for room '{self.current_room_id}'.")
                 item_was_in_dynamic_list = True
                 if not self.dynamic_room_objects[self.current_room_id]: # If list is now empty
                     del self.dynamic_room_objects[self.current_room_id]
-                    logging.debug(f"Dynamic object list for room '{self.current_room_id}' is now empty and removed.")
+                    logger.debug(f"Dynamic object list for room '{self.current_room_id}' is now empty and removed.")
             except ValueError:
                 # This case should ideally not be hit if the check `object_id in list` was True
-                logging.warning(f"Attempted to remove '{object_id}' from dynamic list of '{self.current_room_id}', but it was not found (race condition?).")
+                logger.warning(f"Attempted to remove '{object_id}' from dynamic list of '{self.current_room_id}', but it was not found (race condition?).")
         # --- END MODIFICATION ---
 
         # If the object is native to this room (has initial_room_id set to current_room_id)
@@ -1148,12 +1168,12 @@ class GameState:
             # This object is intrinsically part of the room's definition, even if taken.
             # We set its visibility to False here to signify it's no longer 'visible loose in the room'
             # The 'take_object' method will separately handle making it visible in the player's hand.
-            logging.debug(f"Marking native object '{object_id}' as not visible in room '{self.current_room_id}' after being taken/removed from lists.")
+            logger.debug(f"Marking native object '{object_id}' as not visible in room '{self.current_room_id}' after being taken/removed from lists.")
             self.set_object_state(object_id, "is_visible", False)
         elif item_was_in_static_list or item_was_in_dynamic_list:
             # If it was in the static or dynamic list and removed, its "presence" in the room is gone.
             # The 'take_object' or 'drop_object' methods will manage the object's specific 'is_visible' state.
-            logging.debug(f"Object '{object_id}' removed from static or dynamic lists for room '{self.current_room_id}'. Its visibility is managed by take/drop.")
+            logger.debug(f"Object '{object_id}' removed from static or dynamic lists for room '{self.current_room_id}'. Its visibility is managed by take/drop.")
 
         # The operation is considered successful if it was removed from static list OR dynamic list.
         return item_was_in_static_list or item_was_in_dynamic_list
@@ -1194,8 +1214,8 @@ class GameState:
             # This check might be redundant if callers already do it, but good for safety.
             if not self.is_object_statically_in_room(object_id, room_id):
                  self.dynamic_room_objects[room_id].append(object_id) # <-- APPEND STRING ID
-                 logging.debug(f"[GameState] Added dynamic object '{object_id}' to room '{room_id}'.")
+                 logger.debug(f"[GameState] Added dynamic object '{object_id}' to room '{room_id}'.")
             else:
-                logging.debug(f"[GameState] Object '{object_id}' is static in room '{room_id}', not adding dynamically.")
+                logger.debug(f"[GameState] Object '{object_id}' is static in room '{room_id}', not adding dynamically.")
         else:
-            logging.debug(f"[GameState] Dynamic object '{object_id}' already present in room '{room_id}'.") 
+            logger.debug(f"[GameState] Dynamic object '{object_id}' already present in room '{room_id}'.") 

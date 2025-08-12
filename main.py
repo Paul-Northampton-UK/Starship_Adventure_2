@@ -12,12 +12,26 @@ from pathlib import Path
 # Set up logging
 log_path = Path("logs")
 log_path.mkdir(exist_ok=True)
+
+# Remove default logger to avoid duplicate console output if script is re-run in some envs
+logger.remove()
+
+# File logger - logs everything at DEBUG level and above
 logger.add(
-    "logs/game_{time}.log",
+    log_path / "game_{time}.log",
     rotation="1 day",
     retention="7 days",
+    level="DEBUG",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+    encoding="utf-8"
+)
+
+# Console logger - logs INFO level and above for a cleaner terminal
+logger.add(
+    sys.stderr,
     level="INFO",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}"
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    colorize=True
 )
 
 class Game:

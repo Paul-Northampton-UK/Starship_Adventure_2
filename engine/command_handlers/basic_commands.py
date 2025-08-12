@@ -1,6 +1,6 @@
 """Command handlers for basic game actions like look, inventory, quit."""
 
-import logging
+from loguru import logger
 from typing import Optional, Dict, Any, Tuple, List
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
@@ -23,7 +23,7 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     current_room_id = game_state.current_room_id
     current_area_id = game_state.current_area_id
 
-    logging.debug(f"[handle_look in basic_commands] Target Name: '{target_name}', Target ID from Parser: '{target_object_id_from_parser}'")
+    logger.debug(f"[handle_look in basic_commands] Target Name: '{target_name}', Target ID from Parser: '{target_object_id_from_parser}'")
 
     if not target_name and not target_object_id_from_parser:
         # Look at the current room/area - Force the long description
@@ -41,14 +41,14 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
             if target_object_id_from_parser in game_state.hand_slot:
                 obj_id_for_description = target_object_id_from_parser
                 found_in_source = "hand_slot (by ID)"
-                logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in hand_slot by ID.")
+                logger.debug(f"[handle_look] Found '{target_object_id_from_parser}' in hand_slot by ID.")
             
             # Check worn items by ID
             if not obj_id_for_description:
                 if target_object_id_from_parser in game_state.worn_items: # worn_items is List[str]
                     obj_id_for_description = target_object_id_from_parser
                     found_in_source = "worn_items (by ID)"
-                    logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in worn_items by ID.")
+                    logger.debug(f"[handle_look] Found '{target_object_id_from_parser}' in worn_items by ID.")
 
             # Check location by ID (if not found in hands/worn)
             if not obj_id_for_description:
@@ -58,11 +58,11 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
                 if target_object_id_from_parser in all_visible_in_loc:
                     obj_id_for_description = target_object_id_from_parser
                     found_in_source = "location (by ID)"
-                    logging.debug(f"[handle_look] Found '{target_object_id_from_parser}' in location by ID (was visible).")
+                    logger.debug(f"[handle_look] Found '{target_object_id_from_parser}' in location by ID (was visible).")
         
         # Priority 2: If no ID from parser OR ID not found in hands/worn/location by ID, try finding by name in location.
         if not obj_id_for_description and target_name:
-            logging.debug(f"[handle_look] ID '{target_object_id_from_parser}' not confirmed or no ID from parser. Searching location for name: '{target_name}'")
+            logger.debug(f"[handle_look] ID '{target_object_id_from_parser}' not confirmed or no ID from parser. Searching location for name: '{target_name}'")
             # This is the call that was causing the error
             obj_id_found_in_room_by_name = game_state.find_object_id_by_name_in_location(
                 object_name=target_name,
@@ -73,7 +73,7 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
             if obj_id_found_in_room_by_name:
                 obj_id_for_description = obj_id_found_in_room_by_name
                 found_in_source = "location (by name)"
-                logging.debug(f"[handle_look] Found '{obj_id_for_description}' in location by name '{target_name}'.")
+                logger.debug(f"[handle_look] Found '{obj_id_for_description}' in location by name '{target_name}'.")
 
         # Now, if we have an obj_id_for_description, get its data and format description
         if obj_id_for_description:
@@ -118,15 +118,15 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
                     else:
                         description += " It's empty."
                 
-                logging.debug(f"[handle_look] Describing '{obj_data_to_describe.get('name')}' (ID: {obj_id_for_description}, Found in: {found_in_source}). Desc: {description[:100]}...")
+                logger.debug(f"[handle_look] Describing '{obj_data_to_describe.get('name')}' (ID: {obj_id_for_description}, Found in: {found_in_source}). Desc: {description[:100]}...")
                 return [{'key': "look_success_item", 'data': {"item_name": obj_data_to_describe.get('name', target_name), "description": description}}]
             else:
-                logging.error(f"Look target ID \'{obj_id_for_description}\' (found via {found_in_source} for name \'{target_name}\') but its data is missing.")
+                logger.error(f"Look target ID \'{obj_id_for_description}\' (found via {found_in_source} for name \'{target_name}\') but its data is missing.")
                 return [{'key': "error_internal", 'data': {'action': "look data missing for " + obj_id_for_description}}]
         else:
             # Item not found anywhere
             final_search_term = target_name or target_object_id_from_parser or "something"
-            logging.warning(f"[handle_look] FAILED - Target '{final_search_term}' not found after checking by ID (hands, worn, location) and by name (location).")
+            logger.warning(f"[handle_look] FAILED - Target '{final_search_term}' not found after checking by ID (hands, worn, location) and by name (location).")
             return [{'key': "look_fail_not_found", 'data': {"item_name": final_search_term}}]
 
 def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
@@ -215,6 +215,6 @@ def handle_quit(game_state: GameState, parsed_intent: ParsedIntent) -> None:
 
 def handle_unknown(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
     """Handles unrecognized commands."""
-    logging.info(f"Unknown command received: '{parsed_intent.original_input}'")
+    logger.info(f"Unknown command received: '{parsed_intent.original_input}'")
     # Return List[Dict]
     return [{'key': "invalid_command", 'data': {}}] 

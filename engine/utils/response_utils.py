@@ -1,5 +1,5 @@
 from typing import Dict, Any
-import logging # Added for potential future logging
+from loguru import logger # Changed from logging
 
 def get_response_text(responses_data: Dict[str, Any], response_key: str, **kwargs: Any) -> str:
     """
@@ -18,15 +18,15 @@ def get_response_text(responses_data: Dict[str, Any], response_key: str, **kwarg
     response_template = responses_data.get(response_key)
 
     if response_template is None:
-        logging.warning(f"Response key '{response_key}' not found in responses_data.")
+        logger.warning(f"Response key '{response_key}' not found in responses_data.")
         return f"Response key '{response_key}' not found for default language." # Message matches game_loop.py fallback
 
     try:
         return response_template.format(**kwargs)
     except KeyError as e:
         # This means a placeholder in the template string was not provided in kwargs
-        logging.error(f"Missing placeholder '{str(e)}' in kwargs for response key '{response_key}'. Template: '{response_template}'")
+        logger.error(f"Missing placeholder '{str(e)}' in kwargs for response key '{response_key}'. Template: '{response_template}'")
         return f"Error: Missing data for response '{response_key}'. Placeholder {str(e)} not provided."
     except Exception as e:
-        logging.error(f"Error formatting response for key '{response_key}'. Template: '{response_template}'. Error: {e}")
+        logger.error(f"Error formatting response for key '{response_key}'. Template: '{response_template}'. Error: {e}")
         return f"Error formatting internal response for '{response_key}'." 

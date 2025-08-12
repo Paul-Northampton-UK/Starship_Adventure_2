@@ -1228,29 +1228,20 @@ rooms:
       A compact yet functional cabin, its smooth metallic walls dimly illuminated
       by the emergency lighting
       strips running along the ceiling edges. The air carries a faint metallic scent,
-      sterile yet oddly
-      comforting. A sturdy bed sits against the far wall, with a large foot **locker**
-      positioned at its base.
-      A small **table** beside the bed holds a blinking **tablet** and a colorful
-      **comic** book. A **chair** with
-      a neatly folded **jumpsuit** rests in the corner, while a **backpack** and **boots**
-      lie beside it.
+      sterile yet oddly comforting. A sturdy bed sits against the far wall, with a
+      large
+      foot locker positioned at its base.
 
     main_power: >
       The cabin is now fully illuminated, revealing a clean, well-maintained space.
-      The foot locker's polished
-      surface reflects the bright overhead lighting, and the tablet's screen shines
-      with crisp clarity. The
-      hum of life support and environmental controls creates a soft background noise,
-      making the cabin feel
+      The foot locker's polishedsurface reflects the bright overhead lighting, and
+      the tablet's  screen shines with crisp clarity. The hum of life support and
+      environmental controls creates  a soft background noise,making the cabin feel
       alive and operational.
 
     torch_light: >
       Your torch casts flickering shadows against the metallic walls. The outline
-      of the **bed**, **table**,
-      and **foot locker** emerges in the gloom, while the **tablet's blinking light**
-      reflects faintly in
-      the darkness.
+      of the bed and foot locker emerges in the gloom.
 
   short_description:
     offline: "Total darkness envelops the room."
@@ -1281,10 +1272,10 @@ rooms:
   - id: cab_backpack
   - id: cab_bed
   - id: cab_boots
-  - id: cab_footlocker
   - id: cab_jumpsuit
   # - id: cab_phaser  # Removed as it starts in footlocker
   - id: cab_slippers
+  - id: cab_footlocker
 - room_id: player_cabin_small_kitchen
   name: "Small Kitchen"
   room_count: 13
@@ -1393,6 +1384,7 @@ rooms:
 
   objects_present:
   - id: cab_mirror
+  - id: cabin_book
 - room_id: hidden_maintenance_alcove
   name: "Maintenance Alcove"
   room_count: 15

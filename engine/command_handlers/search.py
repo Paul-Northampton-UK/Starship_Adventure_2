@@ -1,6 +1,6 @@
 """Command handler for searching locations and objects."""
 
-import logging
+from loguru import logger
 from typing import Dict, List, Any # Changed Tuple to Any for data dict
 from ..game_state import GameState
 from ..command_defs import ParsedIntent # CommandResponse removed, random removed
@@ -34,7 +34,7 @@ def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> List[Di
         # If 'search' needs to be area-aware, this logic would need to check game_state.current_area_id
         current_room_objects_refs = current_room_data.get("objects_present", [])
     else:
-        logging.error(f"handle_search: Could not find room data for current_room_id: {game_state.current_room_id}")
+        logger.error(f"handle_search: Could not find room data for current_room_id: {game_state.current_room_id}")
         # Fallback to an empty list, error message will be generated later if obj_data is None
 
     # Ensure current_room_objects is a list of objects with an 'id' attribute for comparison
@@ -69,7 +69,7 @@ def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> List[Di
         keycard_data = game_state.get_object_by_id(keycard_id)
         # Ensure keycard_data exists before proceeding
         if not keycard_data:
-            logging.error(f"[handle_search] Data for '{keycard_id}' not found. Cannot proceed with bed search logic.")
+            logger.error(f"[handle_search] Data for '{keycard_id}' not found. Cannot proceed with bed search logic.")
             # Potentially return a generic search failure or a specific error response
             return [{"key": "SEARCH_EMPTY_GENERIC", "data": {"target_name": target_object_name_player}}]
 
@@ -82,7 +82,7 @@ def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> List[Di
             
             keycard_name = keycard_data.get("name", keycard_id)
             bed_name = target_object_name_player # Use the name the player used or the default name
-            logging.info(f"Object '{keycard_id}' state 'is_visible' set to True after searching '{target_object_id}'. Flag '{keycard_id}_found_in_bed' set.")
+            logger.info(f"Object '{keycard_id}' state 'is_visible' set to True after searching '{target_object_id}'. Flag '{keycard_id}_found_in_bed' set.")
             
             return [{
                 "key": "SEARCH_BED_FINDS_KEYCARD",

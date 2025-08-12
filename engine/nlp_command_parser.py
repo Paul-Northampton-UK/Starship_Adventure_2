@@ -5,7 +5,7 @@ from spacy.pipeline import EntityRuler
 from fuzzywuzzy import fuzz
 from .command_defs import CommandIntent, ParsedIntent
 from .game_state import GameState, PowerState
-import logging
+from loguru import logger
 
 # Import the constants from the new module
 from .nlp.constants import VERB_PATTERNS, INTENT_PRIORITIES, CONTEXT_WORDS
@@ -81,12 +81,12 @@ class NLPCommandParser:
     def initialize_entity_ruler(self) -> None:
         """Initializes the Entity Ruler with custom patterns and adds it to the pipeline."""
         if not self.custom_patterns:
-             logging.warning("No custom patterns defined for Entity Ruler.")
+             logger.warning("No custom patterns defined for Entity Ruler.")
              return
 
         # Check if 'entity_ruler' already exists
         if 'entity_ruler' in self.nlp.pipe_names:
-            logging.warning("Entity Ruler already exists in pipeline. Removing and re-adding.")
+            logger.warning("Entity Ruler already exists in pipeline. Removing and re-adding.")
             self.nlp.remove_pipe('entity_ruler')
             
         # Create the EntityRuler
@@ -96,9 +96,9 @@ class NLPCommandParser:
         try:
              # Add patterns to the ruler
              ruler.add_patterns(self.custom_patterns)
-             logging.info(f"Entity Ruler added to pipeline with {len(self.custom_patterns)} patterns.")
+             logger.info(f"Entity Ruler added to pipeline with {len(self.custom_patterns)} patterns.")
         except Exception as e:
-             logging.error(f"Error adding patterns to Entity Ruler: {e}", exc_info=True)
+             logger.error(f"Error adding patterns to Entity Ruler: {e}", exc_info=True)
 
     def _find_closest_match(self, word: str, threshold: int = 80) -> Optional[str]:
         """Find the closest match for a word from the valid vocabulary using fuzzy matching."""
@@ -138,13 +138,13 @@ class NLPCommandParser:
         }
         if command_lower in single_letter_intents:
             intent = single_letter_intents[command_lower]
-            logging.debug(f"Matched single-letter command '{command_lower}' to intent {intent}")
+            logger.debug(f"Matched single-letter command '{command_lower}' to intent {intent}")
             return ParsedIntent(intent=intent, original_input=command_original_case)
             
         # --- Process with NLP --- 
         doc = self.nlp(command_lower) # Use lowercased version for NLP
-        logging.debug(f"Tokens: {[token.text for token in doc]}")
-        logging.debug(f"Entities: {[(ent.text, ent.label_) for ent in doc.ents]}")
+        logger.debug(f"Tokens: {[token.text for token in doc]}")
+        logger.debug(f"Entities: {[(ent.text, ent.label_) for ent in doc.ents]}")
 
         # --- Prioritize DIRECTION entity for MOVE intent --- 
         parsed_direction: Optional[str] = None
@@ -153,10 +153,10 @@ class NLPCommandParser:
                 # Normalize multi-word/hyphenated directions (e.g., "north west" -> "northwest", "north-west" -> "northwest")
                 direction_text = ent.text
                 normalized_direction = direction_text.replace(' ', '').replace('-', '') # Remove spaces AND hyphens
-                logging.debug(f"Normalized direction entity: '{direction_text}' -> '{normalized_direction}'")
+                logger.debug(f"Normalized direction entity: '{direction_text}' -> '{normalized_direction}'")
                 
                 # !!! ADDED DEBUG LOGGING HERE !!!
-                logging.info(f"PARSER: Found DIRECTION entity '{ent.text}', normalized to '{normalized_direction}', returning MOVE intent.")
+                logger.info(f"PARSER: Found DIRECTION entity '{ent.text}', normalized to '{normalized_direction}', returning MOVE intent.")
 
                 # Found a direction, assume MOVE intent and return immediately
                 return ParsedIntent(
@@ -170,9 +170,9 @@ class NLPCommandParser:
         entities = doc.ents 
         nouns = [token for token in doc if token.pos_ in ["NOUN", "PROPN"]]
         
-        logging.debug(f"Verbs: {[v.text for v in verbs]}")
-        logging.debug(f"Entities: {[(ent.text, ent.label_) for ent in entities]}")
-        logging.debug(f"Nouns: {[n.text for n in nouns]}")
+        logger.debug(f"Verbs: {[v.text for v in verbs]}")
+        logger.debug(f"Entities: {[(ent.text, ent.label_) for ent in entities]}")
+        logger.debug(f"Nouns: {[n.text for n in nouns]}")
 
         # Determine Intent based on verbs, entities, and context
         possible_intents: Dict[CommandIntent, float] = {}
@@ -186,7 +186,7 @@ class NLPCommandParser:
                 if any(form in verb_list for form in token_check_forms):
                     matched_verb_intents.add(intent)
                     possible_intents[intent] = possible_intents.get(intent, 0) + 1.0 * INTENT_PRIORITIES.get(intent, 1)
-        logging.debug(f"Intents matched by verbs/keywords: {matched_verb_intents}")
+        logger.debug(f"Intents matched by verbs/keywords: {matched_verb_intents}")
 
         # --- Entity Analysis --- 
         primary_target: Optional[str] = None
@@ -198,7 +198,7 @@ class NLPCommandParser:
              primary_target = game_object_ents[0].text
              target_object_id = game_object_ents[0].ent_id_ 
              target_type = "GAME_OBJECT"
-             logging.debug(f"Primary target identified as GAME_OBJECT: '{primary_target}' (ID: {target_object_id})")
+             logger.debug(f"Primary target identified as GAME_OBJECT: '{primary_target}' (ID: {target_object_id})")
         else:
             # Fallback: Reconstruct target from nouns/adjectives after the *first* verb/noun-acting-as-verb
             first_action_token_index = -1
@@ -212,10 +212,10 @@ class NLPCommandParser:
                  potential_target_tokens = [token for token in doc if token.i > first_action_token_index and token.pos_ in ["NOUN", "PROPN", "ADJ", "DET"]]
                  if potential_target_tokens:
                       primary_target = " ".join([t.text for t in potential_target_tokens])
-                      logging.debug(f"Primary target guessed from tokens after action word: '{primary_target}'")
+                      logger.debug(f"Primary target guessed from tokens after action word: '{primary_target}'")
             elif nouns: # If no clear action word, just take first noun chunk?
                  primary_target = nouns[0].text 
-                 logging.debug(f"Primary target guessed from first noun: '{primary_target}'")
+                 logger.debug(f"Primary target guessed from first noun: '{primary_target}'")
 
         # --- Intent Scoring Refinement --- 
         # Boost score if target object properties match intent context (e.g., wear + clothing)
@@ -234,10 +234,10 @@ class NLPCommandParser:
         final_intent = CommandIntent.UNKNOWN # Default to UNKNOWN
         if possible_intents: 
             sorted_intents = sorted(possible_intents.items(), key=lambda item: item[1], reverse=True)
-            logging.debug(f"Intent scores: {sorted_intents}")
+            logger.debug(f"Intent scores: {sorted_intents}")
             final_intent = sorted_intents[0][0]
         else:
-            logging.warning("No possible intents identified after verb matching.")
+            logger.warning("No possible intents identified after verb matching.")
             # No fallback to LOOK here, stays UNKNOWN
 
         # --- Extract Action Verb --- 
@@ -251,13 +251,13 @@ class NLPCommandParser:
                  for token in doc:
                      if token.text.lower() in verbs_for_intent:
                          action_verb = token.text.lower()
-                         logging.debug(f"Guessed action verb '{action_verb}' from matched intent keyword.")
+                         logger.debug(f"Guessed action verb '{action_verb}' from matched intent keyword.")
                          break 
 
         # Handle specific cases / overrides
         if final_intent == CommandIntent.MOVE and not parsed_direction: # Move verb but no direction entity
              # Maybe try to extract direction from target? e.g., "go door" -> find door exit dir?
-             logging.warning("MOVE intent determined but no DIRECTION entity found.")
+             logger.warning("MOVE intent determined but no DIRECTION entity found.")
              final_intent = CommandIntent.UNKNOWN # Fallback to unknown if direction unclear
 
         # Correct Drop/Put interpretation
@@ -269,7 +269,7 @@ class NLPCommandParser:
                 has_location_context = any(ent.label_ in ["LOCATION", "CONTAINER"] for ent in entities) 
                 if not has_location_context: 
                     final_intent = CommandIntent.DROP 
-                    logging.debug("Interpreting 'put' as DROP based on context.")
+                    logger.debug("Interpreting 'put' as DROP based on context.")
         
         # Build the final ParsedIntent - Ensure primary_target is included
         return ParsedIntent(

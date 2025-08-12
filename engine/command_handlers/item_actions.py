@@ -1,6 +1,6 @@
 """Command handlers for taking, dropping, and putting items."""
 
-import logging
+from loguru import logger # Changed from logging
 from typing import Tuple, Dict, List, Optional
 from ..game_state import GameState
 from ..command_defs import ParsedIntent
@@ -12,7 +12,7 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     target_object_name = parsed_intent.target
     target_object_id_from_parser = parsed_intent.target_object_id
 
-    logging.debug(f"[handle_take] Attempting to TAKE: Name='{target_object_name}', ParserID='{target_object_id_from_parser}'")
+    logger.debug(f"[handle_take] Attempting to TAKE: Name='{target_object_name}', ParserID='{target_object_id_from_parser}'")
 
     if not target_object_name and not target_object_id_from_parser:
         return [{'key': "take_fail_no_target", 'data': {}}]
@@ -33,7 +33,7 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     # current_area_id = game_state.current_area_id # Not strictly needed for 'take' as items are in rooms/containers
 
     if target_object_id_from_parser:
-        logging.debug(f"[handle_take] Parser provided candidate ID: {target_object_id_from_parser}")
+        logger.debug(f"[handle_take] Parser provided candidate ID: {target_object_id_from_parser}")
         # Validate if this object is actually accessible (visible in room or visible in an open container)
         
         # Check if it's loose in the room and visible
@@ -43,7 +43,7 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         if target_object_id_from_parser in visible_loose_objects:
             candidate_object_id = target_object_id_from_parser
             source_description = "in the room"
-            logging.debug(f"[handle_take] Parser ID {target_object_id_from_parser} confirmed loose and visible in room.")
+            logger.debug(f"[handle_take] Parser ID {target_object_id_from_parser} confirmed loose and visible in room.")
         else:
             # Check if it's in an open, visible container in the current room
             # MODIFICATION: Removed room_id=current_room_id
@@ -61,13 +61,13 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
                         candidate_object_id = target_object_id_from_parser
                         container_name = game_state._get_object_name(container_id) or "container"
                         source_description = f"in the {container_name}"
-                        logging.debug(f"[handle_take] Parser ID {target_object_id_from_parser} confirmed in open container {container_id}.")
+                        logger.debug(f"[handle_take] Parser ID {target_object_id_from_parser} confirmed in open container {container_id}.")
                         break
             if not candidate_object_id:
-                logging.debug(f"[handle_take] Parser ID {target_object_id_from_parser} is not loose in room or in an accessible container.")
+                logger.debug(f"[handle_take] Parser ID {target_object_id_from_parser} is not loose in room or in an accessible container.")
     
     if not candidate_object_id and target_object_name: # If parser ID didn't work out or wasn't provided, try by name
-        logging.debug(f"[handle_take] No valid candidate ID from parser, or no parser ID. Searching by name: '{target_object_name}'")
+        logger.debug(f"[handle_take] No valid candidate ID from parser, or no parser ID. Searching by name: '{target_object_name}'")
         # Try to find by name, prioritizing loose items, then items in open containers.
         
         all_loc_objects = game_state._get_all_object_ids_in_current_location(
@@ -83,18 +83,18 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
             if len(found_ids_by_name_loose) == 1:
                 candidate_object_id = found_ids_by_name_loose[0]
                 source_description = "in the room"
-                logging.debug(f"[handle_take] Found unique loose item by name: {candidate_object_id}")
+                logger.debug(f"[handle_take] Found unique loose item by name: {candidate_object_id}")
 
     if not candidate_object_id:
-        logging.debug(f"[handle_take] No candidate object ID found for '{target_object_name or target_object_id_from_parser}'.")
+        logger.debug(f"[handle_take] No candidate object ID found for '{target_object_name or target_object_id_from_parser}'.")
         return [{'key': "take_fail_no_item", 'data': {'item_name': target_object_name or "the item"}}]
 
     # --- Stage 2: Validate accessibility and 'is_takeable' property of the candidate_object_id ---
-    logging.debug(f"[handle_take] Validating candidate ID: {candidate_object_id}")
+    logger.debug(f"[handle_take] Validating candidate ID: {candidate_object_id}")
     obj_data_to_take = game_state.get_object_by_id(candidate_object_id)
 
     if not obj_data_to_take:
-        logging.error(f"[handle_take] Data not found for candidate ID {candidate_object_id} after search!")
+        logger.error(f"[handle_take] Data not found for candidate ID {candidate_object_id} after search!")
         return [{'key': "error_internal", 'data': {'action': "take data missing for candidate"}}]
 
     # Check 'is_takeable' property first
@@ -102,7 +102,7 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         item_name_for_msg = obj_data_to_take.get("name", target_object_name or "that item")
         is_plural_for_msg = obj_data_to_take.get("is_plural", False)
         key = "take_fail_not_takeable_plural" if is_plural_for_msg else "take_fail_not_takeable_singular"
-        logging.debug(f"[handle_take] Candidate '{item_name_for_msg}' (ID: {candidate_object_id}) is not 'is_takeable'.")
+        logger.debug(f"[handle_take] Candidate '{item_name_for_msg}' (ID: {candidate_object_id}) is not 'is_takeable'.")
         return [{'key': key, 'data': {"item_name": item_name_for_msg}}]
 
     # Now, check ACCESSIBILITY: Is it visible loose OR visible in an open container?
@@ -131,7 +131,7 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
             # This check is complex here. Let's rely on GameState.take_object's refined logic for source.
             # The main point here is that the object ITSELF must be 'is_visible: True' in its state.
             is_accessible = True
-            logging.debug(f"[handle_take] Candidate '{candidate_object_id}' is visible in its own state.")
+            logger.debug(f"[handle_take] Candidate '{candidate_object_id}' is visible in its own state.")
 
 
     # Check if inside an open, visible container AND visible itself
@@ -150,24 +150,24 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
                     # The item is in this open, visible container. Ensure the item itself is visible.
                     if obj_state_to_take.get("is_visible", False): # Already fetched obj_state_to_take
                         is_accessible = True
-                        logging.debug(f"[handle_take] Candidate '{candidate_object_id}' found accessible inside open container '{loc_obj_data_container_check.get('name')}'.")
+                        logger.debug(f"[handle_take] Candidate '{candidate_object_id}' found accessible inside open container '{loc_obj_data_container_check.get('name')}'.")
                         break 
     
     if not is_accessible:
-        logging.debug(f"[handle_take] Candidate '{candidate_object_id}' ({obj_data_to_take.get('name')}) was identified but is not accessible (not visible loose, or not in an open & visible container).")
+        logger.debug(f"[handle_take] Candidate '{candidate_object_id}' ({obj_data_to_take.get('name')}) was identified but is not accessible (not visible loose, or not in an open & visible container).")
         return [{'key': "take_fail_no_item", 'data': {'item_name': obj_data_to_take.get('name', target_object_name or "the item")}}]
 
     # If we reach here, candidate_object_id is set, 'is_takeable' property is true, and it's accessible.
     found_object_id = candidate_object_id
-    logging.info(f"[handle_take] Confirmed takeable and accessible object: '{obj_data_to_take.get('name')}' (ID: {found_object_id}).")
+    logger.info(f"[handle_take] Confirmed takeable and accessible object: '{obj_data_to_take.get('name')}' (ID: {found_object_id}).")
 
     # --- Stage 3: Perform the take action ---
     is_plural = obj_data_to_take.get('is_plural', False)
     item_name_for_response = obj_data_to_take.get('name', 'unknown object')
 
-    logging.debug(f"[handle_take] Calling GameState.take_object with ID: '{found_object_id}'")
+    logger.debug(f"[handle_take] Calling GameState.take_object with ID: '{found_object_id}'")
     result_message = game_state.take_object(found_object_id) # GameState.take_object handles removal from source
-    logging.debug(f"[handle_take] take_object returned: {result_message}")
+    logger.debug(f"[handle_take] take_object returned: {result_message}")
 
     if "You take the" in result_message:
         key = "take_success_plural" if is_plural else "take_success_singular"
@@ -179,20 +179,20 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         return [{'key': key, 'data': {"item_name": item_name_for_response}}]
     else:
         # Fallback for other messages from take_object
-        logging.warning(f"Unexpected message from take_object: {result_message}. Using it directly.")
+        logger.warning(f"Unexpected message from take_object: {result_message}. Using it directly.")
         return [{'key': "generic_message_from_action", 'data': {"message": result_message}}]
 
 
 def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
     """Handles the DROP command intent. Returns List[Dict]."""
     target_object_name = parsed_intent.target
-    logging.debug(f"[handle_drop] Handling DROP for target name: '{target_object_name}'")
+    logger.debug(f"[handle_drop] Handling DROP for target name: '{target_object_name}'")
 
     if not target_object_name:
         # If holding only one item, maybe assume they mean that one?
         if len(game_state.hand_slot) == 1:
              target_object_name = game_state._get_object_name(game_state.hand_slot[0])
-             logging.debug(f"[handle_drop] No target specified, assuming the only held item: '{target_object_name}'")
+             logger.debug(f"[handle_drop] No target specified, assuming the only held item: '{target_object_name}'")
         else:
             # TODO: Add drop_fail_no_target key
             # TODO: Potentially list held items in the response?
@@ -223,15 +223,15 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     # Exactly one match found, proceed to drop
     held_object_data = game_state.get_object_by_id(object_id_to_drop)
     if not held_object_data:
-        logging.error(f"[handle_drop] Matched object ID '{object_id_to_drop}' but no data exists!")
+        logger.error(f"[handle_drop] Matched object ID '{object_id_to_drop}' but no data exists!")
         return [{'key': "error_internal", 'data': {"action": "drop data missing"}}]
         
     is_plural = held_object_data.get('is_plural', False)
     held_item_name = held_object_data.get('name', 'unknown object')
 
-    logging.debug(f"[handle_drop] Calling GameState.drop_object with ID: '{object_id_to_drop}'")
+    logger.debug(f"[handle_drop] Calling GameState.drop_object with ID: '{object_id_to_drop}'")
     result_dict = game_state.drop_object(object_id_to_drop)
-    logging.debug(f"[handle_drop] drop_object returned: {result_dict}")
+    logger.debug(f"[handle_drop] drop_object returned: {result_dict}")
 
     success = result_dict.get("success", False)
 
@@ -241,7 +241,7 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     else:
         # Use message from drop_object if available, otherwise generic error
         error_msg = result_dict.get("message", "drop failed internally") 
-        logging.warning(f"drop_object indicated failure: {error_msg}")
+        logger.warning(f"drop_object indicated failure: {error_msg}")
         
         # Map specific failure messages from GameState to user-facing keys
         if "not holding" in error_msg.lower():
@@ -257,11 +257,11 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]
     item_to_put_name = parsed_intent.target
     container_name = parsed_intent.secondary_target
     preposition = parsed_intent.preposition
-    logging.debug(f"[handle_put] Item: '{item_to_put_name}', Prep: '{preposition}', Container: '{container_name}'")
+    logger.debug(f"[handle_put] Item: '{item_to_put_name}', Prep: '{preposition}', Container: '{container_name}'")
 
     # --- Validation --- 
     if not item_to_put_name or not container_name or not preposition:
-        logging.warning("[handle_put] Missing item, container, or preposition in parsed intent.")
+        logger.warning("[handle_put] Missing item, container, or preposition in parsed intent.")
         # TODO: Add put_fail_incomplete key
         return [{'key': "invalid_command", 'data': {}}] # Generic fallback
         
@@ -305,7 +305,7 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]
     # Get container data
     container_data = game_state.get_object_by_id(container_id)
     if not container_data:
-        logging.error(f"[handle_put] Container ID '{container_id}' found but data missing.")
+        logger.error(f"[handle_put] Container ID '{container_id}' found but data missing.")
         return [{'key': "error_internal", 'data': {"action": "put container data"}}]
         
     # Check if it's actually a container
@@ -323,25 +323,68 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]
     # ... capacity check logic goes here ...
 
     # --- Execution --- 
-    logging.info(f"Putting item '{object_id_to_put}' into container '{container_id}'")
+    logger.info(f"Putting item '{object_id_to_put}' into container '{container_id}'")
     
+    # 0.a Remove the item from any other containers in scope (held/worn/location) to avoid duplicates
+    try:
+        # Check worn containers
+        for worn_container_id in list(game_state.worn_items):
+            worn_data = game_state.get_object_by_id(worn_container_id)
+            if worn_data and worn_data.get('properties', {}).get('is_storage'):
+                current_container_state = game_state.get_object_state(worn_container_id) or {}
+                if object_id_to_put in current_container_state.get('contains', []):
+                    new_contents = [i for i in current_container_state.get('contains', []) if i != object_id_to_put]
+                    game_state.set_object_state(worn_container_id, 'contains', new_contents)
+        # Check held containers
+        for held_id in list(game_state.hand_slot):
+            held_data = game_state.get_object_by_id(held_id)
+            if held_data and held_data.get('properties', {}).get('is_storage'):
+                current_container_state = game_state.get_object_state(held_id) or {}
+                if object_id_to_put in current_container_state.get('contains', []):
+                    new_contents = [i for i in current_container_state.get('contains', []) if i != object_id_to_put]
+                    game_state.set_object_state(held_id, 'contains', new_contents)
+        # Check containers in current location (visible or not)
+        # Build a conservative list by scanning all objects in location and picking storage containers
+        loc_ids = game_state._get_all_object_ids_in_current_location(visible_only=False)
+        for loc_obj_id in list(loc_ids):
+            loc_data = game_state.get_object_by_id(loc_obj_id)
+            if loc_data and loc_data.get('properties', {}).get('is_storage'):
+                loc_state = game_state.get_object_state(loc_obj_id) or {}
+                if object_id_to_put in loc_state.get('contains', []):
+                    new_contents = [i for i in loc_state.get('contains', []) if i != object_id_to_put]
+                    game_state.set_object_state(loc_obj_id, 'contains', new_contents)
+    except Exception:
+        pass
+
+    # 0.b Ensure the item is removed from the room/area lists so it no longer appears loose
+    try:
+        game_state._remove_object_from_location(object_id_to_put)
+    except Exception:
+        pass
+
     # 1. Add item to container's state
     # Ensure container_state is a mutable dictionary if it wasn't already
     if not isinstance(container_state, dict): container_state = {} # Safety check
     # Use 'contains' key for consistency with retrieval logic
-    current_contents = list(container_state.get('contains', [])) # Get current or empty list using 'contains'
+    current_contents = list(container_state.get('contains', []))
     if object_id_to_put not in current_contents:
         current_contents.append(object_id_to_put)
     game_state.set_object_state(container_id, "contains", current_contents) # Corrected call
     
-    # 2. Remove item from player's hand list
+    # 2. Remove item from player's hand list (if present)
     game_state.hand_slot.remove(object_id_to_put)
+    
+    # 2.a Set item visibility based on container openness (items in closed containers should not be visible)
+    try:
+        game_state.set_object_state(object_id_to_put, "is_visible", bool(container_state.get("is_open", False)))
+    except Exception:
+        pass
     
     # --- Response --- 
     # Get data for the item that was actually put
     held_item_data = game_state.get_object_by_id(object_id_to_put)
     if not held_item_data:
-        logging.error(f"[handle_put] Data missing for successfully put item '{object_id_to_put}'!")
+        logger.error(f"[handle_put] Data missing for successfully put item '{object_id_to_put}'!")
         return [{'key': "error_internal", 'data': {"action": "put success data missing"}}] 
         
     held_item_display_name = held_item_data.get('name', object_id_to_put)
@@ -351,18 +394,18 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]
     # Use specific put_success keys based on plural status
     key = "put_success_plural" if is_plural else "put_success_singular"
     kwargs = {"item_name": held_item_display_name, "container_name": container_display_name}
-    logging.debug(f"[handle_put] Returning success: key='{key}', kwargs={kwargs}")
+    logger.debug(f"[handle_put] Returning success: key='{key}', kwargs={kwargs}")
     return [{'key': key, 'data': kwargs}] 
 
 def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
     """Handles taking an item FROM a container."""
     item_to_take_name = parsed_intent.target
     container_name = parsed_intent.secondary_target
-    logging.debug(f"[handle_take_from] Item: '{item_to_take_name}', Container: '{container_name}'")
+    logger.debug(f"[handle_take_from] Item: '{item_to_take_name}', Container: '{container_name}'")
 
     # --- Validation ---
     if not item_to_take_name or not container_name:
-        logging.warning("[handle_take_from] Missing item or container in parsed intent.")
+        logger.warning("[handle_take_from] Missing item or container in parsed intent.")
         # TODO: Add take_from_fail_incomplete key
         return [{'key': "invalid_command", 'data': {}}] 
 
@@ -376,7 +419,7 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> List
     
     # Check if it's actually storage (should be caught by find_container... but double check)
     if not container_data or not container_data.get('properties', {}).get('is_storage'):
-         logging.warning(f"[handle_take_from] Target '{container_name}' (ID: {container_id}) is not storage.")
+         logger.warning(f"[handle_take_from] Target '{container_name}' (ID: {container_id}) is not storage.")
          return [{'key': "take_from_fail_not_container", 'data': {"container_name": container_display_name}}] # Need new key
          
     # --- Check if container is open (if applicable) ---
@@ -421,7 +464,7 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> List
         return [{'key': "take_fail_hands_full", 'data': {"held_item_name": held_items_str, "item_name": item_name_actual, "container_name": container_display_name}}]
 
     # --- Execution --- 
-    logging.info(f"Taking item '{item_id_to_take}' from container '{container_id}'")
+    logger.info(f"Taking item '{item_id_to_take}' from container '{container_id}'")
     
     # 1. Remove item from container's state (safer approach)
     # Retrieve the state again to ensure we have the latest
@@ -435,10 +478,10 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> List
         # current_container_state['contains'] = new_contents # No longer needed to modify this local dict directly for the set_object_state call
         # Save the updated state
         game_state.set_object_state(container_id, 'contains', new_contents) # CORRECTED CALL
-        logging.debug(f"Successfully updated container '{container_id}' state. New contents: {new_contents}")
+        logger.debug(f"Successfully updated container '{container_id}' state. New contents: {new_contents}")
     else:
         # This should not happen if the item was found earlier, but handle defensively
-        logging.error(f"[handle_take_from] Item '{item_id_to_take}' was not in container '{container_id}' contents during removal attempt.")
+        logger.error(f"[handle_take_from] Item '{item_id_to_take}' was not in container '{container_id}' contents during removal attempt.")
         return [{'key': "error_internal", 'data': {"action": "take_from consistency error"}}]
         
     # 2. Add item to player's hand list
@@ -447,5 +490,5 @@ def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> List
     # --- Response ---
     key = "take_from_success_plural" if is_plural else "take_from_success_singular"
     kwargs = {"item_name": item_name_actual, "container_name": container_display_name}
-    logging.debug(f"[handle_take_from] Returning success: key='{key}', kwargs={kwargs}")
+    logger.debug(f"[handle_take_from] Returning success: key='{key}', kwargs={kwargs}")
     return [{'key': key, 'data': kwargs}] 

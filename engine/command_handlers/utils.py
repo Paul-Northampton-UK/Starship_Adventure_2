@@ -1,6 +1,6 @@
 """Utility functions shared across command handlers."""
 
-import logging
+from loguru import logger # Changed from logging
 from typing import Optional
 from ..game_state import GameState # Relative import from parent directory
 
@@ -26,5 +26,5 @@ def item_matches_name(game_state: GameState, item_id: str, name_to_match: str) -
              if name_lower in [str(syn).lower().strip() for syn in synonyms if isinstance(syn, (str, int, float))]:
                  return True
                  
-    logging.debug(f"item_matches_name: No match found for ID '{item_id}' and name '{name_to_match}'")
+    logger.debug(f"item_matches_name: No match found for ID '{item_id}' and name '{name_to_match}'")
     return False 
