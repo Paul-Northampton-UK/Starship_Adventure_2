@@ -1,10 +1,11 @@
 from pathlib import Path
+import textwrap
 
 from engine.validate_pack import validate_pack
 
 
 def _write_yaml(path: Path, content: str) -> None:
-    path.write_text(content.strip() + "\n", encoding="utf-8")
+    path.write_text(textwrap.dedent(content).strip() + "\n", encoding="utf-8")
 
 
 def _build_minimal_pack(tmp_path: Path) -> Path:
@@ -72,4 +73,3 @@ def test_validate_pack_missing_start_room(tmp_path):
 
     errors = validate_pack(pack)
     assert any("start_room_id" in err for err in errors)
-
