@@ -1,7 +1,9 @@
-from typing import Dict, Any
-from loguru import logger # Changed from logging
+from typing import Any
 
-def get_response_text(responses_data: Dict[str, Any], response_key: str, **kwargs: Any) -> str:
+from loguru import logger  # Changed from logging
+
+
+def get_response_text(responses_data: dict[str, Any], response_key: str, **kwargs: Any) -> str:
     """
     Retrieves and formats a response string from the loaded responses data.
     

@@ -3,10 +3,12 @@ YAML loader module for Starship Adventure 2.
 Handles loading and validation of game data from YAML files.
 """
 
-import yaml
 from pathlib import Path
-from typing import Dict, Any, List, Union
+from typing import Any
+
+import yaml
 from loguru import logger
+
 
 class YAMLLoader:
     """Handles loading and validation of YAML game data."""
@@ -21,7 +23,7 @@ class YAMLLoader:
         self.data_dir.mkdir(exist_ok=True)
         logger.info(f"YAML loader initialized with data directory: {self.data_dir}")
     
-    def load_file(self, filename: str) -> Dict[str, Any]:
+    def load_file(self, filename: str) -> dict[str, Any]:
         """Load and parse a YAML file.
         
         Args:
@@ -37,7 +39,7 @@ class YAMLLoader:
         file_path = self.data_dir / filename
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 data = yaml.safe_load(f)
                 logger.info(f"Successfully loaded YAML file: {filename}")
                 return data
@@ -48,7 +50,7 @@ class YAMLLoader:
             logger.error(f"Error parsing YAML file {filename}: {e}")
             raise
     
-    def validate_room_data(self, data: Dict[str, Any]) -> bool:
+    def validate_room_data(self, data: dict[str, Any]) -> bool:
         """Validate room data structure.
         
         Args:
@@ -101,7 +103,7 @@ class YAMLLoader:
             
         return True
     
-    def _validate_area(self, area: Dict[str, Any]) -> None:
+    def _validate_area(self, area: dict[str, Any]) -> None:
         """Validate area data structure.
         
         Args:
@@ -140,7 +142,7 @@ class YAMLLoader:
             if state not in required_power_states:
                 raise ValueError(f"Invalid power state '{state}' in area first_visit_description")
     
-    def _validate_exit(self, exit_data: Dict[str, Any]) -> None:
+    def _validate_exit(self, exit_data: dict[str, Any]) -> None:
         """Validate exit data structure.
         
         Args:
@@ -172,7 +174,7 @@ class YAMLLoader:
         if 'visited' not in exit_data['dynamic_description']:
             raise ValueError("Exit dynamic description must contain 'visited' state")
     
-    def validate_object_data(self, data: Dict[str, Any]) -> bool:
+    def validate_object_data(self, data: dict[str, Any]) -> bool:
         """Validate object data structure.
         
         Args:

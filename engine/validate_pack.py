@@ -1,10 +1,11 @@
-from pathlib import Path
-from typing import List, Any, Tuple
-from ruamel.yaml import YAML
-from loguru import logger
-from .content_root import get_content_root
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
+from loguru import logger
+from ruamel.yaml import YAML
+
+from .content_root import get_content_root
 
 REQUIRED_FILES = [
     "game.yaml",
@@ -36,13 +37,13 @@ def _is_iso_utc_z(ts: Any) -> bool:
         return False
 
 
-def validate_pack(content_root: Path, return_warnings: bool = False) -> List[str] | Tuple[List[str], List[str]]:
+def validate_pack(content_root: Path, return_warnings: bool = False) -> list[str] | tuple[list[str], list[str]]:
     """Validate presence and minimal structure of a game pack.
 
     Returns a list of error strings. Empty list means OK.
     """
-    errors: List[str] = []
-    warnings: List[str] = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     # 1) Required files exist
     for fname in REQUIRED_FILES:
@@ -104,7 +105,7 @@ def validate_pack(content_root: Path, return_warnings: bool = False) -> List[str
     else:
         errors.append("objects.yaml: expected a list or a mapping with 'objects' list")
         obj_list = []
-    object_numbers: List[int] = []
+    object_numbers: list[int] = []
     for i, obj in enumerate(obj_list):
         if not isinstance(obj, dict):
             errors.append(f"objects.yaml[{i}]: expected mapping for object entry")

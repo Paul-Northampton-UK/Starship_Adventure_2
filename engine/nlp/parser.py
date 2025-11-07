@@ -1,50 +1,51 @@
 # engine/nlp/parser.py
-from loguru import logger
-from typing import Dict, List, Optional, Tuple, Set, Any
 from dataclasses import dataclass, field
+from typing import Any
+
 import spacy
-from spacy.pipeline import EntityRuler
 from fuzzywuzzy import fuzz
+from loguru import logger
 
 # Adjust imports to be relative to engine/ folder
 from ..command_defs import CommandIntent, ParsedIntent
-from ..game_state import GameState # GameState needed for object data access
+from ..game_state import GameState  # GameState needed for object data access
 
 # Import from the new nlp sub-package
-from .constants import VERB_PATTERNS, INTENT_PRIORITIES, CONTEXT_WORDS
-from .patterns import generate_patterns
+from .constants import INTENT_PRIORITIES, VERB_PATTERNS
 from .constants import VERB_PATTERNS as _VP
+from .patterns import generate_patterns
+
 
 # --- Helper Dataclasses ---
 @dataclass
 class NlpProcessingResult:
     """Holds the results of spaCy processing."""
     doc: spacy.tokens.Doc
-    action_verb_token: Optional[spacy.tokens.Token] = None
-    entities: Dict[str, spacy.tokens.Span] = field(default_factory=dict)
-    game_object_ents: Dict[str, spacy.tokens.Span] = field(default_factory=dict)
+    action_verb_token: spacy.tokens.Token | None = None
+    entities: dict[str, spacy.tokens.Span] = field(default_factory=dict)
+    game_object_ents: dict[str, spacy.tokens.Span] = field(default_factory=dict)
 
 @dataclass
 class StructureParseResult:
     """Holds the results of parsing structured commands like PUT/TAKE_FROM."""
     success: bool = False
-    intent: Optional[CommandIntent] = None
-    primary_target: Optional[str] = None
-    target_object_id: Optional[str] = None
-    secondary_target: Optional[str] = None
-    secondary_target_id: Optional[str] = None
-    preposition: Optional[str] = None
+    intent: CommandIntent | None = None
+    primary_target: str | None = None
+    target_object_id: str | None = None
+    secondary_target: str | None = None
+    secondary_target_id: str | None = None
+    preposition: str | None = None
 
 @dataclass
 class FallbackTargetResult:
     """Holds the results of fallback target extraction."""
-    primary_target: Optional[str] = None
-    target_object_id: Optional[str] = None
+    primary_target: str | None = None
+    target_object_id: str | None = None
 
 @dataclass # New dataclass to hold initial intent finding results
 class InitialIntentResult:
-    possible_intents: Dict[CommandIntent, float] = field(default_factory=dict)
-    matched_keyword_token: Optional[spacy.tokens.Token] = None
+    possible_intents: dict[CommandIntent, float] = field(default_factory=dict)
+    matched_keyword_token: spacy.tokens.Token | None = None
 
 # --- Main Parser Class ---
 class NLPCommandParser:
@@ -77,7 +78,7 @@ class NLPCommandParser:
                 logger.critical(f"Failed to download or load spaCy model: {e}. NLP parser cannot function.")
                 raise RuntimeError("Failed to initialize NLP model.") from e
 
-    def _build_valid_words_set(self) -> Set[str]:
+    def _build_valid_words_set(self) -> set[str]:
         """Builds a set of valid words for potential fuzzy matching."""
         valid_words = set()
         for pattern_data in VERB_PATTERNS.values():
@@ -180,7 +181,7 @@ class NLPCommandParser:
         )
 
     # --- Helper Methods ---
-    def _preprocess_command(self, command: str) -> Tuple[str, str]:
+    def _preprocess_command(self, command: str) -> tuple[str, str]:
         """Normalize casing and basic synonyms; keep key prepositions for structured parsing."""
         command_original_case = command.strip()
         text = command_original_case.lower()
@@ -204,7 +205,7 @@ class NLPCommandParser:
         logger.debug(f"Preprocessing: Original='{command_original_case}', Lower='{command_lower}'")
         return command_original_case, command_lower
 
-    def _check_single_letter(self, command_lower: str, command_original_case: str) -> Optional[ParsedIntent]:
+    def _check_single_letter(self, command_lower: str, command_original_case: str) -> ParsedIntent | None:
         """Check for single-letter shortcut commands."""
         single_letter_intents = {
             "i": CommandIntent.INVENTORY, "l": CommandIntent.LOOK, "q": CommandIntent.QUIT,
@@ -233,7 +234,7 @@ class NLPCommandParser:
         logger.debug("--- NLP Processing End ---")
 
         # Identify action verb (first verb found)
-        action_verb_token: Optional[spacy.tokens.Token] = None
+        action_verb_token: spacy.tokens.Token | None = None
         for token in doc:
             if token.pos_ == "VERB":
                 action_verb_token = token
@@ -250,7 +251,7 @@ class NLPCommandParser:
             game_object_ents=game_object_ents
         )
 
-    def _check_direction_entity(self, doc: spacy.tokens.Doc, command_original_case: str) -> Optional[ParsedIntent]:
+    def _check_direction_entity(self, doc: spacy.tokens.Doc, command_original_case: str) -> ParsedIntent | None:
         """Check for a DIRECTION entity for immediate MOVE intent."""
         for ent in doc.ents:
             if ent.label_ == "DIRECTION":
@@ -266,8 +267,8 @@ class NLPCommandParser:
 
     def _identify_initial_intents(self, doc: spacy.tokens.Doc) -> InitialIntentResult:
         """Identify possible intents based on verbs/keywords, calculating initial scores and finding the trigger token."""
-        possible_intents: Dict[CommandIntent, float] = {}
-        matched_keyword_token: Optional[spacy.tokens.Token] = None
+        possible_intents: dict[CommandIntent, float] = {}
+        matched_keyword_token: spacy.tokens.Token | None = None
 
         # More direct mapping of specific verbs to intents
         verb_to_intent_map = {
@@ -309,7 +310,7 @@ class NLPCommandParser:
         }
 
         # Find the first token that is a known verb/keyword from our map
-        first_verb_keyword_token: Optional[spacy.tokens.Token] = None
+        first_verb_keyword_token: spacy.tokens.Token | None = None
         for token in doc:
             # Check single token
             if token.lemma_.lower() in verb_to_intent_map:
@@ -371,7 +372,7 @@ class NLPCommandParser:
             if len(doc) > 0:
                 first_tok = doc[0].text
                 # Gather candidate verbs from patterns and map to a likely intent
-                cand_to_intent: Dict[str, CommandIntent] = {}
+                cand_to_intent: dict[str, CommandIntent] = {}
                 for intent, pdata in _VP.items():
                     if hasattr(intent, 'name'):
                         for v in pdata.get("verbs", []):
@@ -409,7 +410,7 @@ class NLPCommandParser:
         logger.debug(f"Intents initially matched by verbs/keywords: {list(possible_intents.keys())}")
         return InitialIntentResult(possible_intents=possible_intents, matched_keyword_token=matched_keyword_token)
 
-    def _parse_structured_command(self, nlp_result: NlpProcessingResult, verb_token: Optional[spacy.tokens.Token], possible_intents: Dict) -> StructureParseResult:
+    def _parse_structured_command(self, nlp_result: NlpProcessingResult, verb_token: spacy.tokens.Token | None, possible_intents: dict) -> StructureParseResult:
         """Tries to parse structured commands like 'PUT item IN container' or 'TAKE item FROM container',
            or 'LOCK/UNLOCK target WITH key'.
         """
@@ -505,7 +506,7 @@ class NLPCommandParser:
         
         logger.debug("Attempting to parse structured command (verb obj1 prep obj2) using PREPOSITION logic.")
         
-        preposition_token: Optional[spacy.tokens.Token] = None
+        preposition_token: spacy.tokens.Token | None = None
         # Define prepositions relevant to PUT and TAKE_FROM
         # For PUT: "in", "on", "into", "onto"
         # For TAKE: "from"
@@ -547,11 +548,11 @@ class NLPCommandParser:
         # Primary target: spans between verb and preposition.
         # Secondary target: spans after preposition to end of command.
         
-        primary_target_span: Optional[spacy.tokens.Span] = None
+        primary_target_span: spacy.tokens.Span | None = None
         if verb_token.i + 1 < preposition_token.i:
             primary_target_span = doc[verb_token.i + 1 : preposition_token.i]
         
-        secondary_target_span: Optional[spacy.tokens.Span] = None
+        secondary_target_span: spacy.tokens.Span | None = None
         if preposition_token.i + 1 < len(doc):
             secondary_target_span = doc[preposition_token.i + 1 :]
 
@@ -589,7 +590,7 @@ class NLPCommandParser:
             preposition=preposition_token.lemma_
         )
 
-    def _find_id_for_entity_text(self, text: str, candidate_entities: List[Dict[str, Any]], preferred_source: str = 'location') -> Optional[str]:
+    def _find_id_for_entity_text(self, text: str, candidate_entities: list[dict[str, Any]], preferred_source: str = 'location') -> str | None:
         """Helper to find the most likely object ID for a given text string from candidate entities or by broader search."""
         # This method needs to be more robust. For now, a simple search in location/inventory.
         # TODO: Enhance to consider candidate_entities more directly if provided.
@@ -638,7 +639,7 @@ class NLPCommandParser:
         return self.game_state._find_object_id_by_name_in_inventory(text)
 
 
-    def _extract_fallback_target(self, nlp_result: NlpProcessingResult, token_to_look_after: Optional[spacy.tokens.Token]) -> FallbackTargetResult:
+    def _extract_fallback_target(self, nlp_result: NlpProcessingResult, token_to_look_after: spacy.tokens.Token | None) -> FallbackTargetResult:
         """Extracts a primary target if structured parsing failed or wasn't applicable.
            Looks for GAME_OBJECT or AREA entities after the main action verb/keyword.
         """
@@ -669,7 +670,7 @@ class NLPCommandParser:
                         return FallbackTargetResult(primary_target=ent_span.text, target_object_id=ent_span.ent_id_)
 
         # Option 2: If none after verb, take the last GAME_OBJECT or AREA entity in the command
-        last_targetable_ent: Optional[spacy.tokens.Span] = None
+        last_targetable_ent: spacy.tokens.Span | None = None
         for ent_text, ent_span in all_found_entities.items():
             if ent_span.label_ in ["GAME_OBJECT", "AREA"]:
                 if not last_targetable_ent or ent_span.start > last_targetable_ent.start:
@@ -691,7 +692,7 @@ class NLPCommandParser:
         return FallbackTargetResult()
 
 
-    def _resolve_final_intent(self, possible_intents: Dict, structured_intent: Optional[CommandIntent], structure_success: bool) -> CommandIntent:
+    def _resolve_final_intent(self, possible_intents: dict, structured_intent: CommandIntent | None, structure_success: bool) -> CommandIntent:
         """Determines the final intent based on scores and structured parsing results."""
         if structure_success and structured_intent:
             logger.debug(f"Structure parsing successful, using structured intent: {structured_intent}")
@@ -731,7 +732,7 @@ class NLPCommandParser:
 
         return highest_scored_intent
 
-    def _guess_action_verb(self, doc: spacy.tokens.Doc, final_intent: CommandIntent) -> Optional[str]:
+    def _guess_action_verb(self, doc: spacy.tokens.Doc, final_intent: CommandIntent) -> str | None:
         """Guesses the action verb based on the final intent if not explicitly found."""
         # This is a fallback if action_verb_token was None.
         # Try to get a verb associated with the intent.
@@ -763,14 +764,14 @@ class NLPCommandParser:
                 return token.lemma_
         return None
 
-    def _build_parsed_intent(self, final_intent: CommandIntent, action_verb: Optional[str],
-                             primary_target: Optional[str], target_object_id: Optional[str],
-                             secondary_target: Optional[str], secondary_target_id: Optional[str],
-                             preposition: Optional[str], command_original_case: str) -> ParsedIntent:
+    def _build_parsed_intent(self, final_intent: CommandIntent, action_verb: str | None,
+                             primary_target: str | None, target_object_id: str | None,
+                             secondary_target: str | None, secondary_target_id: str | None,
+                             preposition: str | None, command_original_case: str) -> ParsedIntent:
         """Constructs the final ParsedIntent object."""
         
         # If intent is MOVE, direction is usually in primary_target if not already set by _check_direction_entity
-        direction_from_target: Optional[str] = None
+        direction_from_target: str | None = None
         if final_intent == CommandIntent.MOVE and primary_target:
             # Check if primary_target is a known direction (e.g., if "go north" was parsed this way)
             # This is a bit redundant if _check_direction_entity worked, but covers other cases.
@@ -832,7 +833,7 @@ class NLPCommandParser:
         return parsed_intent_obj
 
     # --- Utility for fuzzy matching (if needed, currently not heavily used) ---
-    def _find_closest_match(self, word: str, threshold: int = 80) -> Optional[str]:
+    def _find_closest_match(self, word: str, threshold: int = 80) -> str | None:
         """Finds the closest match for a word from a predefined list if above threshold."""
         if not self.valid_words: return None
         best_match = None

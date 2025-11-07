@@ -1,6 +1,8 @@
 import pytest
 import yaml
-from engine.schemas import Object, ObjectCategory, ObjectProperties, ObjectInteraction
+
+from engine.schemas import Object, ObjectCategory, ObjectProperties
+
 
 def test_valid_container():
     """Test creating a valid container object"""
@@ -125,7 +127,7 @@ def test_empty_name():
 
 def test_load_from_yaml():
     """Test loading objects from YAML file"""
-    with open("data/objects.yaml", 'r') as file:
+    with open("data/objects.yaml") as file:
         data = yaml.safe_load(file)
     
     # Skip the defaults section

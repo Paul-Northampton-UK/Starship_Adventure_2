@@ -2,9 +2,12 @@
 Test module for the YAML loader.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from engine.yaml_loader import YAMLLoader
+
 
 def test_yaml_loader_initialization():
     """Test YAML loader initialization."""

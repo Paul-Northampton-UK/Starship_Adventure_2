@@ -1,13 +1,14 @@
 """Command handler for equipping and unequipping items."""
 
-from loguru import logger # Changed from logging
-from typing import Tuple, Dict, List
-from ..game_state import GameState
-from ..command_defs import ParsedIntent
-from .utils import item_matches_name # Import the shared helper
-from ..schemas import Object # Import the Object schema
 
-def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+from loguru import logger  # Changed from logging
+
+from ..command_defs import ParsedIntent
+from ..game_state import GameState
+from .utils import item_matches_name  # Import the shared helper
+
+
+def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles EQUIP/UNEQUIP intents. Returns List[Dict]."""
     target_item_name = parsed_intent.target
     action_verb = parsed_intent.action or "" # Get action from intent
@@ -42,7 +43,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
         
         # If not in hand, check worn containers SECOND
         if not object_id_to_wear:
-            logger.debug(f"[handle_equip] Item not in hand slot. Checking worn containers...")
+            logger.debug("[handle_equip] Item not in hand slot. Checking worn containers...")
             for worn_container_id in game_state.worn_items:
                 container_data = game_state.get_object_by_id(worn_container_id)
                 if container_data and container_data.get('properties', {}).get('is_storage'):
@@ -64,7 +65,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
 
         # If not in hand or worn containers, check HELD containers THIRD
         if not object_id_to_wear:
-            logger.debug(f"[handle_equip] Item not in worn containers. Checking held containers...")
+            logger.debug("[handle_equip] Item not in worn containers. Checking held containers...")
             for held_container_id in game_state.hand_slot:
                 # Avoid trying to wear the container itself if it matches target name by mistake
                 if held_container_id == object_id_to_wear: continue 
@@ -88,7 +89,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dic
 
         # If not found anywhere yet, check general inventory FOURTH (less likely path now)
         if not object_id_to_wear:
-            logger.debug(f"[handle_equip] Item not in hand, worn, or held containers. Checking inventory...")
+            logger.debug("[handle_equip] Item not in hand, worn, or held containers. Checking inventory...")
             inventory_item_id = game_state._find_object_id_by_name_in_inventory(target_item_name)
             if inventory_item_id:
                 object_id_to_wear = inventory_item_id

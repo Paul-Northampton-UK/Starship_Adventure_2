@@ -1,19 +1,22 @@
 """Command handlers for basic game actions like look, inventory, quit."""
 
+from typing import Any
+
 from loguru import logger
-from typing import Optional, Dict, Any, Tuple, List
-from ..game_state import GameState
+
 from ..command_defs import ParsedIntent
+from ..game_state import GameState
+
 # Note: We need access to get_location_description, so we might import it
 # or reconsider if _handle_look belongs here or requires its own module/utils.
 # For now, let's assume GameLoop might pass the display_output function if needed.
-
 # Import the enhanced description function
-from .movement import get_location_description 
-# Import utility for item matching (correct relative path)
-from .utils import item_matches_name 
+from .movement import get_location_description
 
-def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+# Import utility for item matching (correct relative path)
+
+
+def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles the LOOK command intent. 
        Can look at the current location or a specific item/target.
     """
@@ -31,8 +34,8 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         return [{'key': "look_success_room", 'data': {"description": desc_str}}]
     else:
         # Player is looking AT something specific.
-        obj_data_to_describe: Optional[Dict[str, Any]] = None
-        obj_id_for_description: Optional[str] = None
+        obj_data_to_describe: dict[str, Any] | None = None
+        obj_id_for_description: str | None = None
         found_in_source: str = "unknown"
 
         # Priority 1: Use the ID from the parser if available
@@ -129,7 +132,7 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
             logger.warning(f"[handle_look] FAILED - Target '{final_search_term}' not found after checking by ID (hands, worn, location) and by name (location).")
             return [{'key': "look_fail_not_found", 'data': {"item_name": final_search_term}}]
 
-def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles the INVENTORY command intent by formatting and returning the status."""
     hand_slot = game_state.hand_slot
     worn_items = game_state.worn_items or []
@@ -209,7 +212,7 @@ def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> List
     # We'll add 'inventory_display' key to responses.yaml
     return [{'key': "inventory_display", 'data': {"inventory_text": final_output}}]
 
-def _cannot_take_message(game_state: GameState, item_id: str, fallback_name: str) -> List[Dict]:
+def _cannot_take_message(game_state: GameState, item_id: str, fallback_name: str) -> list[dict]:
     name = game_state._get_object_name(item_id) if item_id else fallback_name
     return [{'key': "take_fail_not_takeable", 'data': {"item_name": name}}]
 
@@ -217,7 +220,7 @@ def handle_quit(game_state: GameState, parsed_intent: ParsedIntent) -> None:
     """Handles the QUIT command intent. Returns None to signal quit."""
     return None
 
-def handle_unknown(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_unknown(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles unrecognized commands."""
     logger.info(f"Unknown command received: '{parsed_intent.original_input}'")
     # Return List[Dict]

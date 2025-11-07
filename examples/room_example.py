@@ -1,4 +1,4 @@
-from engine.schemas import Room, LocationMode, DeckLevel
+from engine.schemas import DeckLevel, LocationMode, Room
 
 # Example room data
 bridge_data = {

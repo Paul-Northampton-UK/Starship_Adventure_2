@@ -1,4 +1,7 @@
-import os, time, ast, pathlib
+import ast
+import os
+import pathlib
+import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", ".venv", "__pycache__", "node_modules", ".mypy_cache", ".pytest_cache", "dist", "build", ".idea", ".vscode"}
@@ -33,7 +36,7 @@ for dirpath, dirnames, filenames in os.walk(ROOT):
         if is_skipped(p) or p.suffix.lower() not in EXTS:
             continue
         try:
-            size = sum(1 for _ in open(p, "r", encoding="utf-8", errors="ignore"))
+            size = sum(1 for _ in open(p, encoding="utf-8", errors="ignore"))
         except Exception:
             size = 0
         mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime))

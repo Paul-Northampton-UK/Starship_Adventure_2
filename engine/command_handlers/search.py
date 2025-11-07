@@ -1,12 +1,15 @@
 """Command handler for searching locations and objects."""
 
+from typing import Any  # Changed Tuple to Any for data dict
+
 from loguru import logger
-from typing import Dict, List, Any # Changed Tuple to Any for data dict
+
+from ..command_defs import ParsedIntent  # CommandResponse removed, random removed
 from ..game_state import GameState
-from ..command_defs import ParsedIntent # CommandResponse removed, random removed
+
 # get_response_text removed as GameLoop will handle formatting
 
-def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]: # Changed return type
+def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict[str, Any]]: # Changed return type
     """
     Handles the 'search' command.
 
@@ -28,7 +31,7 @@ def handle_search(game_state: GameState, parsed_intent: ParsedIntent) -> List[Di
     
     # Get objects in the current room
     current_room_data = game_state.rooms_data.get(game_state.current_room_id)
-    current_room_objects_refs: List[Any] = [] # Store references (IDs or dicts)
+    current_room_objects_refs: list[Any] = [] # Store references (IDs or dicts)
     if current_room_data:
         # For now, assuming we are not in a specific sub-area for the 'search' command's context.
         # If 'search' needs to be area-aware, this logic would need to check game_state.current_area_id

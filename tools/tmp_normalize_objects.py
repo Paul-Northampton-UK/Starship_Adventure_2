@@ -1,7 +1,8 @@
-from ruamel.yaml import YAML
+import sys
 from copy import deepcopy
 from pathlib import Path
-import sys
+
+from ruamel.yaml import YAML
 
 
 def main() -> None:

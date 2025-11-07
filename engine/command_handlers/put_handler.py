@@ -1,11 +1,14 @@
 """Put command handler."""
 
-from loguru import logger
-from typing import List, Dict, Any
-from ..game_state import GameState
-from ..command_defs import ParsedIntent, CommandIntent
+from typing import Any
 
-def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]:
+from loguru import logger
+
+from ..command_defs import ParsedIntent
+from ..game_state import GameState
+
+
+def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict[str, Any]]:
     """Handles the PUT command intent."""
     target_object_id = parsed_intent.target_object_id
     container_id = parsed_intent.secondary_target_object_id

@@ -1,6 +1,8 @@
 import pytest
-from engine.nlp_command_parser import NLPCommandParser, CommandIntent, ParsedIntent
+
 from engine.game_state import GameState
+from engine.nlp_command_parser import CommandIntent, NLPCommandParser
+
 
 @pytest.fixture
 def game_state():

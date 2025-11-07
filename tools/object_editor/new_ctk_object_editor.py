@@ -1,15 +1,16 @@
 # tools/object_editor/new_ctk_object_editor.py
+from datetime import datetime, timezone
+from pathlib import Path
+from tkinter import messagebox
+
 import customtkinter as ctk
 from loguru import logger
 from ruamel.yaml import YAML
-from tkinter import messagebox
-from tools.object_editor.object_data_manager import ObjectDataManager
+
 from engine.content_root import get_content_root
 from engine.schemas import ObjectCategory
-from typing import Optional
-from pathlib import Path
 from engine.validate_pack import validate_pack
-from datetime import datetime, timezone
+from tools.object_editor.object_data_manager import ObjectDataManager
 
 
 def _now_utc_iso() -> str:
@@ -30,7 +31,7 @@ class NewObjectEditorFrame(ctk.CTkFrame):
             active_pack = None
             if config_path.is_file():
                 yaml = YAML()
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, encoding='utf-8') as f:
                     cfg = yaml.load(f) or {}
                     if isinstance(cfg, dict):
                         active_pack = cfg.get("active_pack")
@@ -45,7 +46,7 @@ class NewObjectEditorFrame(ctk.CTkFrame):
         # Dirty-state and context
         self._dirty: bool = False
         self._suppress_dirty: bool = False
-        self.current_object_id: Optional[str] = None
+        self.current_object_id: str | None = None
         # In-memory consumables UI meta (not persisted to schema)
         self._consumables_meta = {"health_delta": None, "per_turn_delta": None, "duration_turns": None}
 
@@ -456,7 +457,7 @@ class NewObjectEditorFrame(ctk.CTkFrame):
         except Exception:
             pass
 
-    def _update_area_options_for_room(self, room_id: Optional[str]) -> None:
+    def _update_area_options_for_room(self, room_id: str | None) -> None:
         """Refreshes the Area combobox values based on the given room id and enables/disables it."""
         room_id = room_id or ""
         area_ids = [""]
@@ -1717,7 +1718,7 @@ class NewObjectEditorFrame(ctk.CTkFrame):
             # Wearability
             is_wearable = bool(props.get("is_wearable"))
             self.toggle_wearability_fields_with_arg(enable=is_wearable)
-            if hasattr(self, "wear_area_combo"):  self.wear_area_combo.set((props.get("wear_area") or ""))
+            if hasattr(self, "wear_area_combo"):  self.wear_area_combo.set(props.get("wear_area") or "")
             if hasattr(self, "wear_layer_entry"): self.wear_layer_entry.set(str(props.get("wear_layer") or "")) if hasattr(self.wear_layer_entry, "set") else None
 
             # Weapons
@@ -2326,7 +2327,7 @@ class NewObjectEditorFrame(ctk.CTkFrame):
                 current_lines.append(line)
         return content_dict
 
-    def _parse_digital_dict_to_multiline(self, data_dict: Optional[dict]) -> str:
+    def _parse_digital_dict_to_multiline(self, data_dict: dict | None) -> str:
         if not data_dict:
             return ""
         out = []

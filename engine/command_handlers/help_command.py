@@ -1,6 +1,8 @@
-from engine.game_state import GameState
 from engine.nlg import generate_response
 from engine.nlp.types import ParsedIntent
+
+from engine.game_state import GameState
+
 
 def handle_help(intent: ParsedIntent, game_state: GameState) -> str:
     """

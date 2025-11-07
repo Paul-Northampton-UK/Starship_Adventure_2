@@ -1,16 +1,16 @@
-from typing import Dict, List, Optional, Tuple, Set
-from dataclasses import dataclass
 import spacy
-from spacy.pipeline import EntityRuler
 from fuzzywuzzy import fuzz
-from .command_defs import CommandIntent, ParsedIntent
-from .game_state import GameState, PowerState
 from loguru import logger
 
+from .command_defs import CommandIntent, ParsedIntent
+from .game_state import GameState
+
 # Import the constants from the new module
-from .nlp.constants import VERB_PATTERNS, INTENT_PRIORITIES, CONTEXT_WORDS
+from .nlp.constants import INTENT_PRIORITIES, VERB_PATTERNS
+
 # Import the pattern generation function
 from .nlp.patterns import generate_patterns
+
 
 class NLPCommandParser:
     """Handles parsing and processing of player commands using NLP."""
@@ -100,7 +100,7 @@ class NLPCommandParser:
         except Exception as e:
              logger.error(f"Error adding patterns to Entity Ruler: {e}", exc_info=True)
 
-    def _find_closest_match(self, word: str, threshold: int = 80) -> Optional[str]:
+    def _find_closest_match(self, word: str, threshold: int = 80) -> str | None:
         """Find the closest match for a word from the valid vocabulary using fuzzy matching."""
         if not word:
             return None
@@ -147,7 +147,7 @@ class NLPCommandParser:
         logger.debug(f"Entities: {[(ent.text, ent.label_) for ent in doc.ents]}")
 
         # --- Prioritize DIRECTION entity for MOVE intent --- 
-        parsed_direction: Optional[str] = None
+        parsed_direction: str | None = None
         for ent in doc.ents:
             if ent.label_ == "DIRECTION":
                 # Normalize multi-word/hyphenated directions (e.g., "north west" -> "northwest", "north-west" -> "northwest")
@@ -175,8 +175,8 @@ class NLPCommandParser:
         logger.debug(f"Nouns: {[n.text for n in nouns]}")
 
         # Determine Intent based on verbs, entities, and context
-        possible_intents: Dict[CommandIntent, float] = {}
-        matched_verb_intents: Set[CommandIntent] = set()
+        possible_intents: dict[CommandIntent, float] = {}
+        matched_verb_intents: set[CommandIntent] = set()
         for token in doc:
             # Handle cases like "inventory" where it might not be tagged as VERB
             # Check both lemma and lowercased text against verbs
@@ -189,9 +189,9 @@ class NLPCommandParser:
         logger.debug(f"Intents matched by verbs/keywords: {matched_verb_intents}")
 
         # --- Entity Analysis --- 
-        primary_target: Optional[str] = None
-        target_object_id: Optional[str] = None
-        target_type: Optional[str] = None 
+        primary_target: str | None = None
+        target_object_id: str | None = None
+        target_type: str | None = None 
         
         game_object_ents = [ent for ent in entities if ent.label_ == "GAME_OBJECT"]
         if game_object_ents:

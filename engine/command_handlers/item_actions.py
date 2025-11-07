@@ -1,13 +1,14 @@
 """Command handlers for taking, dropping, and putting items."""
 
-from loguru import logger # Changed from logging
-from typing import Tuple, Dict, List, Optional
-from ..game_state import GameState
-from ..command_defs import ParsedIntent
-from .utils import item_matches_name
-from ..schemas import Object # Import the Object schema
 
-def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+from loguru import logger  # Changed from logging
+
+from ..command_defs import ParsedIntent
+from ..game_state import GameState
+from .utils import item_matches_name
+
+
+def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles the TAKE command intent. Returns List[Dict]."""
     target_object_name = parsed_intent.target
     target_object_id_from_parser = parsed_intent.target_object_id
@@ -21,13 +22,13 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         held_items_str = " and ".join([game_state._get_object_name(item) or "something" for item in game_state.hand_slot])
         return [{'key': "take_fail_hands_full", 'data': {"held_item_name": held_items_str, "item_name": target_object_name or "the item"}}]
 
-    found_object_id: Optional[str] = None
+    found_object_id: str | None = None
     source_description: str = "" # For messages: "in the room", "in the {container_name}"
 
     # 1. Identify Candidate Object ID:
     #    - If parser gave an ID, use it.
     #    - Else, try to find an object by name in the current location (room or open containers).
-    candidate_object_id: Optional[str] = None
+    candidate_object_id: str | None = None
 
     current_room_id = game_state.current_room_id
     # current_area_id = game_state.current_area_id # Not strictly needed for 'take' as items are in rooms/containers
@@ -73,7 +74,7 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         all_loc_objects = game_state._get_all_object_ids_in_current_location(
             visible_only=True
         )
-        found_ids_by_name_loose: List[str] = []
+        found_ids_by_name_loose: list[str] = []
         if target_object_name: # Ensure there's a name to search for
             for obj_id_in_loc in all_loc_objects:
                 if item_matches_name(game_state, obj_id_in_loc, target_object_name):
@@ -183,7 +184,7 @@ def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         return [{'key': "generic_message_from_action", 'data': {"message": result_message}}]
 
 
-def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles the DROP command intent. Returns List[Dict]."""
     target_object_name = parsed_intent.target
     logger.debug(f"[handle_drop] Handling DROP for target name: '{target_object_name}'")
@@ -252,7 +253,7 @@ def handle_drop(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         return [{'key': "error_internal", 'data': {"action": f"drop failed: {error_msg}"}}]
 
 
-def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles the PUT command intent (e.g., put item in container). Returns List[Dict]."""
     item_to_put_name = parsed_intent.target
     container_name = parsed_intent.secondary_target
@@ -397,7 +398,7 @@ def handle_put(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]
     logger.debug(f"[handle_put] Returning success: key='{key}', kwargs={kwargs}")
     return [{'key': key, 'data': kwargs}] 
 
-def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_take_from(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles taking an item FROM a container."""
     item_to_take_name = parsed_intent.target
     container_name = parsed_intent.secondary_target

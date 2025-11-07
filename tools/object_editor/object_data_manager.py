@@ -1,16 +1,19 @@
 # Handles loading, saving, and managing object and room YAML data.
-from loguru import logger
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any
+
+from loguru import logger
 from ruamel.yaml import YAML
-from engine.content_root import get_content_root
 from ruamel.yaml.parser import ParserError
 from ruamel.yaml.scanner import ScannerError
+
+from engine.content_root import get_content_root
+
 
 class ObjectDataManager:
     """Manages loading, accessing, and saving object and room data from YAML files."""
 
-    def __init__(self, data_dir: Optional[Path] = None):
+    def __init__(self, data_dir: Path | None = None):
         """
         Initializes the manager and loads data.
         If data_dir is not provided, it defaults to the 'data' directory
@@ -24,7 +27,7 @@ class ObjectDataManager:
                 active_pack = None
                 if config_path.is_file():
                     y = YAML()
-                    with open(config_path, 'r', encoding='utf-8') as f:
+                    with open(config_path, encoding='utf-8') as f:
                         cfg = y.load(f) or {}
                         if isinstance(cfg, dict):
                             active_pack = cfg.get("active_pack")
@@ -43,8 +46,8 @@ class ObjectDataManager:
         self.yaml.preserve_quotes = True # Keep formatting nice
         # self.yaml.indent(mapping=2, sequence=4, offset=2) # Optional: finer indent control
 
-        self.objects_data: Optional[List[Dict[str, Any]]] = None
-        self.rooms_data: Optional[Dict[str, Any]] = None # Rooms are usually dicts {id: data}
+        self.objects_data: list[dict[str, Any]] | None = None
+        self.rooms_data: dict[str, Any] | None = None # Rooms are usually dicts {id: data}
 
         self._load_data()
 
@@ -95,13 +98,13 @@ class ObjectDataManager:
 
         logger.info(f"Loaded {len(self.objects_data)} objects and {len(self.rooms_data)} rooms.")
 
-    def _load_yaml_file(self, file_path: Path) -> Optional[Any]:
+    def _load_yaml_file(self, file_path: Path) -> Any | None:
         """Loads a single YAML file using ruamel.yaml."""
         try:
             if not file_path.is_file():
                 logger.error(f"Data file not found: {file_path}")
                 return None
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 data = self.yaml.load(f)
                 logger.info(f"Successfully loaded YAML file: {file_path}")
                 return data
@@ -117,7 +120,7 @@ class ObjectDataManager:
         """Returns the current number of loaded objects."""
         return len(self.objects_data)
 
-    def get_object_ids(self) -> List[str]:
+    def get_object_ids(self) -> list[str]:
         """Returns a sorted list of all object IDs from the loaded list."""
         if not self.objects_data or not isinstance(self.objects_data, list):
             logger.warning("get_object_ids: No objects_data list found.")
@@ -137,14 +140,14 @@ class ObjectDataManager:
         logger.info(f"get_object_ids: Returning IDs: {sorted_ids}") # DEBUG LOG
         return sorted_ids
 
-    def get_room_ids(self) -> List[str]:
+    def get_room_ids(self) -> list[str]:
         """Returns a sorted list of all room IDs from the processed dictionary."""
         if not self.rooms_data or not isinstance(self.rooms_data, dict):
             return []
         # Now reads keys from the dictionary created in _load_data
         return sorted(list(self.rooms_data.keys()))
 
-    def get_room_name(self, room_id: str) -> Optional[str]:
+    def get_room_name(self, room_id: str) -> str | None:
         """Returns the name of the room with the given ID."""
         if not self.rooms_data or room_id not in self.rooms_data:
             logger.warning(f"get_room_name: Room ID '{room_id}' not found in rooms_data.")
@@ -152,7 +155,7 @@ class ObjectDataManager:
         room_data = self.rooms_data.get(room_id, {})
         return room_data.get('name') # Return the name or None if key missing
 
-    def get_object_by_id(self, object_id: str) -> Optional[Dict[str, Any]]:
+    def get_object_by_id(self, object_id: str) -> dict[str, Any] | None:
          """Retrieves the data for a specific object by its ID."""
          if not self.objects_data or not isinstance(self.objects_data, list): # Added type check
              logger.warning("get_object_by_id: objects_data is not a list or is empty.")
@@ -179,7 +182,7 @@ class ObjectDataManager:
          logger.warning(f"get_object_by_id: No match found for '{search_id}'.")
          return None
 
-    def get_key_object_ids(self) -> List[str]:
+    def get_key_object_ids(self) -> list[str]:
         """Returns a sorted list of object IDs for objects categorized as 'key'."""
         if not self.objects_data or not isinstance(self.objects_data, list):
             logger.warning("get_key_object_ids: No objects_data list found.")
@@ -197,7 +200,7 @@ class ObjectDataManager:
         logger.debug(f"get_key_object_ids: Found key IDs: {sorted_key_ids}")
         return sorted_key_ids
 
-    def get_area_ids_for_room(self, room_id: str) -> List[str]:
+    def get_area_ids_for_room(self, room_id: str) -> list[str]:
         """Returns a sorted list of area IDs for a given room ID."""
         if not self.rooms_data or room_id not in self.rooms_data:
             return []
@@ -214,7 +217,7 @@ class ObjectDataManager:
         ]
         return sorted([aid for aid in area_ids if aid])
 
-    def find_object_location(self, object_id: str) -> tuple[Optional[str], Optional[str]]:
+    def find_object_location(self, object_id: str) -> tuple[str | None, str | None]:
         """
         Finds the room_id and area_id where an object is located.
 
@@ -285,7 +288,7 @@ class ObjectDataManager:
                 self.yaml.dump(data, f)
             logger.info(f"Successfully saved YAML file: {file_path}")
             return True
-        except Exception as e:
+        except Exception:
             logger.exception(f"An error occurred saving {file_path}")
             return False
 
@@ -327,7 +330,7 @@ class ObjectDataManager:
         logger.error(f"Cannot update object: ID '{object_id}' not found.")
         return False
 
-    def _update_object_location_in_rooms(self, object_id: str, new_room_id: Optional[str], new_area_id: Optional[str]) -> bool:
+    def _update_object_location_in_rooms(self, object_id: str, new_room_id: str | None, new_area_id: str | None) -> bool:
         """
         Removes the object_id from its old location (if any) in rooms_data
         and adds it to its new location (if specified).
@@ -469,7 +472,7 @@ class ObjectDataManager:
             logger.error("Failed to save changes to one or both YAML files.")
             return False
 
-    def save_object_and_location(self, object_id: str, new_room_id: Optional[str], new_area_id: Optional[str]) -> bool:
+    def save_object_and_location(self, object_id: str, new_room_id: str | None, new_area_id: str | None) -> bool:
         """
         Specialized save: Updates object location in rooms_data, then saves both files.
         This is useful if the object's own data hasn't changed but its location has.

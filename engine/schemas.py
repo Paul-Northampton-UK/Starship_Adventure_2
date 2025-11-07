@@ -1,7 +1,7 @@
-from typing import List, Tuple, Optional, Set, Dict, Union
-from pydantic import BaseModel, Field, field_validator, ConfigDict
 from enum import Enum
-import re
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 
 class WearArea(str, Enum):
     """Defines areas on the body where items can be worn."""
@@ -71,8 +71,8 @@ class Room(BaseModel):
     room_count: int = Field(..., description="Number of instances of this room")
     location_mode: LocationMode = Field(..., description="Global environment state")
     deck_level: DeckLevel = Field(..., description="Deck level number")
-    grid_reference: Tuple[int, int] = Field(..., description="Bottom-left corner coordinates")
-    grid_size: Tuple[int, int] = Field(..., description="Room dimensions in grid units")
+    grid_reference: tuple[int, int] = Field(..., description="Bottom-left corner coordinates")
+    grid_size: tuple[int, int] = Field(..., description="Room dimensions in grid units")
     
     # Room properties
     windows_present: bool = Field(..., description="Whether the room has windows")
@@ -85,11 +85,11 @@ class Room(BaseModel):
     short_description: RoomDescription
     
     # Room connections
-    exits: List[RoomExit] = Field(default_factory=list)
+    exits: list[RoomExit] = Field(default_factory=list)
 
     @field_validator('grid_reference', 'grid_size')
     @classmethod
-    def validate_grid_coordinates(cls, v: Tuple[int, int]) -> Tuple[int, int]:
+    def validate_grid_coordinates(cls, v: tuple[int, int]) -> tuple[int, int]:
         """Ensure grid coordinates are non-negative"""
         if any(x < 0 for x in v):
             raise ValueError("Grid coordinates must be non-negative")
@@ -105,7 +105,7 @@ class Room(BaseModel):
 
     @field_validator('exits')
     @classmethod
-    def validate_exits(cls, v: List[RoomExit]) -> List[RoomExit]:
+    def validate_exits(cls, v: list[RoomExit]) -> list[RoomExit]:
         """Validate room exits"""
         # Check for duplicate directions
         directions = [exit.direction for exit in v]
@@ -156,8 +156,8 @@ class ObjectProperties(BaseModel):
     is_openable_closable: bool = False
     is_movable: bool = False
     is_wearable: bool = False
-    wear_area: Optional[WearArea] = None
-    wear_layer: Optional[int] = None
+    wear_area: WearArea | None = None
+    wear_layer: int | None = None
     is_flammable: bool = False
     is_toxic: bool = False
     is_food: bool = False
@@ -196,7 +196,7 @@ class ObjectProperties(BaseModel):
     is_repairable: bool = False
 
     # --- Deeper Physical Properties ---
-    material_type: Optional[str] = None # e.g., wood, metal, glass
+    material_type: str | None = None # e.g., wood, metal, glass
     is_buoyant: bool = False
     is_conductive: bool = False
     is_magnetic: bool = False
@@ -207,28 +207,28 @@ class ObjectProperties(BaseModel):
     is_evidence: bool = False
     
     # --- Existing Numeric/Complex Properties ---
-    storage_capacity: Optional[float] = None
+    storage_capacity: float | None = None
     can_store_liquids: bool = False
-    damage: Optional[float] = None
-    durability: Optional[int] = None
-    range: Optional[float] = None
-    digital_content: Optional[Dict[str, str]] = {}
+    damage: float | None = None
+    durability: int | None = None
+    range: float | None = None
+    digital_content: dict[str, str] | None = {}
     
     @field_validator('storage_capacity', 'damage', 'durability', 'range', 'wear_layer')
     @classmethod
-    def validate_non_negative(cls, v: Optional[Union[float, int]]) -> Optional[Union[float, int]]:
+    def validate_non_negative(cls, v: float | int | None) -> float | int | None:
         if v is not None and v < 0:
             raise ValueError("Numeric value must be non-negative")
         return v
 
 class ObjectInteraction(BaseModel):
     """How the object can be interacted with"""
-    required_state: List[str] = Field(default_factory=list)
-    required_items: List[str] = Field(default_factory=list)
-    primary_actions: List[str] = Field(default_factory=list)
-    effects: Dict[str, str] = Field(default_factory=dict)
-    success_message: Optional[str] = None
-    failure_message: Optional[str] = None
+    required_state: list[str] = Field(default_factory=list)
+    required_items: list[str] = Field(default_factory=list)
+    primary_actions: list[str] = Field(default_factory=list)
+    effects: dict[str, str] = Field(default_factory=dict)
+    success_message: str | None = None
+    failure_message: str | None = None
 
 class Object(BaseModel):
     """Main object schema, updated to be more flexible"""
@@ -239,28 +239,28 @@ class Object(BaseModel):
     
     # Optional fields with default values
     is_plural: bool = False
-    synonyms: List[str] = Field(default_factory=list)
+    synonyms: list[str] = Field(default_factory=list)
     
     # These fields often have default values or can be omitted
-    weight: Optional[float] = Field(default=1.0, ge=0)
-    size: Optional[float] = Field(default=1.0, ge=0)
+    weight: float | None = Field(default=1.0, ge=0)
+    size: float | None = Field(default=1.0, ge=0)
     count: int = Field(default=1, ge=1)
     
     properties: ObjectProperties = Field(default_factory=ObjectProperties)
     interaction: ObjectInteraction = Field(default_factory=ObjectInteraction)
     
     # Power and state, often optional
-    power_state: Optional[str] = None
+    power_state: str | None = None
     is_locked: bool = False
-    lock_type: Optional[str] = None
-    lock_code: Optional[str] = None
-    lock_key_id: Optional[str] = None
+    lock_type: str | None = None
+    lock_code: str | None = None
+    lock_key_id: str | None = None
     
     # Storage
-    storage_contents: List[str] = Field(default_factory=list)
+    storage_contents: list[str] = Field(default_factory=list)
     
     # Optional descriptions for different states
-    state_descriptions: Dict[str, str] = Field(default_factory=dict)
+    state_descriptions: dict[str, str] = Field(default_factory=dict)
     
     model_config = ConfigDict(
         populate_by_name = True # Allows using 'id' from YAML to populate 'object_id'
@@ -291,7 +291,7 @@ class Object(BaseModel):
     
     @field_validator('power_state')
     @classmethod
-    def validate_power_state(cls, v: Optional[str]) -> Optional[str]:
+    def validate_power_state(cls, v: str | None) -> str | None:
         if v is not None and v:
             valid_states = ["offline", "emergency", "main_power"]
             if v not in valid_states:
@@ -300,7 +300,7 @@ class Object(BaseModel):
     
     @field_validator('lock_type')
     @classmethod
-    def validate_lock_type(cls, v: Optional[str]) -> Optional[str]:
+    def validate_lock_type(cls, v: str | None) -> str | None:
         if v is not None and v:
             valid_types = ["key", "code", "biometric"]
             if v not in valid_types:

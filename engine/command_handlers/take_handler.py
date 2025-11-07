@@ -1,10 +1,13 @@
-from loguru import logger
-from typing import List, Dict, Any
-from engine.game_state import GameState
-from engine.intent import ParsedIntent
-from engine.command_intent import CommandIntent
+from typing import Any
 
-def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]:
+from engine.command_intent import CommandIntent
+from engine.intent import ParsedIntent
+from loguru import logger
+
+from engine.game_state import GameState
+
+
+def handle_take(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict[str, Any]]:
     """Handles the TAKE command intent."""
     target_object_id = parsed_intent.target_object_id
     target_object_name = parsed_intent.target or target_object_id

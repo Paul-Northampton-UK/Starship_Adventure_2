@@ -1,8 +1,10 @@
 """Utility functions shared across command handlers."""
 
-from loguru import logger # Changed from logging
-from typing import Optional
-from ..game_state import GameState # Relative import from parent directory
+
+from loguru import logger  # Changed from logging
+
+from ..game_state import GameState  # Relative import from parent directory
+
 
 def item_matches_name(game_state: GameState, item_id: str, name_to_match: str) -> bool:
     """Checks if the item ID matches the name/synonym/ID provided."""

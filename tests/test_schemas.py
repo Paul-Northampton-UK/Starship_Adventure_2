@@ -1,5 +1,7 @@
 import pytest
-from engine.schemas import Room, RoomDescription, RoomExit, LocationMode, DeckLevel
+
+from engine.schemas import DeckLevel, LocationMode, Room
+
 
 def test_valid_room():
     """Test that a valid room passes validation"""

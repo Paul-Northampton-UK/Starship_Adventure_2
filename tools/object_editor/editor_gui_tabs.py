@@ -1,11 +1,11 @@
 # GUI for creating, editing, and deleting game objects.
 
-import FreeSimpleGUI as sg
 import logging
-import sys # Add sys import
-import os  # Add os import
-from pathlib import Path
+import sys  # Add sys import
 from io import StringIO
+from pathlib import Path
+
+import FreeSimpleGUI as sg
 
 # --- Add project root to Python path ---
 # This allows importing modules from the 'engine' directory when running this script directly.
@@ -16,9 +16,10 @@ if str(project_root) not in sys.path:
 # --- End path addition ---
 
 # Now imports from engine should work
-from object_data_manager import ObjectDataManager # Import our data manager
-from engine.schemas import ObjectCategory, WearArea # IMPORT WEARAREA
-from typing import Optional
+
+from object_data_manager import ObjectDataManager  # Import our data manager
+
+from engine.schemas import ObjectCategory, WearArea  # IMPORT WEARAREA
 
 # Basic logging setup
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -206,7 +207,7 @@ def _parse_multiline_to_digital_content(multiline_string: str) -> dict:
 
     return content_dict
 
-def _parse_digital_content_to_multiline(data_dict: Optional[dict]) -> str:
+def _parse_digital_content_to_multiline(data_dict: dict | None) -> str:
     """Converts a digital content dictionary to structured multiline text."""
     if not data_dict:
         return ""
@@ -468,7 +469,7 @@ def populate_fields(window, object_data: dict, manager: ObjectDataManager):
     window[KEY_PROP_IS_OPENABLE_CLOSABLE].update(props.get("is_openable_closable", False))
 
 
-def update_yaml_preview(window, object_data: Optional[dict], manager: ObjectDataManager):
+def update_yaml_preview(window, object_data: dict | None, manager: ObjectDataManager):
     """Updates the YAML preview pane based on the current object data."""
     if not object_data:
         window[KEY_YAML_PREVIEW].update("No object loaded or created yet.")
@@ -509,7 +510,7 @@ def _parse_multiline_to_dict(multiline_string: str) -> dict:
     return data_dict
 
 
-def gather_data_from_fields(window: sg.Window, manager: ObjectDataManager) -> tuple[Optional[dict], Optional[str], Optional[str]]:
+def gather_data_from_fields(window: sg.Window, manager: ObjectDataManager) -> tuple[dict | None, str | None, str | None]:
     """Gathers data from all GUI fields and compiles it into an object dictionary.
     Returns a tuple: (object_data_dict, object_id, original_object_id)
     object_id is the ID currently in the field (could be new or modified).

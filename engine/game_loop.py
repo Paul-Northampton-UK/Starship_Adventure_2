@@ -1,28 +1,41 @@
 # engine/game_loop.py
 
-from loguru import logger # Changed from logging
-from typing import Dict, Any, Optional, Callable, List
-from .game_state import GameState, PowerState
-from .nlp.parser import NLPCommandParser, ParsedIntent, CommandIntent
-from .command_defs import CommandIntent, ParsedIntent
-from .yaml_loader import YAMLLoader
-from .content_root import get_content_root
-from pathlib import Path
 import importlib
-from .nlp import parser
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+from loguru import logger  # Changed from logging
+
+from .command_defs import CommandIntent, ParsedIntent
+from .command_handlers.basic_commands import (
+    handle_inventory,
+    handle_look,
+    handle_quit,
+    handle_unknown,
+)
+from .command_handlers.equipment import handle_equip
+from .command_handlers.item_actions import handle_drop, handle_put, handle_take, handle_take_from
+from .command_handlers.locking import handle_lock, handle_unlock
 
 # --- Import the new handler functions ---
-from .command_handlers.movement import handle_move, get_location_description
-from .command_handlers.item_actions import handle_take, handle_drop, handle_put, handle_take_from
-from .command_handlers.equipment import handle_equip
-from .command_handlers.basic_commands import handle_look, handle_inventory, handle_quit, handle_unknown
+from .command_handlers.movement import get_location_description, handle_move
+from .command_handlers.open_close_handler import (  # Added import for open/close
+    handle_close,
+    handle_open,
+)
 from .command_handlers.search import handle_search
-from .command_handlers.locking import handle_lock, handle_unlock
-from .command_handlers.open_close_handler import handle_open, handle_close # Added import for open/close
+from .content_root import get_content_root
+from .game_state import GameState, PowerState
+from .nlp import parser
+from .nlp.parser import CommandIntent, NLPCommandParser, ParsedIntent
+from .yaml_loader import YAMLLoader
+
 # --------------------------------------
 
 print("--- engine.game_loop module loading ---")
 import sys
+
 print(f"Python Path: {sys.path}")
 
 # Define default paths (can be overridden)
@@ -47,10 +60,10 @@ class GameLoop:
                  objects_yaml_path: str = DEFAULT_OBJECTS_YAML):
         """Initializes the Game Loop."""
         logger.info("Initializing Game Loop...")
-        self.config_data: Dict[str, Any] = {}
-        self.rooms_data: Dict[str, Any] = {}
-        self.objects_data: Dict[str, Any] = {}
-        self.responses_data: Dict[str, List[str]] = {} # Added for responses
+        self.config_data: dict[str, Any] = {}
+        self.rooms_data: dict[str, Any] = {}
+        self.objects_data: dict[str, Any] = {}
+        self.responses_data: dict[str, list[str]] = {} # Added for responses
         self.is_running = False
         self.content_root: Path | None = None
 
@@ -103,7 +116,7 @@ class GameLoop:
         logger.info("NLPCommandParser initialized.")
         
         # Initialize and setup the intent map - **NOW POINTS TO IMPORTED FUNCTIONS**
-        self.intent_map: Dict[CommandIntent, Callable[..., Optional[str]]] = {}
+        self.intent_map: dict[CommandIntent, Callable[..., str | None]] = {}
         self._setup_intent_map()
         
         logger.info("Game Loop initialized.")
@@ -115,7 +128,7 @@ class GameLoop:
         try:
             config_filename = Path(config_yaml_path).name
             self.config_data = loader.load_file(config_filename)
-            logger.info(f"Configuration loaded successfully.")
+            logger.info("Configuration loaded successfully.")
         except FileNotFoundError:
             logger.warning(f"Config file not found: {config_yaml_path}. Using default settings.")
             self.config_data = {}
@@ -217,7 +230,7 @@ class GameLoop:
         logger.info("Game loop stopped.")
         # Final goodbye is now handled within the loop
 
-    def process_command(self, parsed_intent: ParsedIntent) -> Optional[str]:
+    def process_command(self, parsed_intent: ParsedIntent) -> str | None:
         """Processes the parsed command intent and returns the response message."""
         handler = self.intent_map.get(parsed_intent.intent, handle_unknown)
         logger.info(f"Dispatching intent {parsed_intent.intent} to handler: {handler.__name__}")

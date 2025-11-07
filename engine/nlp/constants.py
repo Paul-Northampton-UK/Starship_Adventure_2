@@ -1,6 +1,6 @@
 """Constants used by the NLP command parser."""
 
-from ..command_defs import CommandIntent # Adjust import path relative to this new location
+from ..command_defs import CommandIntent  # Adjust import path relative to this new location
 
 # Define verb patterns for each intent
 VERB_PATTERNS = {

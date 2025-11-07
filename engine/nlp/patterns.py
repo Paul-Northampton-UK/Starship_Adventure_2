@@ -1,13 +1,16 @@
 """Functions for generating NLP entity patterns."""
 
 import logging
-from typing import List, Dict, Any, Set
-import spacy # Needed for spacy.symbols
-from ..game_state import GameState # Import GameState for accessing object data
+from typing import Any
 
-def generate_patterns(game_state: GameState) -> List[Dict[str, Any]]:
+import spacy  # Needed for spacy.symbols
+
+from ..game_state import GameState  # Import GameState for accessing object data
+
+
+def generate_patterns(game_state: GameState) -> list[dict[str, Any]]:
     """Builds and returns the list of custom entity patterns for the Entity Ruler."""
-    custom_patterns: List[Dict[str, Any]] = []
+    custom_patterns: list[dict[str, Any]] = []
     logging.debug("Generating custom entity patterns...")
 
     # --- Define Direction Patterns --- 
@@ -55,7 +58,7 @@ def generate_patterns(game_state: GameState) -> List[Dict[str, Any]]:
         logging.warning("Cannot generate GAME_OBJECT patterns: game_state or objects_data is missing.")
     else:
         for obj_id, obj_data in game_state.objects_data.items():
-            names_to_pattern: Set[str] = set()
+            names_to_pattern: set[str] = set()
             # Add the primary name
             primary_name = obj_data.get('name')
             if primary_name and isinstance(primary_name, str):
@@ -99,7 +102,7 @@ def generate_patterns(game_state: GameState) -> List[Dict[str, Any]]:
                     if isinstance(area_data, dict):
                         area_id = area_data.get("area_id")
                         # TODO: Add area_name and area_aliases later if needed
-                        names_to_pattern: Set[str] = set()
+                        names_to_pattern: set[str] = set()
                         if area_id and isinstance(area_id, str):
                             names_to_pattern.add(area_id.lower()) # Use area_id as pattern for now
                             # Add simple abbreviation if ID contains underscore?

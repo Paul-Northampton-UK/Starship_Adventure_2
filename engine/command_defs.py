@@ -1,6 +1,7 @@
-from enum import Enum, auto
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from enum import Enum, auto
+from typing import Any
+
 
 class CommandIntent(Enum):
     """Enum representing different types of command intents."""
@@ -39,13 +40,13 @@ class CommandIntent(Enum):
 class ParsedIntent:
     """Class to hold the parsed command information."""
     intent: CommandIntent
-    action: Optional[str] = None
-    target: Optional[str] = None
-    target_object_id: Optional[str] = None
-    secondary_target: Optional[str] = None
-    secondary_target_id: Optional[str] = None
-    direction: Optional[str] = None
-    preposition: Optional[str] = None
+    action: str | None = None
+    target: str | None = None
+    target_object_id: str | None = None
+    secondary_target: str | None = None
+    secondary_target_id: str | None = None
+    direction: str | None = None
+    preposition: str | None = None
     original_input: str = ""
 
 @dataclass
@@ -57,5 +58,5 @@ class CommandResponse:
     message: str
     status_code: int # HTTP-like status codes (e.g., 200 OK, 400 Bad Request, 404 Not Found)
     room_id: str # Current room ID, useful for client updates
-    target_object_name: Optional[str] = None
-    extra_data: Optional[Dict[str, Any]] = field(default_factory=dict)
+    target_object_name: str | None = None
+    extra_data: dict[str, Any] | None = field(default_factory=dict)

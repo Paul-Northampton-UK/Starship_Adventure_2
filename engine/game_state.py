@@ -1,9 +1,11 @@
-from typing import Dict, List, Optional, Set, Any
-from dataclasses import dataclass, asdict, field
-from enum import Enum
 import json
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
+
 from loguru import logger
+
 
 class PowerState(Enum):
     """Enum for different power states in the game."""
@@ -28,22 +30,22 @@ class PlayerStatus:
 class GameState:
     """Manages the current state of the game."""
     current_room_id: str
-    rooms_data: Dict[str, Any]  # Added to store loaded room definitions
-    objects_data: Dict[str, Any]  # Added objects_data
-    responses_data: Dict[str, Any] # Added for storing loaded response templates
+    rooms_data: dict[str, Any]  # Added to store loaded room definitions
+    objects_data: dict[str, Any]  # Added objects_data
+    responses_data: dict[str, Any] # Added for storing loaded response templates
     power_state: PowerState
-    current_area_id: Optional[str] = None
-    inventory: List[str] = field(default_factory=list)
-    hand_slot: List[str] = field(default_factory=list)
-    worn_items: List[str] = field(default_factory=list)
-    visited_rooms: Set[str] = field(default_factory=set)
-    visited_areas: Dict[str, List[str]] = field(default_factory=dict)
-    game_flags: Dict[str, bool] = field(default_factory=dict)
+    current_area_id: str | None = None
+    inventory: list[str] = field(default_factory=list)
+    hand_slot: list[str] = field(default_factory=list)
+    worn_items: list[str] = field(default_factory=list)
+    visited_rooms: set[str] = field(default_factory=set)
+    visited_areas: dict[str, list[str]] = field(default_factory=dict)
+    game_flags: dict[str, bool] = field(default_factory=dict)
     player_status: PlayerStatus = field(default_factory=lambda: PlayerStatus())
     game_time: datetime = field(default_factory=datetime.now)
-    object_states: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    dynamic_room_objects: Dict[str, List[str]] = field(default_factory=dict)
-    last_save_time: Optional[datetime] = None
+    object_states: dict[str, dict[str, Any]] = field(default_factory=dict)
+    dynamic_room_objects: dict[str, list[str]] = field(default_factory=dict)
+    last_save_time: datetime | None = None
 
     def __post_init__(self):
         """Initialize collections if they're None."""
@@ -127,7 +129,7 @@ class GameState:
         self.current_area_id = area_id
         # self.visit_area(area_id) # Removed: Visiting is handled by description logic
 
-    def get_current_location(self) -> tuple[str, Optional[str]]:
+    def get_current_location(self) -> tuple[str, str | None]:
         """Get the current room and area IDs."""
         return self.current_room_id, self.current_area_id
 
@@ -155,7 +157,7 @@ class GameState:
     @classmethod
     def load_game(cls, filename: str) -> 'GameState':
         """Load a game state from a file."""
-        with open(filename, 'r') as f:
+        with open(filename) as f:
             save_data = json.load(f)
         
         game_state = cls(current_room_id=save_data['current_room_id'], power_state=PowerState(save_data['power_state']))
@@ -193,7 +195,7 @@ class GameState:
             oxygen_change=-minutes // 60   # Lose oxygen every hour
         )
 
-    def get_object_state(self, object_id: str) -> Dict[str, Any]:
+    def get_object_state(self, object_id: str) -> dict[str, Any]:
         """Get the current runtime state of an object, ensuring it's fully initialized."""
         base_data = self.get_object_by_id(object_id)
         if not base_data:
@@ -342,7 +344,7 @@ class GameState:
         """Check if an object has been interacted with."""
         return object_id in self.object_states
 
-    def get_player_status(self) -> Dict:
+    def get_player_status(self) -> dict:
         """Get a dictionary of player's current status."""
         return {
             'health': self.player_status.health,
@@ -361,18 +363,18 @@ class GameState:
                 self.player_status.oxygen > 0 and 
                 self.player_status.radiation < self.player_status.max_radiation)
 
-    def get_object_by_id(self, object_id: str) -> Optional[Dict[str, Any]]:
+    def get_object_by_id(self, object_id: str) -> dict[str, Any] | None:
         """Retrieves base object data from the stored dictionary."""
         return self.objects_data.get(object_id)
 
-    def _get_object_name(self, object_id: Optional[str]) -> str:
+    def _get_object_name(self, object_id: str | None) -> str:
         """Safely gets the object's name or returns a default."""
         if not object_id:
             return "nothing"
         obj_data = self.get_object_by_id(object_id)
         return obj_data.get("name", object_id) if obj_data else object_id # Fallback to ID
 
-    def find_object_id_by_name_in_location(self, object_name: str, room_id: str, area_id: Optional[str] = None, visible_only: bool = True) -> Optional[str]:
+    def find_object_id_by_name_in_location(self, object_name: str, room_id: str, area_id: str | None = None, visible_only: bool = True) -> str | None:
         """Finds an object ID by name/alias within the specified room or area (partial match allowed),
            considering dynamic visibility."""
         normalized_name = object_name.lower().strip()
@@ -383,8 +385,8 @@ class GameState:
             logger.error(f"Cannot search location: Room data missing for {room_id}")
             return None
 
-        potential_ids_in_location: Set[str] = set()
-        static_objects_present_refs: List[Any] = []
+        potential_ids_in_location: set[str] = set()
+        static_objects_present_refs: list[Any] = []
 
         if area_id:
             areas = current_room_data.get("areas", [])
@@ -410,7 +412,7 @@ class GameState:
         for dyn_obj_id in dynamic_ids_for_room:
             potential_ids_in_location.add(dyn_obj_id)
 
-        exact_match_found_id: Optional[str] = None
+        exact_match_found_id: str | None = None
         for obj_id in potential_ids_in_location:
             obj_data = self.get_object_by_id(obj_id)
             if not obj_data: continue
@@ -432,7 +434,7 @@ class GameState:
         if exact_match_found_id:
             return exact_match_found_id
 
-        partial_match_ids: List[str] = []
+        partial_match_ids: list[str] = []
         for obj_id in potential_ids_in_location:
             obj_data = self.get_object_by_id(obj_id)
             if not obj_data: continue
@@ -456,7 +458,7 @@ class GameState:
             
         return None
 
-    def _find_object_id_by_name_in_inventory(self, item_name_or_id: str) -> Optional[str]:
+    def _find_object_id_by_name_in_inventory(self, item_name_or_id: str) -> str | None:
         """Finds the object ID in inventory by name, alias, or ID (partial match allowed)."""
         normalized_name = item_name_or_id.lower().strip()
         logger.debug(f"Searching base inventory for '{normalized_name}'. Inventory: {self.inventory}")
@@ -500,7 +502,7 @@ class GameState:
         logger.debug(f"Item '{normalized_name}' not found in inventory (exact or partial).")
         return None
 
-    def _find_object_id_by_name_worn(self, item_name_or_id: str) -> Optional[str]:
+    def _find_object_id_by_name_worn(self, item_name_or_id: str) -> str | None:
         """Finds the object ID of a directly worn item by name, alias, or ID (partial match allowed)."""
         normalized_name = item_name_or_id.lower().strip()
         logger.debug(f"Searching directly worn items for '{normalized_name}'. Worn list: {self.worn_items}")
@@ -544,7 +546,7 @@ class GameState:
         logger.debug(f"Item '{normalized_name}' not found directly worn (exact or partial).")
         return None
 
-    def find_item_id_held_or_worn(self, item_name_or_id: str) -> Optional[str]:
+    def find_item_id_held_or_worn(self, item_name_or_id: str) -> str | None:
         """Finds an item ID by name/alias/ID in hands, directly worn, or inside worn containers."""
         normalized_name = item_name_or_id.lower().strip()
         logger.debug(f"Searching for item '{normalized_name}' in hands, worn, and inside worn containers.")
@@ -606,7 +608,7 @@ class GameState:
         logger.debug(f"Item '{normalized_name}' not found in hands, worn, or inside worn containers.")
         return None
 
-    def find_container_id_by_name(self, container_name: str) -> Optional[str]:
+    def find_container_id_by_name(self, container_name: str) -> str | None:
         """Finds a container object ID by name/alias, searching location, hand slot, and worn items."""
         normalized_name = container_name.lower().strip()
         logger.debug(f"Searching for container '{normalized_name}' in location, hand slot, and worn items.")
@@ -668,7 +670,7 @@ class GameState:
             logger.warning(f"[take_object] Attempt to take non-takeable item {object_id} denied by properties.")
             return f"You cannot take the {obj_data.get('name', object_id)}."
 
-        item_taken_from_container_id: Optional[str] = None
+        item_taken_from_container_id: str | None = None
 
         # Check if the item is in any open, visible container in the current location
         # MODIFICATION START: Changed to use the new get_containers_in_location method parameters
@@ -720,7 +722,7 @@ class GameState:
         logger.info(f"Player took '{object_id}' ({object_name}) into hand_slot. Source: {'container ' + item_taken_from_container_id if item_taken_from_container_id else 'location'}.")
         return f"You take the {object_name}."
 
-    def get_containers_in_location(self, must_be_open: bool = False, must_be_visible: bool = True) -> List[str]:
+    def get_containers_in_location(self, must_be_open: bool = False, must_be_visible: bool = True) -> list[str]:
         """
         Gets IDs of all storage containers in the current location (room/area) 
         that meet the specified criteria.
@@ -733,7 +735,7 @@ class GameState:
         
         logger.debug(f"[get_containers_in_location] Checking IDs: {object_ids_to_check} (must_be_open={must_be_open}, must_be_visible={must_be_visible})")
         
-        valid_container_ids: List[str] = []
+        valid_container_ids: list[str] = []
         for obj_id in object_ids_to_check:
             obj_base_data = self.get_object_by_id(obj_id)
             if not obj_base_data:
@@ -767,14 +769,14 @@ class GameState:
         logger.debug(f"[get_containers_in_location] Returning valid containers: {valid_container_ids}")
         return valid_container_ids
 
-    def _get_all_object_ids_in_current_location(self, visible_only: bool = False) -> Set[str]:
+    def _get_all_object_ids_in_current_location(self, visible_only: bool = False) -> set[str]:
         """Helper to get all object IDs in the current room/area, optionally filtered by visibility."""
         current_room_data = self.rooms_data.get(self.current_room_id)
         if not current_room_data:
             return set()
 
-        potential_ids: Set[str] = set()
-        static_refs: List[Any] = []
+        potential_ids: set[str] = set()
+        static_refs: list[Any] = []
         if self.current_area_id:
             areas = current_room_data.get("areas", [])
             if isinstance(areas, list):
@@ -843,7 +845,7 @@ class GameState:
         if not visible_only:
             return potential_ids
         
-        visible_ids: Set[str] = set()
+        visible_ids: set[str] = set()
         for obj_id in potential_ids:
             obj_data = self.get_object_by_id(obj_id)
             if not obj_data: continue
@@ -853,7 +855,7 @@ class GameState:
                 visible_ids.add(obj_id)
         return visible_ids
 
-    def drop_object(self, object_id: str) -> Dict[str, Any]:
+    def drop_object(self, object_id: str) -> dict[str, Any]:
         """Moves an object from hand_slot to the current location."""
         # Corrected Check: Ensure the object ID is actually in the hand_slot list
         if object_id not in self.hand_slot:
@@ -1178,7 +1180,7 @@ class GameState:
         # The operation is considered successful if it was removed from static list OR dynamic list.
         return item_was_in_static_list or item_was_in_dynamic_list
 
-    def _get_objects_in_room(self, room_id: str) -> List[Dict[str, Any]]:
+    def _get_objects_in_room(self, room_id: str) -> list[dict[str, Any]]:
         # This method is not provided in the original file or the code block
         # It's assumed to exist as it's called in the take_object method
         # Implement the logic to retrieve objects in a room based on the room_id

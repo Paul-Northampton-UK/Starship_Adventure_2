@@ -5,9 +5,10 @@ A sci-fi text adventure game with a GUI interface.
 """
 
 import sys
+from pathlib import Path
+
 import pygame
 from loguru import logger
-from pathlib import Path
 
 # Set up logging
 log_path = Path("logs")

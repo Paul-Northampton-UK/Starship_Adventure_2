@@ -1,12 +1,14 @@
 """Command handlers for locking and unlocking objects."""
 
+from typing import Any
+
 from loguru import logger
-from typing import List, Dict, Any, Optional
 
+from ..command_defs import CommandIntent, ParsedIntent
 from ..game_state import GameState
-from ..command_defs import ParsedIntent, CommandIntent
 
-def handle_lock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]:
+
+def handle_lock(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict[str, Any]]:
     """Handles the LOCK command intent."""
     target_object_id = parsed_intent.target_object_id
     key_item_id = parsed_intent.secondary_target_id # The key to use
@@ -82,7 +84,7 @@ def handle_lock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         logger.error(f"[handle_lock] Failed to update lock state for '{target_object_name}' via game_state.update_object_lock_state.")
         return [{ "key": "LOCK_FAIL_INTERNAL_ERROR", "data": {"target_name": target_object_name} }] 
 
-def handle_unlock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]:
+def handle_unlock(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict[str, Any]]:
     """Handles the UNLOCK command intent."""
     target_object_id = parsed_intent.target_object_id
     key_item_id = parsed_intent.secondary_target_id # The key to use

@@ -1,15 +1,17 @@
 import os
 import sys
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Add project root to Python path
 project_root = str(Path(__file__).parent.parent)
 sys.path.insert(0, project_root)
 
-from engine.nlp_command_parser import NLPCommandParser
 from engine.command_defs import CommandIntent
 from engine.game_state import GameState
+from engine.nlp_command_parser import NLPCommandParser
+
 
 class TestNLPCommandParser:
     @pytest.fixture

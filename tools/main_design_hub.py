@@ -1,8 +1,9 @@
 # tools/main_design_hub.py
-import customtkinter as ctk
-from loguru import logger
 import sys
 from pathlib import Path
+
+import customtkinter as ctk
+from loguru import logger
 
 # --- Add project root to Python path ---
 script_dir = Path(__file__).resolve().parent
@@ -12,6 +13,7 @@ if str(project_root) not in sys.path:
 
 
 from tools.object_editor.new_ctk_object_editor import NewObjectEditorFrame
+
 
 class GameDesignHub:
     """

@@ -1,6 +1,8 @@
-import os
 import hashlib
+import os
+
 import yaml
+
 
 def file_hash(path, algo="sha256"):
     """Return hash digest of file contents."""
@@ -13,7 +15,7 @@ def file_hash(path, algo="sha256"):
 def summarize_file(path):
     """Summarize text files by showing first lines; skip binaries."""
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             content = f.read(400)  # preview only
             return content.replace("\n", "\\n")
     except Exception:

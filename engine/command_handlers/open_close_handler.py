@@ -1,12 +1,14 @@
 """Command handlers for open and close actions."""
 
+from typing import Any
+
 from loguru import logger
-from typing import List, Dict, Any, Optional
 
+from ..command_defs import ParsedIntent
 from ..game_state import GameState
-from ..command_defs import ParsedIntent, CommandIntent
 
-def handle_open(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]:
+
+def handle_open(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict[str, Any]]:
     """Handles the OPEN command intent."""
     target_object_id = parsed_intent.target_object_id
     target_object_name = parsed_intent.target or target_object_id # Player-facing name
@@ -41,7 +43,7 @@ def handle_open(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         logger.info(f"[handle_open] '{target_object_name}' is already open.")
         # If it's storage, list contents or say empty
         if obj_props.get("is_storage", False):
-            items_in_container_data: List[Dict[str, Any]] = []
+            items_in_container_data: list[dict[str, Any]] = []
             contained_item_references = obj_state.get("contains", [])
 
             if contained_item_references:
@@ -131,7 +133,7 @@ def handle_open(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
     else: # For non-storage openables
         return [{ "key": "OPEN_SUCCESS_GENERIC", "data": {"target_name": target_object_name} }]
 
-def handle_close(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict[str, Any]]:
+def handle_close(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict[str, Any]]:
     """Handles the CLOSE command intent."""
     target_object_id = parsed_intent.target_object_id
     target_object_name = parsed_intent.target or target_object_id

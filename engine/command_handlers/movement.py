@@ -1,9 +1,12 @@
 """Command handler for player movement."""
 
+from typing import Any
+
 from loguru import logger
-from typing import Optional, Dict, Any, Tuple, List, Set
-from ..game_state import GameState
+
 from ..command_defs import ParsedIntent
+from ..game_state import GameState
+
 
 # Helper function to determine 'a' or 'an' (improved)
 def _get_indefinite_article(word: str) -> str:
@@ -12,7 +15,7 @@ def _get_indefinite_article(word: str) -> str:
     # Simple vowel check, ignoring silent 'h' etc.
     return "an" if word.lower().startswith(('a', 'e', 'i', 'o', 'u')) else "a"
 
-def _format_object_list(game_state: GameState, static_object_refs: list, current_room_id: str, current_area_id: Optional[str]) -> str:
+def _format_object_list(game_state: GameState, static_object_refs: list, current_room_id: str, current_area_id: str | None) -> str:
     """Formats a list of object IDs into a readable sentence,
        correctly handling plurals, articles, dynamic visibility, and areas."""
     logger.debug(f"[_format_object_list] Formatting for room: {current_room_id}, area: {current_area_id}")
@@ -34,7 +37,7 @@ def _format_object_list(game_state: GameState, static_object_refs: list, current
         return ""
 
     # Step 3 (now Step 1 after refactor): Filter by nameable objects (already filtered by visibility by GameState)
-    visible_and_nameable_object_ids: List[str] = []
+    visible_and_nameable_object_ids: list[str] = []
     for obj_id in object_ids_in_location: # Iterate the list from GameState
         base_obj_data = game_state.objects_data.get(obj_id)
         if not base_obj_data:
@@ -98,7 +101,7 @@ def _format_exit_list(exit_data_list: list[dict]) -> str:
         last = directions[-1]
         return f"Obvious exits are {all_but_last}, and {last}."
 
-def get_location_description(game_state: GameState, room_id: str, area_id: Optional[str], force_long_description: bool = False) -> str:
+def get_location_description(game_state: GameState, room_id: str, area_id: str | None, force_long_description: bool = False) -> str:
     """Gets the appropriate description for a room or area, including objects and exits.
 
     Args:
@@ -110,7 +113,7 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
     Returns:
         A formatted string containing the location name, description, objects, and exits.
     """
-    location_data: Optional[Dict[str, Any]] = None
+    location_data: dict[str, Any] | None = None
     is_first_visit = True
     description_key = "first_visit_description"
     location_id_for_log = area_id or room_id
@@ -162,11 +165,11 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
         descriptions = location_data.get(fallback_key, {})
         if not isinstance(descriptions, dict):
              logger.error(f"Both description keys missing or invalid for {location_id_for_log}")
-             base_description = f"The description for this location seems missing."
+             base_description = "The description for this location seems missing."
         else:
-             base_description = descriptions.get(power_state, descriptions.get("offline", f"It\'s too dark to see clearly."))
+             base_description = descriptions.get(power_state, descriptions.get("offline", "It\'s too dark to see clearly."))
     else:
-        base_description = descriptions.get(power_state, descriptions.get("offline", f"It\'s too dark to see clearly."))
+        base_description = descriptions.get(power_state, descriptions.get("offline", "It\'s too dark to see clearly."))
 
     # Format object list
     if not isinstance(objects_present_ids, list):
@@ -207,7 +210,7 @@ def get_location_description(game_state: GameState, room_id: str, area_id: Optio
     # Clean up potential leading/trailing whitespace or multiple newlines
     return "\n".join(line.strip() for line in full_description.splitlines() if line.strip())
 
-def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles the MOVE command intent. Checks Area movement first, then Directional exits."""
     target = parsed_intent.target # Might be an Area name/ID or other text
     direction_input = parsed_intent.direction # Normalized cardinal direction from parser (if found)
@@ -291,7 +294,7 @@ def handle_move(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
          logger.error("handle_move reached unexpected state.")
          return [{'key': "invalid_command", 'data': {}}] 
 
-def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles the LOOK command intent.
     If no target, describes the room.
     If target, describes the object if found in room, hands, or worn items."""
@@ -305,7 +308,7 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
         return [{ "key": "look_success_room", "data": {"description": description} }]
     else:
         # Player is looking AT something specific.
-        obj_data_to_describe: Optional[Dict[str, Any]] = None
+        obj_data_to_describe: dict[str, Any] | None = None
         found_in = None # To log where it was found
 
         # Priority 1: If parser gave us a specific ID, check hands and worn items using that ID first.
@@ -395,6 +398,6 @@ def handle_look(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
             logger.warning(f"[handle_look] FAILED - Target '{final_search_term}' not found after checking hands (by ID), worn (by ID), and room (by name/ID).")
             return [{"key": "look_fail_not_found", "data": {"item_name": final_search_term}}]
 
-def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict]:
+def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     # Implementation of handle_inventory method
     pass 
