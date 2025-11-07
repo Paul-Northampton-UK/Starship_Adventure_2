@@ -1,4 +1,5 @@
 # Handles loading, saving, and managing object and room YAML data.
+import os
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,9 @@ from ruamel.yaml.parser import ParserError
 from ruamel.yaml.scanner import ScannerError
 
 from engine.content_root import get_content_root
+
+
+AUTO_FILL_PLACEHOLDER = "TBD — auto-filled placeholder (remove before release)"
 
 
 class ObjectDataManager:
@@ -282,14 +286,21 @@ class ObjectDataManager:
 
     # --- Methods for modifying and saving data will go here ---
     def _save_yaml_file(self, file_path: Path, data: Any) -> bool:
-        """Saves data to a YAML file using ruamel.yaml, preserving formatting."""
+        """Persist YAML using a temp file for atomic writes."""
+
+        tmp_path = file_path.with_suffix(file_path.suffix + ".tmp")
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                self.yaml.dump(data, f)
+            with open(tmp_path, 'w', encoding='utf-8') as tmp:
+                self.yaml.dump(data, tmp)
+                tmp.flush()
+                os.fsync(tmp.fileno())
+            tmp_path.replace(file_path)
             logger.info(f"Successfully saved YAML file: {file_path}")
             return True
         except Exception:
             logger.exception(f"An error occurred saving {file_path}")
+            if tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
             return False
 
     def add_object(self, new_object_data: dict) -> bool:
@@ -457,6 +468,8 @@ class ObjectDataManager:
 
     def save_all_changes(self) -> bool:
         """Saves the current state of objects_data and rooms_data to their respective YAML files."""
+        self._ensure_minimum_room_descriptions()
+
         objects_payload = {'objects': self.objects_data if self.objects_data else []}
         # For rooms, we need to convert our internal dictionary back to a list of room dicts
         rooms_list = list(self.rooms_data.values()) if self.rooms_data else []
@@ -498,6 +511,27 @@ class ObjectDataManager:
 
         logger.info(f"Location update for object '{object_id}' handled (new location: Room='{new_room_id}', Area='{new_area_id}'). Proceeding to save.")
         return self.save_all_changes()
+
+    def _room_has_description(self, room_data: dict[str, Any]) -> bool:
+        """Check whether a room already has at least one description string."""
+
+        for key in ("description", "desc", "long_description"):
+            val = room_data.get(key)
+            if isinstance(val, str) and val.strip():
+                return True
+        return False
+
+    def _ensure_minimum_room_descriptions(self) -> None:
+        """Fill missing room descriptions with a clearly marked placeholder."""
+
+        if not isinstance(self.rooms_data, dict):
+            return
+
+        for room_id, room_data in self.rooms_data.items():
+            if not isinstance(room_data, dict) or self._room_has_description(room_data):
+                continue
+            room_name = room_data.get('name') or room_id or 'unknown room'
+            room_data['description'] = f"{AUTO_FILL_PLACEHOLDER} [{room_name}]"
 
 
 # Example usage (for testing this module directly)
