@@ -456,6 +456,7 @@ rooms:
   #-----------------------------
   # Room 2: Captain's Corridor
   #-----------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Ship Bridge]
 - room_id: captains_corridor
   name: "Captain's Access Corridor"
   room_count: 2
@@ -551,6 +552,8 @@ rooms:
   #---------------------------------------------------------
   # Room 3: East Bridge Corridor - Entrance (Starboard Side)
   #---------------------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Access
+    Corridor]
 - room_id: east_bridge_corridor_entrance
   name: "East Bridge Corridor - Entrance"
   room_count: 3
@@ -629,6 +632,8 @@ rooms:
   #-----------------------------------------------------------
   # Room 4: East Bridge Corridor - Middle (Starboard Side)
   #-----------------------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [East Bridge
+    Corridor - Entrance]
 - room_id: east_bridge_corridor_middle
   name: "East Bridge Corridor - Middle"
   room_count: 4
@@ -712,6 +717,8 @@ rooms:
   #----------------------------------------------------
   # Room 5: East Bridge Corridor - End (Starboard Side)
   #----------------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [East Bridge
+    Corridor - Middle]
 - room_id: east_bridge_corridor_end
   name: "East Bridge Corridor - End"
   room_count: 5
@@ -783,6 +790,8 @@ rooms:
   #----------------------------------------------------
   # Room 6: West Bridge Corridor - Entrance (Port Side)
   #----------------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [East Bridge
+    Corridor - End]
 - room_id: west_bridge_corridor_entrance
   name: "West Bridge Corridor - Entrance"
   room_count: 6
@@ -845,6 +854,8 @@ rooms:
   #------------------------------------------
   # Room 7: West Bridge Corridor - Middle
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [West Bridge
+    Corridor - Entrance]
 - room_id: west_bridge_corridor_middle
   name: "West Bridge Corridor - Middle"
   room_count: 7
@@ -918,6 +929,8 @@ rooms:
   #------------------------------------------
   # Room 8: West Bridge Corridor - End
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [West Bridge
+    Corridor - Middle]
 - room_id: west_bridge_corridor_end
   name: "West Bridge Corridor - End"
   room_count: 8
@@ -986,6 +999,8 @@ rooms:
   #------------------------------------------
   # Room 9: Bridge Crew Rest Area
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [West Bridge
+    Corridor - End]
 - room_id: bridge_crew_rest_area
   name: "Bridge Crew Rest Area"
   room_count: 9
@@ -1069,6 +1084,8 @@ rooms:
   #------------------------------------------
   # Room 10: Bridge Ready Room
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Bridge Crew
+    Rest Area]
 - room_id: bridge_ready_room
   name: "Bridge Ready Room"
   room_count: 10
@@ -1138,6 +1155,8 @@ rooms:
   #-----------------------------------------------
   # Room 11: Mission Operations Room (Mission Ops)
   #-----------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Bridge Ready
+    Room]
 - room_id: mission_ops
   name: "Mission Operations Room"
   room_count: 11
@@ -1206,6 +1225,8 @@ rooms:
   #--------------------------------------------------
   # Room 12: Player Cabin (Starting Location)
   #--------------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Mission Operations
+    Room]
 - room_id: player_cabin
   name: "Player Cabin"
   room_count: 12
@@ -1276,6 +1297,7 @@ rooms:
   # - id: cab_phaser  # Removed as it starts in footlocker
   - id: cab_slippers
   - id: cab_footlocker
+  description: TBD — auto-filled placeholder (remove before release) [Player Cabin]
 - room_id: player_cabin_small_kitchen
   name: "Small Kitchen"
   room_count: 13
@@ -1331,6 +1353,7 @@ rooms:
 
   objects_present:
   - id: cab_hat
+  description: TBD — auto-filled placeholder (remove before release) [Small Kitchen]
 - room_id: player_cabin_small_bathroom
   name: "Small Bathroom"
   room_count: 14
@@ -1385,6 +1408,7 @@ rooms:
   objects_present:
   - id: cab_mirror
   - id: cabin_book
+  description: TBD — auto-filled placeholder (remove before release) [Small Bathroom]
 - room_id: hidden_maintenance_alcove
   name: "Maintenance Alcove"
   room_count: 15
@@ -1461,6 +1485,8 @@ rooms:
   #------------------------------------------
   # Room 16: Captain's Office
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Maintenance
+    Alcove]
 - room_id: captains_office
   name: "Captain's Office"
   room_count: 16
@@ -1521,6 +1547,7 @@ rooms:
   #------------------------------------------
   # Room 17: Captain's Lounge
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Office]
 - room_id: captains_lounge
   name: "Captain's Lounge"
   room_count: 17
@@ -1588,6 +1615,7 @@ rooms:
   #------------------------------------------
   # Room 18: Captain's Quarters
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Lounge]
 - room_id: captains_quarters
   name: "Captain's Quarters"
   room_count: 18
@@ -1674,6 +1702,7 @@ rooms:
   #------------------------------------------
   # Room 19: Captain's Private Kitchen
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Quarters]
 - room_id: captains_private_kitchen
   name: "Captain's Private Kitchen"
   room_count: 19
@@ -1736,6 +1765,8 @@ rooms:
   #------------------------------------------
   # Room 20: Captain's Private Bathroom
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Private
+    Kitchen]
 - room_id: captains_private_bathroom
   name: "Captain's Private Bathroom"
   room_count: 20
@@ -1793,6 +1824,8 @@ rooms:
   #---------------------------------------------------
   # Room 21: Captain's Observation Platform
   #---------------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Private
+    Bathroom]
 - room_id: captains_observation_platform
   name: "Captain's Observation Platform"
   room_count: 21
@@ -1855,6 +1888,8 @@ rooms:
   #--------------------------------------------------
   # Room 22: Starship Docking Bay (Captain's Yacht Dock)
   #--------------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Observation
+    Platform]
 - room_id: captains_docking_bay
   name: "Captain's Docking Bay"
   room_count: 22
@@ -1969,6 +2004,8 @@ rooms:
   # -----------------------------------------------
   # Room 23: Yacht Bridge
   # -----------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Docking
+    Bay]
 - room_id: yacht_bridge
   name: "Captain's Yacht - Bridge"
   room_count: 23
@@ -2064,6 +2101,8 @@ rooms:
   # -----------------------------------------------
   # Room 24: Yacht Living Quarters
   # -----------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Yacht
+    - Bridge]
 - room_id: yacht_living_quarters
   name: "Captain's Yacht - Living Quarters"
   room_count: 24
@@ -2123,6 +2162,8 @@ rooms:
   # -----------------------------------------------
   # Room 25: Yacht Engine Room
   # -----------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Yacht
+    - Living Quarters]
 - room_id: yacht_engine_room
   name: "Captain's Yacht - Engine Room"
   room_count: 25
@@ -2176,6 +2217,8 @@ rooms:
   #------------------------------------------
   # Room 26: Captain's Door
   #------------------------------------------
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Yacht
+    - Engine Room]
 - room_id: captains_door
   name: "Captain's Door"
   room_count: 26
@@ -2248,3 +2291,4 @@ rooms:
       # End of Area 9: Captain's Door
 
 # End of Rooms
+  description: TBD — auto-filled placeholder (remove before release) [Captain's Door]

@@ -1,4 +1,12 @@
 # packs/<pack_id>/game.yaml
 id: starship_adventure
 title: Starship Adventure (Stub)
+version: 0.1.0
+engine_min_version: 0.1.0
+start_room_id: ship_bridge
+start_power_state: emergency
 schema_version: 1
+authors:
+  - Paul Northampton
+description: |
+  TBD — auto-filled placeholder (remove before release)
