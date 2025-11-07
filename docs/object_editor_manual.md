@@ -1,5 +1,12 @@
 ## Object Editor Documentation (Draft 1)
 
+Note on Game Packs & Hub (August 2025)
+
+- The editor is used within a multi-pack workflow managed by the Hub.
+- Each game pack lives under `packs/<pack_id>/` and provides its own `objects.yaml`, `rooms.yaml`, and `responses.yaml`.
+- When a pack is active, the editor should load from and save to that pack’s files, rather than the root `data/` directory.
+- During the transition period, some projects may still read from `data/`; ensure the chosen `active_pack` and editor target align.
+
 This document details the fields available in the Starship Adventure 2 Object Editor GUI.
 
 ### 1. Top Controls

@@ -6,6 +6,7 @@ from .game_state import GameState, PowerState
 from .nlp.parser import NLPCommandParser, ParsedIntent, CommandIntent
 from .command_defs import CommandIntent, ParsedIntent
 from .yaml_loader import YAMLLoader
+from .content_root import get_content_root
 from pathlib import Path
 import importlib
 from .nlp import parser
@@ -51,11 +52,17 @@ class GameLoop:
         self.objects_data: Dict[str, Any] = {}
         self.responses_data: Dict[str, List[str]] = {} # Added for responses
         self.is_running = False
+        self.content_root: Path | None = None
 
         # Load config first
         self.load_config(config_yaml_path)
 
-        # Load game data (rooms, objects, responses)
+        # Resolve content root based on active_pack, then load game data (rooms, objects, responses)
+        active_pack = self.config_data.get("active_pack")
+        self.content_root = get_content_root(active_pack)
+        banner = f"=== Content root: {self.content_root} (pack={active_pack or 'legacy data/'}) ==="
+        logger.info(banner)
+        print(banner)
         self.load_game_data(rooms_yaml_path, objects_yaml_path, "data/responses.yaml")
 
         # Determine starting conditions from config (with defaults)
@@ -119,7 +126,8 @@ class GameLoop:
     def load_game_data(self, rooms_yaml_path: str, objects_yaml_path: str, responses_yaml_path: str):
         """Loads room, object, and response data from YAML files."""
         logger.info(f"Loading game data from {rooms_yaml_path}, {objects_yaml_path}, and {responses_yaml_path}")
-        loader = YAMLLoader() # Uses default data_dir='data'
+        data_dir = str(self.content_root) if self.content_root else "data"
+        loader = YAMLLoader(data_dir=data_dir)
         self.rooms_data = {}
         self.objects_data = {}
         self.responses_data = {} # Initialize responses_data

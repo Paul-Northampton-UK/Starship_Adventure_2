@@ -1,8 +1,22 @@
 Starship Adventure Game - Product Requirements Document (PRD)
 
+Status Snapshot (August 2025)
+
+- Current run mode: Text-based loop via `python -m engine.game_loop`. A Pygame GUI window in `main.py` exists as a prototype placeholder.
+- Implemented commands: Move, Look, Inventory, Quit, Take, Drop, Equip (wear/remove), Search, Put, Take From, Lock, Unlock, Open, Close.
+- NLP: spaCy with custom patterns and two-word direction support; responses sourced from `responses.yaml` (per-pack).
+- Save/Load: Planned (not implemented).
+- Environment systems (oxygen/temperature/gravity): Planned.
+- Multi-pack direction: Engine will load content from selected game packs via a central Hub.
+- Tools: Object Editor available under `tools/object_editor/`; Hub entry at `tools/main_design_hub.py` (work in progress).
+
 1. Project Overview
 
-Title: Starship AdventureGenre: Sci-fi Text Adventure with GUI InterfacePlatform: Windows (standalone .exe installer)Audience: General audience, suitable for all agesGoal: Create a professional, interactive text adventure game with a custom GUI, logical puzzles, a central mystery, and a sarcastic AI narrator.
+Title: Starship Adventure
+Genre: Sci-fi Text Adventure with GUI Interface
+Platform: Windows (run from source; packaging to standalone installer planned)
+Audience: General audience, suitable for all ages
+Goal: Build a generic text adventure engine and Hub that runs multiple themed game packs, with tools for authoring rooms, objects, and dialogue. Includes a sci‑fi example pack with a sarcastic AI narrator.
 
 Initial State: The game begins according to settings defined in `game_config.yaml`, specifying the starting room (e.g., Player Cabin) and initial power state (e.g., Emergency Power).
 
@@ -24,7 +38,7 @@ Primary storyline: discover why the ship is abandoned and rescue the crew.
 
 Semi-linear progression with interconnected puzzles.
 
-Players explore the ship room by room. Some larger rooms (e.g., Bridge) are further divided into distinct Areas (e.g., Navigation Station, Helm) which function like sub-locations. Players can move between these Areas within a room. Objects can be specifically placed within these Areas (using `area_location` in their definitions) and are only visible/interactive when the player is in that Area. Room exits are accessible from both the main room level and any Area within that room.
+Players explore the world room by room. Some larger rooms (e.g., Bridge) are further divided into distinct Areas (e.g., Navigation Station, Helm) which function like sub-locations. Players can move between these Areas within a room. Objects can be specifically placed within these Areas (using `area_location` in their definitions) and are only visible/interactive when the player is in that Area. Room exits are accessible from both the main room level and any Area within that room.
 
 Multiple puzzle difficulty tiers:
 
@@ -82,7 +96,7 @@ Support for natural language variations (e.g. "go north", "move n", "n", "north 
 
 NLP engine: spaCy (installed and tested) with custom EntityRuler patterns for directions and game objects.
 
-Expandable command vocabulary via YAML (objects, synonyms).
+Expandable command vocabulary via per-pack YAML (objects, synonyms).
 
 Alias and abbreviation support (partially handled via NLP verb/pattern matching).
 
@@ -182,7 +196,7 @@ Future: achievements/awards system (deferred)
 
 12. Expandability
 
-Game content stored in YAML files
+Game content stored in per-pack YAML files
 
 New rooms, puzzles, items, and dialogue can be added without altering core code
 
@@ -246,9 +260,9 @@ Output to console and file
 
 Testing:
 
-No formal testing required yet
+- Unit tests exist under `tests/` covering core components, but some tests predate recent engine/NLP refactors and will be refreshed to align with current APIs.
 
-Core engine modules should be easily testable
+- Core engine modules remain designed for testability.
 
 Third-party Libraries:
 
@@ -282,7 +296,7 @@ Planet-side missions outside the ship
 
 Status: Requirements approved by Paul (creator)Next step: Begin prototype build of the core engine and GUI system
 
-15. Admin Interface
+15. Hub/Admin Interface
 
 A comprehensive graphical interface for game development and management, restricted to admin users.
 

@@ -1,6 +1,15 @@
 # =====================================================================
 # SPACE ADVENTURE: STARSHIP PLAN - by Paul Abbott
 # =====================================================================
+# PLAN UPDATE (August 2025):
+# The project has pivoted from a single bespoke sci‑fi game to a generic text
+# adventure engine plus a Hub that manages multiple themed game packs. Each pack
+# is a collection of YAML files (e.g., rooms.yaml, objects.yaml, responses.yaml)
+# that the engine loads to run that game. Tools within the Hub support creating,
+# editing, testing, validating, and launching packs. This file remains valuable
+# for reference, but current, runnable content will reside per-pack under
+# packs/<pack_id>/.
+# =====================================================================
 # This is a YAML file that outlines the structure of a text-based
 # adventure game set on a spaceship. It includes room descriptions,
 # object placement, and object-specific actions. The game engine

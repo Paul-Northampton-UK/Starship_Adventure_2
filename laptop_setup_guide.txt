@@ -66,19 +66,24 @@ This guide provides step-by-step instructions to set up the Starship Adventure 2
      ```bash
      pip install -r requirements.txt
      ```
-     (This reads `requirements.txt` and installs libraries like `rich`, `pygame`, etc. into your `venv`.)
+      (This reads `requirements.txt` and installs libraries like `spacy`, `pygame`, etc. into your `venv`.)
+
+   - **Download the spaCy English model (required):**
+      ```bash
+      python -m spacy download en_core_web_sm
+      ```
 
 ## 6. Verify Setup
 
 **Why?** Check if the project can run.
 **How?** (With the virtual environment still active)
-   - Run the main game file:
+   - Run the main game file (simple GUI placeholder window):
      ```bash
-     py main.py
+      py main.py
      ```
      (or `python main.py`)
-   - The game should start without errors about missing modules.
-   - **Alternatively, for the text-based adventure loop (useful for development/testing):**
+   - You should see a window open with a welcome message.
+   - **Text-based adventure loop (core gameplay for development/testing):**
      ```bash
      python -m engine.game_loop
      ```

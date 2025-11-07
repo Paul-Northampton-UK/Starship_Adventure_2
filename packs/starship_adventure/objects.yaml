@@ -367,7 +367,7 @@ objects:
 - id: cab_locker_keycard
   name: Blue KeyCard
   category: key_item
-  location: player_cabin
+  location: ''
   count: 16
   weight: 0.01
   size: 1.0
@@ -388,7 +388,7 @@ objects:
 - id: cab_tablet
   name: Personal Tablet
   category: device
-  location: player_cabin
+  location: ''
   count: 17
   weight: 0.2
   size: 1.5
@@ -433,7 +433,7 @@ objects:
 - id: cab_phaser
   name: Phaser Gun
   category: weapon
-  location: player_cabin
+  location: ''
   count: 18
   weight: 0.5
   size: 2.0

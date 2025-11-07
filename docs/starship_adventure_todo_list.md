@@ -12,7 +12,7 @@
 ✅ Integrate loguru for dev/system logging
 ✅ Implement loading of initial game state (start room, power state) from game_config.yaml (Basic loading done)
 
-��️ GUI & Interface
+🎨 GUI & Interface
 
 🔄 Build main game window with pygame
 🔄 Add GUI components:
@@ -44,6 +44,7 @@
 ✅ Improve target extraction (handle prepositions like "with", "on", and also recognizes AREA entities as targets) - Improved via entity ruler and parser logic
 🔄 Refine command parsing logic (e.g., disambiguation, error handling)
 🔄 Implement profanity filtering for player input (Data files created, logic pending)
+🔸 Note: spaCy model `en_core_web_sm` must be installed as part of setup.
 🔄 Implement fuzzy matching/typo tolerance (using fuzzywuzzy) - Potential future step
 ✅ Implement response variations (using responses.yaml)
 ✅ Handle plural items in responses
@@ -124,6 +125,13 @@
 ✅ All rooms, objects, puzzles, and dialogue must be extendable
 ✅ YAML validation and error catching (Via Pydantic schemas)
 🔄 Document expansion format (README or DevDocs)
+
+📦 Game Packs & Hub
+
+🔄 Define pack structure under `packs/<pack_id>/` (rooms.yaml, objects.yaml, responses.yaml, profanity_words.yaml)
+🔄 Implement pack loader: select `active_pack` and load its files into the engine
+🔄 Update tools to save/edit per-pack files rather than root `data/`
+🔄 Hub app (`tools/main_design_hub.py`) to browse, create, validate, and launch packs
 
 🧹 Coding & Dev Standards
 

@@ -3,6 +3,7 @@ from loguru import logger
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from ruamel.yaml import YAML
+from engine.content_root import get_content_root
 from ruamel.yaml.parser import ParserError
 from ruamel.yaml.scanner import ScannerError
 
@@ -16,8 +17,23 @@ class ObjectDataManager:
         in the project root.
         """
         if data_dir is None:
-            # Assumes the script is in tools/object_editor, so ../../data
-            self.data_dir = Path(__file__).parent.parent.parent / "data"
+            # Compute content root using the same logic as the engine (active_pack aware)
+            try:
+                project_root = Path(__file__).resolve().parents[2]
+                config_path = project_root / "game_config.yaml"
+                active_pack = None
+                if config_path.is_file():
+                    y = YAML()
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        cfg = y.load(f) or {}
+                        if isinstance(cfg, dict):
+                            active_pack = cfg.get("active_pack")
+                self.data_dir = get_content_root(active_pack)
+                logger.info(f"ObjectDataManager content root: {self.data_dir} (pack={active_pack or 'legacy data/'})")
+            except Exception as e:
+                # Fallback to legacy data/ behavior
+                logger.warning(f"Falling back to legacy data/ path due to error resolving content root: {e}")
+                self.data_dir = Path(__file__).parent.parent.parent / "data"
         else:
             self.data_dir = data_dir
         self.objects_file = self.data_dir / "objects.yaml"
@@ -31,6 +47,34 @@ class ObjectDataManager:
         self.rooms_data: Optional[Dict[str, Any]] = None # Rooms are usually dicts {id: data}
 
         self._load_data()
+
+    # --- Object number allocation helpers ---
+    def _iter_objects(self):
+        data = self.objects_data
+        if isinstance(data, dict):
+            return data.get("objects", []) or []
+        return data or []
+
+    def get_existing_object_numbers(self) -> set[int]:
+        numbers: set[int] = set()
+        for obj in self._iter_objects():
+            try:
+                num = obj.get("object_number") if isinstance(obj, dict) else None
+                if isinstance(num, int):
+                    numbers.add(num)
+            except Exception:
+                continue
+        return numbers
+
+    def get_next_object_number(self) -> int:
+        used = sorted(self.get_existing_object_numbers())
+        i = 1
+        for n in used:
+            if n == i:
+                i += 1
+            elif n > i:
+                break
+        return i
 
     def _load_data(self):
         """Loads both objects and rooms data, expecting lists under top keys."""

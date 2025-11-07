@@ -209,6 +209,10 @@ def handle_inventory(game_state: GameState, parsed_intent: ParsedIntent) -> List
     # We'll add 'inventory_display' key to responses.yaml
     return [{'key': "inventory_display", 'data': {"inventory_text": final_output}}]
 
+def _cannot_take_message(game_state: GameState, item_id: str, fallback_name: str) -> List[Dict]:
+    name = game_state._get_object_name(item_id) if item_id else fallback_name
+    return [{'key': "take_fail_not_takeable", 'data': {"item_name": name}}]
+
 def handle_quit(game_state: GameState, parsed_intent: ParsedIntent) -> None:
     """Handles the QUIT command intent. Returns None to signal quit."""
     return None

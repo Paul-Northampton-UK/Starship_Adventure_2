@@ -1,0 +1,4 @@
+# packs/<pack_id>/game.yaml
+id: starship_adventure
+title: Starship Adventure (Stub)
+schema_version: 1

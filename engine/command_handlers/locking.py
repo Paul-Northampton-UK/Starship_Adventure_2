@@ -48,8 +48,15 @@ def handle_lock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Dict
 
     # Check if the player provided a key and if it's the correct one
     if not key_item_id:
-        logger.info("[handle_lock] Player did not specify a key to lock with.")
-        return [{ "key": "LOCK_FAIL_KEY_MISSING", "data": {"target_name": target_object_name} }]
+        # Attempt auto-use if exactly one correct key is held/worn
+        held_or_worn_key = game_state.find_item_id_held_or_worn(required_key_id)
+        if held_or_worn_key == required_key_id:
+            key_item_id = required_key_id
+            key_item_name = game_state._get_object_name(required_key_id)
+            logger.info(f"[handle_lock] Auto-using held/worn required key '{required_key_id}'.")
+        else:
+            logger.info("[handle_lock] Player did not specify a key to lock with.")
+            return [{ "key": "LOCK_FAIL_KEY_MISSING", "data": {"target_name": target_object_name} }]
     
     # Player provided a key_item_id, check if they have it (in hands or worn - keys are usually small)
     # find_item_id_held_or_worn checks hands, directly worn, and inside worn containers.
@@ -118,8 +125,15 @@ def handle_unlock(game_state: GameState, parsed_intent: ParsedIntent) -> List[Di
 
     # Check if the player provided a key and if it's the correct one
     if not key_item_id:
-        logger.info("[handle_unlock] Player did not specify a key to unlock with.")
-        return [{ "key": "UNLOCK_FAIL_KEY_MISSING", "data": {"target_name": target_object_name} }]
+        # Attempt auto-use if exactly one correct key is held/worn
+        held_or_worn_key = game_state.find_item_id_held_or_worn(required_key_id)
+        if held_or_worn_key == required_key_id:
+            key_item_id = required_key_id
+            key_item_name = game_state._get_object_name(required_key_id)
+            logger.info(f"[handle_unlock] Auto-using held/worn required key '{required_key_id}'.")
+        else:
+            logger.info("[handle_unlock] Player did not specify a key to unlock with.")
+            return [{ "key": "UNLOCK_FAIL_KEY_MISSING", "data": {"target_name": target_object_name} }]
 
     # Player provided a key_item_id, check if they have it (in hands or worn)
     actual_player_key_id = game_state.find_item_id_held_or_worn(key_item_id)
