@@ -1,11 +1,18 @@
+"""Pack validation helpers."""
+
+from __future__ import annotations
+
+import argparse
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from pydantic import ValidationError
 from ruamel.yaml import YAML
 
 from .content_root import get_content_root
+from .schemas.pack import GamePackSchema, ObjectSchema, RoomSchema
 
 REQUIRED_FILES = [
     "game.yaml",
@@ -37,6 +44,25 @@ def _is_iso_utc_z(ts: Any) -> bool:
         return False
 
 
+def _append_validation_errors(scope: str, exc: ValidationError, bucket: list[str]) -> None:
+    """Convert Pydantic validation errors into human friendly strings."""
+
+    for err in exc.errors():
+        loc = " -> ".join(str(part) for part in err.get("loc", ()))
+        bucket.append(f"{scope}: {loc}: {err.get('msg')}")
+
+
+def _extract_entries(source: Any, key: str, filename: str, errors: list[str]) -> list[Any]:
+    """Return list entries from YAML that may be under a key or be a root list."""
+
+    if isinstance(source, dict) and isinstance(source.get(key), list):
+        return source.get(key, [])
+    if isinstance(source, list):
+        return source
+    errors.append(f"{filename}: expected a list or a mapping with '{key}' list")
+    return []
+
+
 def validate_pack(content_root: Path, return_warnings: bool = False) -> list[str] | tuple[list[str], list[str]]:
     """Validate presence and minimal structure of a game pack.
 
@@ -56,78 +82,47 @@ def validate_pack(content_root: Path, return_warnings: bool = False) -> list[str
         return errors
 
     # 2) game.yaml: id, title (str)
-    game = _load_yaml(content_root / "game.yaml")
-    if isinstance(game, dict):
-        gid = game.get("id")
-        title = game.get("title") or game.get("name")  # allow 'name' as fallback
-        if not isinstance(gid, str) or not gid.strip():
-            errors.append("game.yaml: 'id' must be a non-empty string")
-        if not isinstance(title, str) or not title.strip():
-            errors.append("game.yaml: 'title' (or 'name') must be a non-empty string")
-    else:
-        errors.append("game.yaml: expected a mapping (YAML object)")
+    game = _load_yaml(content_root / "game.yaml") or {}
+    try:
+        GamePackSchema.model_validate(game)
+    except ValidationError as exc:
+        _append_validation_errors("game.yaml", exc, errors)
 
     # 3) rooms.yaml: each has id, description
     rooms_src = _load_yaml(content_root / "rooms.yaml")
-    rooms_list = []
-    if isinstance(rooms_src, dict) and isinstance(rooms_src.get("rooms"), list):
-        rooms_list = rooms_src.get("rooms", [])
-    elif isinstance(rooms_src, list):
-        rooms_list = rooms_src
-    else:
-        errors.append("rooms.yaml: expected a list or a mapping with 'rooms' list")
-        rooms_list = []
+    rooms_list = _extract_entries(rooms_src, "rooms", "rooms.yaml", errors)
     for i, room in enumerate(rooms_list):
         if not isinstance(room, dict):
             errors.append(f"rooms.yaml[{i}]: expected mapping for room entry")
             continue
-        rid = room.get("room_id") or room.get("id")
-        # Accept any of description|desc|long_description
-        desc = room.get("description")
-        if not isinstance(desc, str) or not desc.strip():
-            desc = room.get("desc")
-        if not isinstance(desc, str) or not desc.strip():
-            desc = room.get("long_description")
-        if not isinstance(rid, str) or not rid.strip():
-            errors.append(f"rooms.yaml[{i}]: missing 'id' (room_id/id)")
-        # Soften: warn if no description-like field
-        if not isinstance(desc, str) or not desc.strip():
-            room_id_txt = rid if isinstance(rid, str) and rid.strip() else f"index {i}"
-            warnings.append(f"rooms.yaml[{i}] ({room_id_txt}): no description/desc/long_description found")
+        try:
+            room_model = RoomSchema.model_validate(room)
+        except ValidationError as exc:
+            _append_validation_errors(f"rooms.yaml[{i}]", exc, errors)
+            continue
+        if not room_model.has_any_description():
+            room_id_txt = room_model.room_id or f"index {i}"
+            warnings.append(
+                f"rooms.yaml[{i}] ({room_id_txt}): no description/desc/long_description found"
+            )
 
     # 4) objects.yaml: each has id, name, location
     objects_src = _load_yaml(content_root / "objects.yaml")
-    obj_list = []
-    if isinstance(objects_src, dict) and isinstance(objects_src.get("objects"), list):
-        obj_list = objects_src.get("objects", [])
-    elif isinstance(objects_src, list):
-        obj_list = objects_src
-    else:
-        errors.append("objects.yaml: expected a list or a mapping with 'objects' list")
-        obj_list = []
+    obj_list = _extract_entries(objects_src, "objects", "objects.yaml", errors)
     object_numbers: list[int] = []
     for i, obj in enumerate(obj_list):
         if not isinstance(obj, dict):
             errors.append(f"objects.yaml[{i}]: expected mapping for object entry")
             continue
-        oid = obj.get("id")
-        name = obj.get("name")
-        loc = obj.get("location")
-        if not isinstance(oid, str) or not oid.strip():
-            errors.append(f"objects.yaml[{i}]: missing 'id'")
-        if not isinstance(name, str) or not name.strip():
-            errors.append(f"objects.yaml[{i}]: missing 'name'")
-        # Hidden/unplaced relaxation: accept missing location if explicitly invisible
-        invisible = False
-        props = obj.get("properties") if isinstance(obj.get("properties"), dict) else {}
-        if props is not None and isinstance(props, dict):
-            if props.get("is_visible") is False:
-                invisible = True
-        if obj.get("initial_state") is False:
-            invisible = True
-        if not isinstance(loc, str) or not loc.strip():
-            if not invisible:
-                errors.append(f"objects.yaml[{i}]: object needs a location or must be invisible")
+        try:
+            obj_model = ObjectSchema.model_validate(obj)
+        except ValidationError as exc:
+            _append_validation_errors(f"objects.yaml[{i}]", exc, errors)
+            continue
+        if not obj_model.location and not obj_model.is_hidden():
+            errors.append(
+                f"objects.yaml[{i}] ({obj_model.id}): object needs a location or must be invisible"
+            )
         # object_number
         onum = obj.get("object_number")
         if onum is not None:
@@ -178,21 +173,36 @@ def validate_pack(content_root: Path, return_warnings: bool = False) -> list[str
 
 
 def _cli_main() -> int:
-    # Read active_pack from game_config.yaml and resolve content root
-    project_root = Path.cwd()
-    cfg_path = project_root / "game_config.yaml"
-    active_pack = None
-    if cfg_path.is_file():
-        try:
-            y = YAML()
-            with cfg_path.open("r", encoding="utf-8") as f:
-                cfg = y.load(f) or {}
-                if isinstance(cfg, dict):
-                    active_pack = cfg.get("active_pack")
-        except Exception as e:
-            logger.warning(f"Could not read game_config.yaml: {e}")
+    parser = argparse.ArgumentParser(description="Validate a Starship Adventure game pack")
+    parser.add_argument(
+        "content_root",
+        nargs="?",
+        help="Path to the pack directory (defaults to active pack from game_config.yaml)",
+    )
+    args = parser.parse_args()
 
-    content_root = get_content_root(active_pack)
+    if args.content_root:
+        content_root = Path(args.content_root).expanduser().resolve()
+    else:
+        project_root = Path.cwd()
+        cfg_path = project_root / "game_config.yaml"
+        active_pack = None
+        if cfg_path.is_file():
+            try:
+                y = YAML()
+                with cfg_path.open("r", encoding="utf-8") as f:
+                    cfg = y.load(f) or {}
+                    if isinstance(cfg, dict):
+                        active_pack = cfg.get("active_pack")
+            except Exception as e:
+                logger.warning(f"Could not read game_config.yaml: {e}")
+
+        content_root = get_content_root(active_pack)
+
+    if not content_root.exists():
+        print(f"Pack path does not exist: {content_root}")
+        return 1
+
     print(f"Validating pack at: {content_root}")
     errs, warns = validate_pack(content_root, return_warnings=True)
     if warns:
@@ -204,12 +214,10 @@ def _cli_main() -> int:
         for e in errs:
             print(f"- {e}")
         return 1
-    if not errs and not warns:
-        print("All checks passed.")
+    print("All checks passed." if not warns else "Validation completed with warnings.")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(_cli_main())
-
 
