@@ -12,7 +12,16 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 
+import subprocess
+import threading
+import tkinter.messagebox as messagebox
+from pathlib import Path
+
+from engine import active_pack
+from engine.active_pack import get_content_root_from_config
+from engine.validate_pack import validate_pack
 from tools.object_editor.new_ctk_object_editor import NewObjectEditorFrame
+from tools import pack_discovery
 
 
 class GameDesignHub:
@@ -46,7 +55,7 @@ class GameDesignHub:
     def add_tool_tabs(self):
         """Adds all the tool tabs to the main view."""
         tools = {
-            "Game Library": self.create_placeholder_tab,
+            "Game Library": self.create_game_library_tab,
             "Room Editor": self.create_placeholder_tab,
             "Object Editor": self.create_object_editor_tab,
             "Puzzle Designer": self.create_placeholder_tab,
@@ -102,6 +111,112 @@ class GameDesignHub:
         """Creates the object editor UI in its tab."""
         self.object_editor_frame = NewObjectEditorFrame(tab)
         self.object_editor_frame.pack(fill="both", expand=True)
+
+    # Game Library UI -----------------------------------------------------
+    def create_game_library_tab(self, tab, tool_name):
+        """Create the simplified Game Library pane."""
+        frame = ctk.CTkFrame(tab)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        header = ctk.CTkLabel(frame, text="Game Library", font=ctk.CTkFont(size=20, weight="bold"))
+        header.pack(pady=(0, 10))
+
+        info_frame = ctk.CTkFrame(frame)
+        info_frame.pack(fill="x", padx=10, pady=10)
+        ctk.CTkLabel(info_frame, text="Active Pack:").grid(row=0, column=0, sticky="w", padx=6, pady=6)
+        self.active_pack_var = ctk.StringVar(value=active_pack.get_active_pack())
+        ctk.CTkLabel(info_frame, textvariable=self.active_pack_var).grid(row=0, column=1, sticky="w", padx=6, pady=6)
+
+        list_frame = ctk.CTkFrame(frame)
+        list_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        ctk.CTkLabel(list_frame, text="Available Packs").pack(anchor="w", padx=6, pady=4)
+        self.pack_list = ctk.CTkTextbox(list_frame, height=200)
+        self.pack_list.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+
+        btn_frame = ctk.CTkFrame(frame)
+        btn_frame.pack(fill="x", padx=10, pady=10)
+        ctk.CTkButton(btn_frame, text="Refresh Packs", command=self.refresh_packs).grid(row=0, column=0, padx=5, pady=5)
+        ctk.CTkButton(btn_frame, text="Set Active", command=self.set_selected_pack).grid(row=0, column=1, padx=5, pady=5)
+        ctk.CTkButton(btn_frame, text="Validate Pack", command=self.validate_selected_pack).grid(row=0, column=2, padx=5, pady=5)
+        ctk.CTkButton(btn_frame, text="Run Engine", command=self.run_engine).grid(row=0, column=3, padx=5, pady=5)
+
+        self.log_area = ctk.CTkTextbox(frame, height=120)
+        self.log_area.pack(fill="x", padx=10, pady=10)
+
+        self.refresh_packs()
+
+    # Actions --------------------------------------------------------------
+    def _discover_packs(self):
+        return pack_discovery.list_packs()
+
+    def refresh_packs(self):
+        packs = self._discover_packs()
+        self.pack_list.configure(state="normal")
+        self.pack_list.delete("1.0", "end")
+        for name in packs:
+            self.pack_list.insert("end", f"{name}\n")
+        self.pack_list.configure(state="disabled")
+        self.active_pack_var.set(active_pack.get_active_pack())
+
+    def _selected_pack(self):
+        try:
+            selection = self.pack_list.get("sel.first", "sel.last").strip()
+            return selection
+        except Exception:
+            return None
+
+    def set_selected_pack(self):
+        pack = self._selected_pack()
+        if not pack:
+            messagebox.showwarning("Set Active Pack", "Select a pack first.")
+            return
+        try:
+            active_pack.set_active_pack(pack)
+        except Exception as exc:
+            messagebox.showerror("Set Active Pack", str(exc))
+            return
+        self.active_pack_var.set(pack)
+        messagebox.showinfo("Set Active Pack", f"Active pack set to {pack}")
+
+    def validate_selected_pack(self):
+        pack = self._selected_pack() or active_pack.get_active_pack()
+        content_root = Path("packs") / pack
+        if not content_root.is_dir():
+            messagebox.showerror("Validate Pack", f"Pack not found: {pack}")
+            return
+        result = validate_pack(content_root, return_warnings=True)
+        errors, warnings = result if isinstance(result, tuple) else (result, [])
+        msg = f"{pack} validation:\nErrors: {len(errors)}\nWarnings: {len(warnings)}"
+        detail_lines = errors[:5] + warnings[:5]
+        detail = "\n".join(detail_lines) if detail_lines else "No messages."
+        messagebox.showinfo("Validate Pack", f"{msg}\n\n{detail}")
+
+    def run_engine(self):
+        try:
+            process = subprocess.Popen(
+                [sys.executable, "-m", "engine.game_loop"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except Exception as exc:
+            messagebox.showerror("Run Engine", str(exc))
+            return
+
+        self.log_area.configure(state="normal")
+        self.log_area.insert("end", "Starting engine...\n")
+        self.log_area.configure(state="disabled")
+
+        def _stream_output():
+            assert process.stdout is not None
+            for line in process.stdout:
+                self.log_area.configure(state="normal")
+                self.log_area.insert("end", line)
+                self.log_area.see("end")
+                self.log_area.configure(state="disabled")
+            process.stdout.close()
+
+        threading.Thread(target=_stream_output, daemon=True).start()
 
     def on_closing(self):
         """Handle the window closing event."""
