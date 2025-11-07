@@ -25,7 +25,7 @@ from .command_handlers.open_close_handler import (  # Added import for open/clos
     handle_open,
 )
 from .command_handlers.search import handle_search
-from .content_root import get_content_root
+from .active_pack import get_active_pack, get_content_root_from_config
 from .game_state import GameState, PowerState
 from .nlp import parser
 from .nlp.parser import CommandIntent, NLPCommandParser, ParsedIntent
@@ -71,9 +71,9 @@ class GameLoop:
         self.load_config(config_yaml_path)
 
         # Resolve content root based on active_pack, then load game data (rooms, objects, responses)
-        active_pack = self.config_data.get("active_pack")
-        self.content_root = get_content_root(active_pack)
-        banner = f"=== Content root: {self.content_root} (pack={active_pack or 'legacy data/'}) ==="
+        active_pack = get_active_pack()
+        self.content_root = get_content_root_from_config()
+        banner = f"=== Content root: {self.content_root} (pack={active_pack}) ==="
         logger.info(banner)
         print(banner)
         self.load_game_data(rooms_yaml_path, objects_yaml_path, "data/responses.yaml")
