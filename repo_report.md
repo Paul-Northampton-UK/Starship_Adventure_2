@@ -1,12 +1,12 @@
-# Repo snapshot — 2025-11-08 00:59:37
+# Repo snapshot — 2025-11-08 01:56:41
 
 ## Summary
 - engine/: 27 files | ~5208 non-blank LOC
-- tools/: 11 files | ~4764 non-blank LOC
+- tools/: 13 files | ~5061 non-blank LOC
 - packs/: 7 files | ~2904 non-blank LOC
 - data/: 8 files | ~3906 non-blank LOC
-- docs/: 5 files | ~1131 non-blank LOC
-- tests/: 12 files | ~1579 non-blank LOC
+- docs/: 15 files | ~1346 non-blank LOC
+- tests/: 13 files | ~1623 non-blank LOC
 
 ## Active Pack
 - Resolved content root: `C:\py_fold\Projects\Starship_Adventure_2\packs\starship_adventure`
@@ -14,16 +14,39 @@
 - Pack validation: OK
 
 ## Delta Since Last Snapshot
-- Added files: 2
-  - + tools\ui\layout.py
-  - + tools\ui\theme.py
-- Removed files: 0
-- Net LOC change (non-blank): +144
+- Added files: 19
+  - + CHANGELOG.md
+  - + docs\Authoring.md
+  - + docs\Contributing.md
+  - + docs\Getting_Started.md
+  - + docs\Legacy.md
+  - + docs\Overview.md
+  - + docs\Packs.md
+  - + docs\Roadmap.md
+  - + docs\docs_audit_report.json
+  - + docs\docs_audit_report.md
+  - + docs\legacy\Product_Requirement_Document.md
+  - + docs\legacy\Project_Brief.md
+  - + docs\legacy\engine_overview.md
+  - + docs\legacy\object_editor_manual.md
+  - + docs\legacy\pack_spec_v1.md
+  - + docs\legacy\starship_adventure_todo_list.md
+  - + tests\test_docs_audit.py
+  - + tools\doc_audit.py
+  - + tools\doc_fix.py
+- Removed files: 6
+  - - Project Brief.md
+  - - docs\Starship Adventure Game - Product Requirement Docucument.md
+  - - docs\engine_overview.md
+  - - docs\object_editor_manual.md
+  - - docs\pack_spec_v1.md
+  - - docs\starship_adventure_todo_list.md
+- Net LOC change (non-blank): +415
 
 ## Very Large Files (>50 KB)
 - `project_report.yaml` | 3021 KB
-- `Starship_plan.yaml` | 147 KB
-- `tools\object_editor\new_ctk_object_editor.py` | 112 KB
+- `Starship_plan.yaml` | 150 KB
+- `tools\object_editor\new_ctk_object_editor.py` | 113 KB
 - `packs\starship_adventure\rooms.yaml` | 101 KB
 - `data\rooms.yaml` | 98 KB
 - `tools\object_editor\editor_gui_tabs.py` | 86 KB
@@ -32,6 +55,7 @@
 ## Files (selected; excludes very large)
 - `.cursor\rules\starshiprules.mdc` | 0 loc | 2025-04-03 01:34
 - `.gitignore` | 0 loc | 2025-11-07 17:35
+- `CHANGELOG.md` | 11 loc | 2025-11-08 01:50
 - `data\game.yaml` | 4 loc | 2025-08-14 14:37
 - `data\lexicon.yaml` | 3 loc | 2025-08-14 14:39
 - `data\objects.backup.yaml` | 1054 loc | 2025-08-12 20:30
@@ -39,11 +63,21 @@
 - `data\profanity_words.yaml` | 59 loc | 2025-04-06 15:43
 - `data\responses.yaml` | 415 loc | 2025-08-13 12:14
 - `data\rules.yaml` | 1 loc | 2025-08-14 16:40
-- `docs\engine_overview.md` | 96 loc | 2025-08-14 13:04
-- `docs\object_editor_manual.md` | 481 loc | 2025-11-07 15:59
-- `docs\pack_spec_v1.md` | 114 loc | 2025-08-14 13:42
-- `docs\Starship Adventure Game - Product Requirement Docucument.md` | 265 loc | 2025-08-14 16:40
-- `docs\starship_adventure_todo_list.md` | 175 loc | 2025-08-16 12:46
+- `docs\Authoring.md` | 20 loc | 2025-11-08 01:55
+- `docs\Contributing.md` | 16 loc | 2025-11-08 01:55
+- `docs\docs_audit_report.json` | 14 loc | 2025-11-08 01:54
+- `docs\docs_audit_report.md` | 7 loc | 2025-11-08 01:55
+- `docs\Getting_Started.md` | 25 loc | 2025-11-08 01:55
+- `docs\Legacy.md` | 9 loc | 2025-11-08 01:55
+- `docs\legacy\engine_overview.md` | 96 loc | 2025-11-08 01:55
+- `docs\legacy\object_editor_manual.md` | 481 loc | 2025-11-08 01:55
+- `docs\legacy\pack_spec_v1.md` | 114 loc | 2025-11-08 01:55
+- `docs\legacy\Product_Requirement_Document.md` | 265 loc | 2025-11-08 01:55
+- `docs\legacy\Project_Brief.md` | 56 loc | 2025-11-08 01:55
+- `docs\legacy\starship_adventure_todo_list.md` | 175 loc | 2025-11-08 01:55
+- `docs\Overview.md` | 28 loc | 2025-11-08 01:55
+- `docs\Packs.md` | 29 loc | 2025-11-08 01:55
+- `docs\Roadmap.md` | 11 loc | 2025-11-08 01:55
 - `engine\__init__.py` | 4 loc | 2025-04-01 17:52
 - `engine\active_pack.py` | 84 loc | 2025-11-08 00:57
 - `engine\command_defs.py` | 58 loc | 2025-11-07 15:48
@@ -72,8 +106,8 @@
 - `engine\yaml_loader.py` | 180 loc | 2025-11-07 15:48
 - `examples\room_example.py` | 45 loc | 2025-11-07 15:48
 - `examples\room_validation_example.py` | 76 loc | 2025-11-07 15:48
-- `game_config.yaml` | 1 loc | 2025-11-08 00:53
-- `laptop_setup_guide.txt` | 0 loc | 2025-08-14 13:18
+- `game_config.yaml` | 1 loc | 2025-11-08 01:05
+- `laptop_setup_guide.txt` | 0 loc | 2025-11-08 01:47
 - `main.py` | 93 loc | 2025-11-07 15:48
 - `packs\starship_adventure\game.yaml` | 12 loc | 2025-11-07 19:18
 - `packs\starship_adventure\lexicon.yaml` | 3 loc | 2025-08-14 14:39
@@ -81,13 +115,13 @@
 - `packs\starship_adventure\profanity_words.yaml` | 59 loc | 2025-04-06 15:43
 - `packs\starship_adventure\responses.yaml` | 415 loc | 2025-08-13 12:14
 - `packs\starship_adventure\rules.yaml` | 1 loc | 2025-08-14 16:56
-- `Project Brief.md` | 56 loc | 2025-11-07 19:01
 - `project_report.py` | 42 loc | 2025-11-07 15:48
 - `pyproject.toml` | 15 loc | 2025-11-07 15:45
-- `README.md` | 92 loc | 2025-08-14 13:18
-- `repo_report.md` | 102 loc | 2025-11-08 00:55
+- `README.md` | 28 loc | 2025-11-08 01:55
+- `repo_report.md` | 106 loc | 2025-11-08 00:59
 - `requirements.txt` | 0 loc | 2025-08-14 13:18
 - `tests\test_active_pack.py` | 43 loc | 2025-11-07 21:42
+- `tests\test_docs_audit.py` | 44 loc | 2025-11-08 01:55
 - `tests\test_engine_smoke.py` | 14 loc | 2025-11-07 16:42
 - `tests\test_game_state.py` | 155 loc | 2025-11-07 15:48
 - `tests\test_nlp_command_parser.py` | 137 loc | 2025-11-07 15:48
@@ -100,12 +134,14 @@
 - `tests\test_validate_pack.py` | 60 loc | 2025-11-07 19:19
 - `tests\test_yaml_loader.py` | 294 loc | 2025-11-07 15:48
 - `tools\__init__.py` | 0 loc | 2025-11-07 15:53
-- `tools\main_design_hub.py` | 409 loc | 2025-11-08 00:59
+- `tools\doc_audit.py` | 161 loc | 2025-11-08 01:52
+- `tools\doc_fix.py` | 76 loc | 2025-11-08 01:46
+- `tools\main_design_hub.py` | 430 loc | 2025-11-08 01:21
 - `tools\object_editor\__init__.py` | 0 loc | 2025-11-07 15:53
-- `tools\object_editor\object_data_manager.py` | 468 loc | 2025-11-08 00:53
+- `tools\object_editor\object_data_manager.py` | 468 loc | 2025-11-08 01:03
 - `tools\pack_discovery.py` | 19 loc | 2025-11-07 22:02
 - `tools\repo_report.py` | 220 loc | 2025-11-07 17:40
 - `tools\tmp_normalize_objects.py` | 128 loc | 2025-11-07 15:48
-- `tools\ui\layout.py` | 18 loc | 2025-11-08 00:58
-- `tools\ui\theme.py` | 20 loc | 2025-11-08 00:58
+- `tools\ui\layout.py` | 18 loc | 2025-11-08 01:19
+- `tools\ui\theme.py` | 23 loc | 2025-11-08 01:17
 - `verb_categories.txt` | 0 loc | 2025-04-03 02:16
