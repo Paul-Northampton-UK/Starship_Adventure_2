@@ -224,7 +224,7 @@ Python 3.12+
 
 Code Structure:
 
-Modular architecture with clearly defined folders (e.g. engine/, ui/, data/, saves/)
+Modular architecture with clearly defined folders (e.g. engine/, ui/, packs/, saves/)
 
 main.py as entry point
 

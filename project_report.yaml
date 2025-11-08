@@ -7,7 +7,7 @@
   preview: '# game_config.yaml\n# Initial game state settings\n\nstart_room_id: player_cabin\nstart_power_state:
     emergency # Options: offline, emergency, main_power\n# Active game pack selection
     (planned for multi-pack hub). When implemented, the engine will load\n# rooms/objects/responses
-    from `packs/<active_pack>/` instead of root `data/`.\n# Example: active_pack:
+    from `packs/<active_pack>/` instead of root `packs/`.\n# Example: active_pack:
     starship_adventure\nactive_pack: starship_a'
 - path: laptop_setup_guide.txt
   size_bytes: 6957
@@ -1467,7 +1467,7 @@
     2025)\n\n- The editor is used within a multi-pack workflow managed by the Hub.\n-
     Each game pack lives under `packs/<pack_id>/` and provides its own `objects.yaml`,
     `rooms.yaml`, and `responses.yaml`.\n- When a pack is active, the editor should
-    load from and save to that pack’s files, rather than the root `data/` director'
+    load from and save to that pack’s files, rather than the root `packs/` director'
 - path: docs\pack_spec_v1.md
   size_bytes: 4081
   sha256: 29f5f7c49a8bc0b8a2e38e5310d4c09a81ed194a1e70aed1aaed9b397a13a618
@@ -1488,7 +1488,7 @@
   size_bytes: 8554
   sha256: 88df7bd2572b196442af017ababa0d87cc3db3818191be7bcacc369de2bf16bb
   preview: '✅ Starship Adventure – Detailed TODO List\n\n🧱 Core Engine\n\n✅ Set up
-    folder structure: engine/, ui/, data/, saves/, logs/, assets/\n✅ Create main.py
+    folder structure: engine/, ui/, packs/, saves/, logs/, assets/\n✅ Create main.py
     entry point\n✅ Implement YAML loader (for rooms, objects, settings)\n✅ Design
     central game loop and state machine (GameState now robustly manages current_room_id,
     current_area_id, object states, and visibility logic)\n✅ Integrate spaCy for command
@@ -1507,7 +1507,7 @@
   preview: 'from pathlib import Path\n\n\ndef get_content_root(active_pack: str |
     None) -> Path:\n    """Resolve the root directory for content files based on active_pack.\n\n    -
     If active_pack is provided and packs/<active_pack> exists, return that path.\n    -
-    Otherwise, fall back to the legacy data/ directory.\n    """\n    root = Path.cwd()\n    if
+    Otherwise, fall back to the legacy packs/ directory.\n    """\n    root = Path.cwd()\n    if
     active_pack:\n        candidate = root / "packs" / acti'
 - path: engine\game_loop.py
   size_bytes: 17186
@@ -1891,8 +1891,8 @@
   size_bytes: 4913
   sha256: 8f78d51712267416dc9c0650c90477b2c5243253fb4f00fc99fa84011d86e069
   preview: 'from ruamel.yaml import YAML\nfrom copy import deepcopy\nfrom pathlib
-    import Path\nimport sys\n\n\ndef main() -> None:\n    objects_path = Path(''data/objects.yaml'')\n    backup_path
-    = Path(''data/objects.backup.yaml'')\n\n    # Backup current file\n    backup_path.write_text(objects_path.read_text(encoding=''utf-8''),
+    import Path\nimport sys\n\n\ndef main() -> None:\n    objects_path = Path(''packs/objects.yaml'')\n    backup_path
+    = Path(''packs/objects.backup.yaml'')\n\n    # Backup current file\n    backup_path.write_text(objects_path.read_text(encoding=''utf-8''),
     encoding=''utf-8'')\n\n    yaml = YAML()\n    yaml.preserve_quotes = True\n    yaml.in'
 - path: tools\object_editor\editor_gui_tabs.py
   size_bytes: 88147
@@ -16855,7 +16855,7 @@
   sha256: 90690d515a37169c23cad2034b489fefd12e528ae8029adc5adde282b708a93d
   preview: '"""\n    pygments.formatters.terminal256\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n    Formatter
     for 256-color terminal output with ANSI sequences.\n\n    RGB-to-XTERM color conversion
-    routines adapted from xterm256-conv\n    tool (http://frexx.de/xterm-256-notes/data/xterm256-conv2.tar.bz2)\n    by
+    routines adapted from xterm256-conv\n    tool (http://frexx.de/xterm-256-notes/packs/xterm256-conv2.tar.bz2)\n    by
     Wolfgang Frisch.\n\n    Formatter version 1.\n\n    :copyright: Copyright 2006-2024
     by the Pygments t'
 - path: venv\Lib\site-packages\pip\_vendor\pygments\formatters\_mapping.py
@@ -24149,7 +24149,7 @@
   sha256: ec64052c4e5c7e67aee77080cc034eef8fa4064d811645df9f9a619998d89213
   preview: '"""\n    pygments.formatters.terminal256\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n    Formatter
     for 256-color terminal output with ANSI sequences.\n\n    RGB-to-XTERM color conversion
-    routines adapted from xterm256-conv\n    tool (http://frexx.de/xterm-256-notes/data/xterm256-conv2.tar.bz2)\n    by
+    routines adapted from xterm256-conv\n    tool (http://frexx.de/xterm-256-notes/packs/xterm256-conv2.tar.bz2)\n    by
     Wolfgang Frisch.\n\n    Formatter version 1.\n\n    :copyright: Copyright 2006-2025
     by the Pygments t'
 - path: venv\Lib\site-packages\pygments\formatters\_mapping.py
@@ -28863,7 +28863,7 @@
   size_bytes: 11978
   sha256: 4fb4e3a7e592a0df3cd5a75ebf7475c335c23e79031ea6c2d8c83294dd728d2f
   preview: '"""\nHandling of Core Metadata for Python packages (including reading
-    and writing).\n\nSee: https://packaging.python.org/en/latest/specifications/core-metadata/\n"""\n\nfrom
+    and writing).\n\nSee: https://packaging.python.org/en/latest/specifications/core-metapacks/\n"""\n\nfrom
     __future__ import annotations\n\nimport os\nimport stat\nimport textwrap\nfrom
     email import message_from_file\nfrom email.message import Message\nfrom tempfile
     import NamedTemporaryFile\n\nfrom packaging.markers import Marker\'
@@ -28902,7 +28902,7 @@
   sha256: 9009867ebc23179763c9d11f2cbc8a82391709b2ffd3f67150f3be0e52e59886
   preview: '"""\nHelpers for normalization as expected in wheel/sdist/module file
     names\nand core metadata\n"""\n\nimport re\nfrom typing import TYPE_CHECKING\n\nimport
-    packaging\n\n# https://packaging.python.org/en/latest/specifications/core-metadata/#name\n_VALID_NAME
+    packaging\n\n# https://packaging.python.org/en/latest/specifications/core-metapacks/#name\n_VALID_NAME
     = re.compile(r"^([A-Z0-9]|[A-Z0-9][A-Z0-9._-]*[A-Z0-9])$", re.I)\n_UNSAFE_NAME_CHARS
     = re.compile(r"[^A-Z0-9._-]+", re.I)\n_NON_ALPHANUMERIC '
 - path: venv\Lib\site-packages\setuptools\_path.py

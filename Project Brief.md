@@ -1,10 +1,10 @@
 # Starship Adventure 2 — Project Brief (Author: Paul)
 
 ## Vision
-A **genre-free text adventure creation system** for non-coders: a GUI **Editor** that generates all data/files, and a **generic Engine** that plays any project created with the editor.
+A **genre-free text adventure creation system** for non-coders: a GUI **Editor** that generates all packs/files, and a **generic Engine** that plays any project created with the editor.
 
 ## Pillars (non-negotiables)
-- Canonical content lives under `packs/<game_title>/` (not `data/`).
+- Canonical content lives under `packs/<game_title>/` (not `packs/`).
 - Editor always writes **valid schema-checked YAML** the Engine can run without hand fixes.
 - Works on Windows 10/11 + Python 3.12. Clean venv, reproducible installs.
 - Smoke tests must pass; pack validation must be green (0 errors).
@@ -61,7 +61,7 @@ packs/
 
 ### Known Gaps / Migration
 - Some engine modules still assume a single, hardcoded game → must route through pack data.
-- `data/` is legacy/staging; target is `packs/<game>/…`.
+- `packs/` is legacy/staging; target is `packs/<game>/…`.
 
 ### Questions for the team (Codex must ask if unclear)
 - Save format preference (JSON vs YAML for runtime saves)?

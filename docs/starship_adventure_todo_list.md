@@ -2,7 +2,7 @@
 
 🧱 Core Engine
 
-✅ Set up folder structure: engine/, ui/, data/, saves/, logs/, assets/
+✅ Set up folder structure: engine/, ui/, packs/, saves/, logs/, assets/
 ✅ Create main.py entry point
 ✅ Implement YAML loader (for rooms, objects, settings)
 ✅ Design central game loop and state machine (GameState now robustly manages current_room_id, current_area_id, object states, and visibility logic)
@@ -130,7 +130,7 @@
 
 🔄 Define pack structure under `packs/<pack_id>/` (rooms.yaml, objects.yaml, responses.yaml, profanity_words.yaml)
 🔄 Implement pack loader: select `active_pack` and load its files into the engine
-🔄 Update tools to save/edit per-pack files rather than root `data/`
+🔄 Update tools to save/edit per-pack files rather than root `packs/`
 🔄 Hub app (`tools/main_design_hub.py`) to browse, create, validate, and launch packs
 
 🧹 Coding & Dev Standards

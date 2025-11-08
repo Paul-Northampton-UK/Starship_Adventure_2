@@ -20,11 +20,11 @@ A generic, extensible text-adventure engine with a hub that can run multiple the
 - YAML data loading and validation (`engine/yaml_loader.py`, `engine/schemas.py`)
 - Game state tracking (`engine/game_state.py`): rooms, areas, visibility, inventory (held/worn), object state
 - Command handlers implemented: Move, Look, Inventory, Quit, Take, Drop, Equip (wear/remove), Search, Put, Take From, Lock, Unlock, Open, Close
-- Response variation system via `data/responses.yaml`
+- Response variation system via `packs/responses.yaml`
 - Room/Area description system with first-visit/short descriptions and dynamic object listing by state and placement (`location` / `area_location`)
 - Logging via Loguru with rotating file logs
 - Tools: CustomTkinter Object Editor under `tools/object_editor/`
-- Hub groundwork for multi-pack workflow (see Game Packs & Hub). Current runtime still reads from `data/` paths; pack loader is planned.
+- Hub groundwork for multi-pack workflow (see Game Packs & Hub). Current runtime still reads from `packs/` paths; pack loader is planned.
 - Test suite exists under `tests/` (some tests predate the latest parser/engine changes)
 
 **Planned / In Progress:**
@@ -69,14 +69,14 @@ python -m engine.game_loop
 
 Alternatively, run the simple GUI placeholder window (not gameplay yet):
 ```
-python main.py
+python -m engine.game_loop
 ```
 ```
 
 ## Project Structure
 
 - `engine/` - Core game engine components
-- `data/` - Default game data and content (temporary runtime source until pack loader lands)
+- `packs/` - Default game data and content (temporary runtime source until pack loader lands)
 - `packs/` - Game packs library (planned runtime source). Each pack will contain its own `rooms.yaml`, `objects.yaml`, `responses.yaml`, etc.
 - `logs/` - Game and system logs
 - `saves/` - Save game files
@@ -92,7 +92,7 @@ python main.py
   - `responses.yaml` — narrator/system responses
   - `profanity_words.yaml` — optional
   - Optional pack-specific assets/config
-- During the transition period, the runtime still reads from `data/`. The Hub/tools will save to `packs/<pack_id>/`; a pack loader will copy/symlink/point the engine to the pack content.
+- During the transition period, the runtime still reads from `packs/`. The Hub/tools will save to `packs/<pack_id>/`; a pack loader will copy/symlink/point the engine to the pack content.
 
 ## Development
 

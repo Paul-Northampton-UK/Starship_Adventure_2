@@ -20,7 +20,7 @@
 # CURRENT STATUS (As of May 2025): This document serves as an initial design plan and 
 # contains many valuable concepts. However, the primary, up-to-date game data for 
 # rooms, objects, responses, and initial configuration is now managed in the 
-# separate YAML files located in the `data/` directory (e.g., `objects.yaml`, 
+# separate YAML files located in the `packs/` directory (e.g., `objects.yaml`, 
 # `rooms.yaml`, `responses.yaml`, `game_config.yaml`). Game logic and state 
 # management are implemented in the Python files within the `engine/` directory.
 # This document should be referenced for historical design context and potential

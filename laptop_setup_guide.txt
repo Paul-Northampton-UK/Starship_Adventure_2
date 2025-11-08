@@ -81,7 +81,7 @@ This guide provides step-by-step instructions to set up the Starship Adventure 2
      ```bash
       py main.py
      ```
-     (or `python main.py`)
+     (or `python -m engine.game_loop`)
    - You should see a window open with a welcome message.
    - **Text-based adventure loop (core gameplay for development/testing):**
      ```bash

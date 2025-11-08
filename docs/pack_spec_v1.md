@@ -121,4 +121,4 @@ move_success:
 - Note: Referenced by future GUI; keep paths relative to the pack.
 
 ---
-Implementation note: The current engine reads from data/. Packs will live under packs/<pack_id>/. At runtime, the engine will use game.yaml (for start settings) and then load rooms.yaml, objects.yaml, and responses.yaml; rules.yaml and lexicon.yaml are for incremental features.
+Implementation note: The current engine reads from packs/. Packs will live under packs/<pack_id>/. At runtime, the engine will use game.yaml (for start settings) and then load rooms.yaml, objects.yaml, and responses.yaml; rules.yaml and lexicon.yaml are for incremental features.

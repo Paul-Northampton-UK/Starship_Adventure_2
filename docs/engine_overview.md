@@ -119,7 +119,7 @@ Key roles:
 
 ## Where the data lives today (and the direction of travel)
 
-- Today, files are read from the `data/` folder.
+- Today, files are read from the `packs/` folder.
 - We are transitioning to “Game Packs”, where each pack has its own `rooms.yaml`, `objects.yaml`, and `responses.yaml` under `packs/<pack_id>/`.
 - A central Hub will help you create/edit/validate/run packs and point the engine at the active pack.
 

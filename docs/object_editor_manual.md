@@ -4,8 +4,8 @@ Note on Game Packs & Hub (August 2025)
 
 - The editor is used within a multi-pack workflow managed by the Hub.
 - Each game pack lives under `packs/<pack_id>/` and provides its own `objects.yaml`, `rooms.yaml`, and `responses.yaml`.
-- When a pack is active, the editor should load from and save to that pack’s files, rather than the root `data/` directory.
-- During the transition period, some projects may still read from `data/`; ensure the chosen `active_pack` and editor target align.
+- When a pack is active, the editor should load from and save to that pack’s files, rather than the root `packs/` directory.
+- During the transition period, some projects may still read from `packs/`; ensure the chosen `active_pack` and editor target align.
 
 This document details the fields available in the Starship Adventure 2 Object Editor GUI.
 
@@ -14,7 +14,7 @@ This document details the fields available in the Starship Adventure 2 Object Ed
 These controls manage the overall loading and creation process.
 
 *   **Select Object (Dropdown):**
-    *   **Purpose:** Displays a list of all existing object IDs currently loaded from `data/objects.yaml`. Allows you to choose an object to view or edit.
+    *   **Purpose:** Displays a list of all existing object IDs currently loaded from `packs/objects.yaml`. Allows you to choose an object to view or edit.
     *   **Behavior:** Selecting an ID from this list enables the "Load" button (or automatically triggers loading if we keep that event).
     *   **Data Type:** String (Object ID).
     *   **Notes:** This list is populated when the editor starts. It will be refreshed after saving changes or deleting an object.
@@ -81,7 +81,7 @@ Available categories include:
     *   **Behavior:** Selecting a room here dynamically updates the "Area Location" dropdown below it.
 
 *   **Area Location (Dropdown):**
-    *   **Purpose:** Specifies the unique `area_id` *within the selected Room* where this object is initially located. If the object is in the room generally, but not tied to a specific sub-area, this should be left blank or set to a specific "None" or empty option if available. This value is saved as the `area_location` key in the object's entry in `data/objects.yaml`.
+    *   **Purpose:** Specifies the unique `area_id` *within the selected Room* where this object is initially located. If the object is in the room generally, but not tied to a specific sub-area, this should be left blank or set to a specific "None" or empty option if available. This value is saved as the `area_location` key in the object's entry in `packs/objects.yaml`.
     *   **Data Type:** String (selected from the list of `area_id`s defined for the currently selected Room Location, plus an option for None/blank).
     *   **Rules/Importance:** Optional. Only relevant if the object should be associated with a specific sub-location (area) within a room. The game engine uses the `location` (room) and this `area_location` (sub-area, if specified) from `objects.yaml` to determine where the object appears and how it's listed in room/area descriptions.
     *   **Behavior:** This dropdown's choices are filtered based on the selection in "Room Location".
