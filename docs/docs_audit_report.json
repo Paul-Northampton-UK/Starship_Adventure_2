@@ -1,0 +1,94 @@
+{
+  "files": [
+    {
+      "file": "docs/engine_overview.md",
+      "issues": [
+        {
+          "issue": "Found reference to legacy `data/` paths.",
+          "suggestion": "Use `packs/<active_pack>/...` paths instead of `data/`.",
+          "auto_fixable": true
+        }
+      ]
+    },
+    {
+      "file": "docs/object_editor_manual.md",
+      "issues": [
+        {
+          "issue": "Found reference to legacy `data/` paths.",
+          "suggestion": "Use `packs/<active_pack>/...` paths instead of `data/`.",
+          "auto_fixable": true
+        },
+        {
+          "issue": "Contains TODO / FIXME markers.",
+          "suggestion": "Resolve or move TODO items to the tracker.",
+          "auto_fixable": false
+        }
+      ]
+    },
+    {
+      "file": "docs/pack_spec_v1.md",
+      "issues": [
+        {
+          "issue": "Found reference to legacy `data/` paths.",
+          "suggestion": "Use `packs/<active_pack>/...` paths instead of `data/`.",
+          "auto_fixable": true
+        }
+      ]
+    },
+    {
+      "file": "docs/Starship Adventure Game - Product Requirement Docucument.md",
+      "issues": [
+        {
+          "issue": "Found reference to legacy `data/` paths.",
+          "suggestion": "Use `packs/<active_pack>/...` paths instead of `data/`.",
+          "auto_fixable": true
+        }
+      ]
+    },
+    {
+      "file": "docs/starship_adventure_todo_list.md",
+      "issues": [
+        {
+          "issue": "Found reference to legacy `data/` paths.",
+          "suggestion": "Use `packs/<active_pack>/...` paths instead of `data/`.",
+          "auto_fixable": true
+        },
+        {
+          "issue": "Contains TODO / FIXME markers.",
+          "suggestion": "Resolve or move TODO items to the tracker.",
+          "auto_fixable": false
+        }
+      ]
+    },
+    {
+      "file": "packs/starship_adventure/responses.yaml",
+      "issues": [
+        {
+          "issue": "Contains TODO / FIXME markers.",
+          "suggestion": "Resolve or move TODO items to the tracker.",
+          "auto_fixable": false
+        }
+      ]
+    },
+    {
+      "file": "Project Brief.md",
+      "issues": [
+        {
+          "issue": "Found reference to legacy `data/` paths.",
+          "suggestion": "Use `packs/<active_pack>/...` paths instead of `data/`.",
+          "auto_fixable": true
+        }
+      ]
+    },
+    {
+      "file": "README.md",
+      "issues": [
+        {
+          "issue": "Found reference to legacy `data/` paths.",
+          "suggestion": "Use `packs/<active_pack>/...` paths instead of `data/`.",
+          "auto_fixable": true
+        }
+      ]
+    }
+  ]
+}
