@@ -1,4 +1,4 @@
-# Starship Adventure 2 — Project Brief (Author: Paul)
+﻿# Starship Adventure 2 â€” Project Brief (Author: Paul)
 
 ## Vision
 A **genre-free text adventure creation system** for non-coders: a GUI **Editor** that generates all packs/files, and a **generic Engine** that plays any project created with the editor.
@@ -51,19 +51,20 @@ packs/
     lexicon.yaml       # synonyms, command words, nlp hints (optional)
 
 ### MVP Acceptance (first release)
-- `python -m engine.game_loop` → walk 3 rooms, take an object, `inv` shows it.
-- Editor: edit a room description → save → re-run game, change visible.
-- `pytest -q` smoke tests green; `validate_pack` → 0 errors, ≤5 warnings (temp).
+- `python -m engine.game_loop` â†’ walk 3 rooms, take an object, `inv` shows it.
+- Editor: edit a room description â†’ save â†’ re-run game, change visible.
+- `pytest -q` smoke tests green; `validate_pack` â†’ 0 errors, â‰¤5 warnings (temp).
 - Packaging: one click builds a runnable folder with engine + pack.
 
 ### Out of Scope (for now)
 - Advanced AI/NPCs, combat, heavy story scripting, big GUI redesign.
 
 ### Known Gaps / Migration
-- Some engine modules still assume a single, hardcoded game → must route through pack data.
-- `packs/` is legacy/staging; target is `packs/<game>/…`.
+- Some engine modules still assume a single, hardcoded game â†’ must route through pack data.
+- `packs/` is legacy/staging; target is `packs/<game>/â€¦`.
 
 ### Questions for the team (Codex must ask if unclear)
 - Save format preference (JSON vs YAML for runtime saves)?
 - Where should packaging output go (e.g., `dist/<game_title>-standalone/`)?
 - Do we allow multiple packs installed and selectable at runtime?
+

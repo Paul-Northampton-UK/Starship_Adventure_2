@@ -1,4 +1,4 @@
-# Game Pack Specification (v1)
+﻿# Game Pack Specification (v1)
 
 A "pack" is a self-contained set of YAML files (plus optional assets) that the engine loads to run a themed game. Keep it minimal and readable.
 
@@ -39,7 +39,7 @@ rooms:
   - room_id: player_cabin
     name: Player Cabin
     description: A compact cabin with emergency lighting.
-    first_visit_description: You awake in a dim cabin…
+    first_visit_description: You awake in a dim cabinâ€¦
     exits: { east: east_corridor, north: small_kitchen }
     areas:
       - area_id: bed_area
@@ -122,3 +122,4 @@ move_success:
 
 ---
 Implementation note: The current engine reads from packs/. Packs will live under packs/<pack_id>/. At runtime, the engine will use game.yaml (for start settings) and then load rooms.yaml, objects.yaml, and responses.yaml; rules.yaml and lexicon.yaml are for incremental features.
+

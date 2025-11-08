@@ -25,8 +25,9 @@ EXCLUDE_DIRS = {
     ".pytest_cache",
     ".ruff_cache",
     "logs",
+    "legacy",
 }
-EXCLUDE_FILES = {"repo_report.md"}
+EXCLUDE_FILES = {"repo_report.md", "docs_audit_report.md", "docs_audit_report.json"}
 
 PATTERNS = [
     {

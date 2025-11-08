@@ -1,4 +1,4 @@
-Starship Adventure Game - Product Requirements Document (PRD)
+﻿Starship Adventure Game - Product Requirements Document (PRD)
 
 Status Snapshot (August 2025)
 
@@ -16,7 +16,7 @@ Title: Starship Adventure
 Genre: Sci-fi Text Adventure with GUI Interface
 Platform: Windows (run from source; packaging to standalone installer planned)
 Audience: General audience, suitable for all ages
-Goal: Build a generic text adventure engine and Hub that runs multiple themed game packs, with tools for authoring rooms, objects, and dialogue. Includes a sci‑fi example pack with a sarcastic AI narrator.
+Goal: Build a generic text adventure engine and Hub that runs multiple themed game packs, with tools for authoring rooms, objects, and dialogue. Includes a sciâ€‘fi example pack with a sarcastic AI narrator.
 
 Initial State: The game begins according to settings defined in `game_config.yaml`, specifying the starting room (e.g., Player Cabin) and initial power state (e.g., Emergency Power).
 
@@ -266,13 +266,13 @@ Testing:
 
 Third-party Libraries:
 
-spaCy — natural language parsing
+spaCy â€” natural language parsing
 
-pygame — GUI and audio handling
+pygame â€” GUI and audio handling
 
-PyYAML — game data and config files
+PyYAML â€” game data and config files
 
-loguru — logging
+loguru â€” logging
 
 colorama, textwrap, pillow, etc. as needed
 
@@ -423,4 +423,5 @@ Implementation Strategy:
    - UI/UX improvements
    - Performance optimization
    - Additional tools
+
 
