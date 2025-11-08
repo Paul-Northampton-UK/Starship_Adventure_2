@@ -1,50 +1,29 @@
-# Repo snapshot — 2025-11-07 17:42:48
+# Repo snapshot — 2025-11-08 00:07:19
 
 ## Summary
-- engine/: 25 files | ~5048 non-blank LOC
-- tools/: 8 files | ~4387 non-blank LOC
-- packs/: 8 files | ~3906 non-blank LOC
+- engine/: 27 files | ~5200 non-blank LOC
+- tools/: 9 files | ~4616 non-blank LOC
+- packs/: 7 files | ~2904 non-blank LOC
 - data/: 8 files | ~3906 non-blank LOC
 - docs/: 5 files | ~1131 non-blank LOC
-- tests/: 8 files | ~1413 non-blank LOC
+- tests/: 12 files | ~1579 non-blank LOC
 
 ## Active Pack
 - Resolved content root: `C:\py_fold\Projects\Starship_Adventure_2\packs\starship_adventure`
 - Note: `data/` present (legacy/staging content; canonical pack is under `packs/`).
-- Pack validation: errors=0 warnings=26
-  - Warnings:
-    - rooms.yaml[0] (ship_bridge): no description/desc/long_description found
-    - rooms.yaml[1] (captains_corridor): no description/desc/long_description found
-    - rooms.yaml[2] (east_bridge_corridor_entrance): no description/desc/long_description found
-    - rooms.yaml[3] (east_bridge_corridor_middle): no description/desc/long_description found
-    - rooms.yaml[4] (east_bridge_corridor_end): no description/desc/long_description found
-    - rooms.yaml[5] (west_bridge_corridor_entrance): no description/desc/long_description found
-    - rooms.yaml[6] (west_bridge_corridor_middle): no description/desc/long_description found
-    - rooms.yaml[7] (west_bridge_corridor_end): no description/desc/long_description found
-    - rooms.yaml[8] (bridge_crew_rest_area): no description/desc/long_description found
-    - rooms.yaml[9] (bridge_ready_room): no description/desc/long_description found
-    - rooms.yaml[10] (mission_ops): no description/desc/long_description found
-    - rooms.yaml[11] (player_cabin): no description/desc/long_description found
-    - rooms.yaml[12] (player_cabin_small_kitchen): no description/desc/long_description found
-    - rooms.yaml[13] (player_cabin_small_bathroom): no description/desc/long_description found
-    - rooms.yaml[14] (hidden_maintenance_alcove): no description/desc/long_description found
-    - rooms.yaml[15] (captains_office): no description/desc/long_description found
-    - rooms.yaml[16] (captains_lounge): no description/desc/long_description found
-    - rooms.yaml[17] (captains_quarters): no description/desc/long_description found
-    - rooms.yaml[18] (captains_private_kitchen): no description/desc/long_description found
-    - rooms.yaml[19] (captains_private_bathroom): no description/desc/long_description found
-    - ... and 6 more
+- Pack validation: OK
 
 ## Delta Since Last Snapshot
-- No previous snapshot detected.
+- Added files: 0
+- Removed files: 0
+- Net LOC change (non-blank): +60
 
 ## Very Large Files (>50 KB)
 - `project_report.yaml` | 3021 KB
-- `repo_report.md` | 1026 KB
 - `Starship_plan.yaml` | 147 KB
 - `tools\object_editor\new_ctk_object_editor.py` | 112 KB
+- `packs\starship_adventure\rooms.yaml` | 101 KB
 - `data\rooms.yaml` | 98 KB
-- `packs\starship_adventure\rooms.yaml` | 98 KB
 - `tools\object_editor\editor_gui_tabs.py` | 86 KB
 - `engine\game_state.py` | 68 KB
 
@@ -64,6 +43,7 @@
 - `docs\Starship Adventure Game - Product Requirement Docucument.md` | 265 loc | 2025-08-14 16:40
 - `docs\starship_adventure_todo_list.md` | 175 loc | 2025-08-16 12:46
 - `engine\__init__.py` | 4 loc | 2025-04-01 17:52
+- `engine\active_pack.py` | 76 loc | 2025-11-07 21:42
 - `engine\command_defs.py` | 58 loc | 2025-11-07 15:48
 - `engine\command_handlers\basic_commands.py` | 191 loc | 2025-11-07 15:48
 - `engine\command_handlers\equipment.py` | 209 loc | 2025-11-07 15:48
@@ -77,44 +57,51 @@
 - `engine\command_handlers\take_handler.py` | 65 loc | 2025-11-07 15:48
 - `engine\command_handlers\utils.py` | 23 loc | 2025-11-07 15:48
 - `engine\content_root.py` | 12 loc | 2025-11-07 15:59
-- `engine\game_loop.py` | 290 loc | 2025-11-07 15:59
+- `engine\game_loop.py` | 290 loc | 2025-11-07 21:42
 - `engine\nlp\constants.py` | 189 loc | 2025-11-07 15:48
 - `engine\nlp\parser.py` | 743 loc | 2025-11-07 15:48
 - `engine\nlp\patterns.py` | 133 loc | 2025-11-07 15:48
 - `engine\nlp_command_parser.py` | 242 loc | 2025-11-07 15:48
-- `engine\schemas.py` | 269 loc | 2025-11-07 15:48
+- `engine\schemas\__init__.py` | 269 loc | 2025-11-07 15:48
+- `engine\schemas\pack.py` | 78 loc | 2025-11-07 19:15
 - `engine\utils\__init__.py` | 1 loc | 2025-05-15 17:07
 - `engine\utils\response_utils.py` | 27 loc | 2025-11-07 15:48
-- `engine\validate_pack.py` | 188 loc | 2025-11-07 15:59
+- `engine\validate_pack.py` | 186 loc | 2025-11-07 19:16
 - `engine\yaml_loader.py` | 180 loc | 2025-11-07 15:48
 - `examples\room_example.py` | 45 loc | 2025-11-07 15:48
 - `examples\room_validation_example.py` | 76 loc | 2025-11-07 15:48
-- `game_config.yaml` | 9 loc | 2025-08-14 14:28
+- `game_config.yaml` | 1 loc | 2025-11-07 22:07
 - `laptop_setup_guide.txt` | 0 loc | 2025-08-14 13:18
 - `main.py` | 93 loc | 2025-11-07 15:48
-- `packs\starship_adventure\game.yaml` | 4 loc | 2025-08-14 14:37
+- `packs\starship_adventure\game.yaml` | 12 loc | 2025-11-07 19:18
 - `packs\starship_adventure\lexicon.yaml` | 3 loc | 2025-08-14 14:39
-- `packs\starship_adventure\objects.backup.yaml` | 1054 loc | 2025-08-12 20:30
 - `packs\starship_adventure\objects.yaml` | 465 loc | 2025-08-12 21:13
 - `packs\starship_adventure\profanity_words.yaml` | 59 loc | 2025-04-06 15:43
 - `packs\starship_adventure\responses.yaml` | 415 loc | 2025-08-13 12:14
 - `packs\starship_adventure\rules.yaml` | 1 loc | 2025-08-14 16:56
+- `Project Brief.md` | 56 loc | 2025-11-07 19:01
 - `project_report.py` | 42 loc | 2025-11-07 15:48
 - `pyproject.toml` | 15 loc | 2025-11-07 15:45
 - `README.md` | 92 loc | 2025-08-14 13:18
+- `repo_report.md` | 114 loc | 2025-11-07 22:03
 - `requirements.txt` | 0 loc | 2025-08-14 13:18
+- `tests\test_active_pack.py` | 43 loc | 2025-11-07 21:42
 - `tests\test_engine_smoke.py` | 14 loc | 2025-11-07 16:42
 - `tests\test_game_state.py` | 155 loc | 2025-11-07 15:48
 - `tests\test_nlp_command_parser.py` | 137 loc | 2025-11-07 15:48
 - `tests\test_nlp_parser.py` | 401 loc | 2025-11-07 15:48
 - `tests\test_object_schema.py` | 162 loc | 2025-11-07 15:48
+- `tests\test_pack_discovery.py` | 26 loc | 2025-11-07 21:57
+- `tests\test_pack_schema.py` | 37 loc | 2025-11-07 19:16
 - `tests\test_pack_smoke.py` | 20 loc | 2025-11-07 16:31
 - `tests\test_schemas.py` | 230 loc | 2025-11-07 15:48
+- `tests\test_validate_pack.py` | 60 loc | 2025-11-07 19:19
 - `tests\test_yaml_loader.py` | 294 loc | 2025-11-07 15:48
 - `tools\__init__.py` | 0 loc | 2025-11-07 15:53
-- `tools\main_design_hub.py` | 103 loc | 2025-11-07 15:48
+- `tools\main_design_hub.py` | 299 loc | 2025-11-08 00:07
 - `tools\object_editor\__init__.py` | 0 loc | 2025-11-07 15:53
-- `tools\object_editor\object_data_manager.py` | 454 loc | 2025-11-07 15:59
+- `tools\object_editor\object_data_manager.py` | 468 loc | 2025-11-08 00:06
+- `tools\pack_discovery.py` | 19 loc | 2025-11-07 22:02
 - `tools\repo_report.py` | 220 loc | 2025-11-07 17:40
 - `tools\tmp_normalize_objects.py` | 128 loc | 2025-11-07 15:48
 - `verb_categories.txt` | 0 loc | 2025-04-03 02:16

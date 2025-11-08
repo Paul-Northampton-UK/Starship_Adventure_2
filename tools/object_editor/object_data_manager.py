@@ -8,10 +8,10 @@ from ruamel.yaml import YAML
 from ruamel.yaml.parser import ParserError
 from ruamel.yaml.scanner import ScannerError
 
-from engine.content_root import get_content_root
+from engine.active_pack import get_content_root_from_config
 
 
-AUTO_FILL_PLACEHOLDER = "TBD â€” auto-filled placeholder (remove before release)"
+AUTO_FILL_PLACEHOLDER = "TBD — auto-filled placeholder (remove before release)"
 
 
 class ObjectDataManager:
@@ -23,26 +23,15 @@ class ObjectDataManager:
         If data_dir is not provided, it defaults to the 'data' directory
         in the project root.
         """
-        if data_dir is None:
-            # Compute content root using the same logic as the engine (active_pack aware)
-            try:
-                project_root = Path(__file__).resolve().parents[2]
-                config_path = project_root / "game_config.yaml"
-                active_pack = None
-                if config_path.is_file():
-                    y = YAML()
-                    with open(config_path, encoding='utf-8') as f:
-                        cfg = y.load(f) or {}
-                        if isinstance(cfg, dict):
-                            active_pack = cfg.get("active_pack")
-                self.data_dir = get_content_root(active_pack)
-                logger.info(f"ObjectDataManager content root: {self.data_dir} (pack={active_pack or 'legacy data/'})")
-            except Exception as e:
-                # Fallback to legacy data/ behavior
-                logger.warning(f"Falling back to legacy data/ path due to error resolving content root: {e}")
-                self.data_dir = Path(__file__).parent.parent.parent / "data"
-        else:
+        if data_dir is not None:
             self.data_dir = data_dir
+        else:
+            try:
+                self.data_dir = get_content_root_from_config()
+                logger.info(f"ObjectDataManager content root: {self.data_dir}")
+            except Exception as exc:  # pragma: no cover - surfaced via UI logs
+                logger.error(f"Unable to resolve active pack content root: {exc}")
+                raise
         self.objects_file = self.data_dir / "objects.yaml"
         self.rooms_file = self.data_dir / "rooms.yaml"
 
@@ -560,3 +549,4 @@ if __name__ == "__main__":
             print(f"\nObject with ID '{test_id}' not found.")
     else:
         print("Failed to load data.") 
+

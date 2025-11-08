@@ -14,14 +14,14 @@ if str(project_root) not in sys.path:
 
 import subprocess
 import threading
-import tkinter.messagebox as messagebox
-from pathlib import Path
+import tkinter as tk
 
 from engine import active_pack
+from engine.content_root import get_content_root
 from engine.active_pack import get_content_root_from_config
 from engine.validate_pack import validate_pack
-from tools.object_editor.new_ctk_object_editor import NewObjectEditorFrame
 from tools import pack_discovery
+from tools.object_editor.new_ctk_object_editor import NewObjectEditorFrame
 
 
 class GameDesignHub:
@@ -50,7 +50,10 @@ class GameDesignHub:
         self.tab_view.pack(fill="both", expand=True)
 
         # Add tabs for each tool
+        self.engine_process: subprocess.Popen[str] | None = None
         self.add_tool_tabs()
+        self.root.bind("<Escape>", lambda event: self.stop_engine())
+        self.root.bind("<Control-l>", lambda event: self.clear_console())
 
     def add_tool_tabs(self):
         """Adds all the tool tabs to the main view."""
@@ -128,96 +131,198 @@ class GameDesignHub:
         ctk.CTkLabel(info_frame, textvariable=self.active_pack_var).grid(row=0, column=1, sticky="w", padx=6, pady=6)
 
         list_frame = ctk.CTkFrame(frame)
-        list_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        list_frame.pack(fill="x", padx=10, pady=10)
         ctk.CTkLabel(list_frame, text="Available Packs").pack(anchor="w", padx=6, pady=4)
-        self.pack_list = ctk.CTkTextbox(list_frame, height=200)
-        self.pack_list.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+        list_container = ctk.CTkFrame(list_frame, fg_color="transparent")
+        list_container.pack(fill="x", padx=6, pady=(0, 6))
+        self.pack_list = tk.Listbox(list_container, height=10, exportselection=False, bg="#1f1f1f", fg="#f2f2f2", highlightthickness=0, selectbackground="#365e9d", relief="flat")
+        scrollbar = tk.Scrollbar(list_container, orient="vertical", command=self.pack_list.yview)
+        self.pack_list.configure(yscrollcommand=scrollbar.set)
+        self.pack_list.pack(side="left", fill="x", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
         btn_frame = ctk.CTkFrame(frame)
         btn_frame.pack(fill="x", padx=10, pady=10)
-        ctk.CTkButton(btn_frame, text="Refresh Packs", command=self.refresh_packs).grid(row=0, column=0, padx=5, pady=5)
-        ctk.CTkButton(btn_frame, text="Set Active", command=self.set_selected_pack).grid(row=0, column=1, padx=5, pady=5)
-        ctk.CTkButton(btn_frame, text="Validate Pack", command=self.validate_selected_pack).grid(row=0, column=2, padx=5, pady=5)
-        ctk.CTkButton(btn_frame, text="Run Engine", command=self.run_engine).grid(row=0, column=3, padx=5, pady=5)
+        ctk.CTkButton(btn_frame, text="Refresh Packs", command=self.refresh_packs).grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+        ctk.CTkButton(btn_frame, text="Set Active", command=self.set_selected_pack).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        ctk.CTkButton(btn_frame, text="Validate Pack", command=self.validate_selected_pack).grid(row=0, column=2, padx=5, pady=5, sticky="ew")
+        self.run_button = ctk.CTkButton(btn_frame, text="Run Engine", command=self.run_engine)
+        self.run_button.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+        self.stop_button = ctk.CTkButton(btn_frame, text="Stop", command=self.stop_engine, state="disabled")
+        self.stop_button.grid(row=0, column=4, padx=5, pady=5, sticky="ew")
 
-        self.log_area = ctk.CTkTextbox(frame, height=120)
-        self.log_area.pack(fill="x", padx=10, pady=10)
+        console_frame = ctk.CTkFrame(frame)
+        console_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        ctk.CTkLabel(console_frame, text="Engine Console").pack(anchor="w", padx=6, pady=(6, 4))
+        self.log_area = ctk.CTkTextbox(console_frame, height=260)
+        self.log_area.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+        self.log_area.configure(state="disabled")
+
+        input_frame = ctk.CTkFrame(console_frame)
+        input_frame.pack(fill="x", padx=6, pady=(0, 6))
+        input_frame.columnconfigure(0, weight=1)
+        self.command_entry = ctk.CTkEntry(input_frame)
+        self.command_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        self.command_entry.bind("<Return>", self.send_command)
+        self.send_button = ctk.CTkButton(input_frame, text="Send", width=80, command=self.send_command)
+        self.send_button.grid(row=0, column=1, padx=(0, 6))
+        self.clear_button = ctk.CTkButton(input_frame, text="Clear", width=80, command=self.clear_console)
+        self.clear_button.grid(row=0, column=2)
+        self._toggle_command_input(False)
 
         self.refresh_packs()
 
     # Actions --------------------------------------------------------------
     def _discover_packs(self):
-        return pack_discovery.list_packs()
+        return pack_discovery.list_packs(project_root / "packs")
 
     def refresh_packs(self):
         packs = self._discover_packs()
-        self.pack_list.configure(state="normal")
-        self.pack_list.delete("1.0", "end")
+        self.pack_list.delete(0, "end")
         for name in packs:
-            self.pack_list.insert("end", f"{name}\n")
-        self.pack_list.configure(state="disabled")
+            self.pack_list.insert("end", name)
         self.active_pack_var.set(active_pack.get_active_pack())
+        self._log_status(f"Discovered {len(packs)} pack(s).")
 
     def _selected_pack(self):
-        try:
-            selection = self.pack_list.get("sel.first", "sel.last").strip()
-            return selection
-        except Exception:
+        selection = self.pack_list.curselection()
+        if not selection:
             return None
+        return self.pack_list.get(selection[0])
+
+    def _log_status(self, message: str):
+        self.log_area.configure(state="normal")
+        self.log_area.insert("end", message + "\n")
+        self.log_area.see("end")
+        self.log_area.configure(state="disabled")
+
+    def _toggle_command_input(self, enabled: bool):
+        state = "normal" if enabled else "disabled"
+        self.command_entry.configure(state=state)
+        self.send_button.configure(state=state)
+        if not enabled:
+            self.command_entry.delete(0, "end")
 
     def set_selected_pack(self):
         pack = self._selected_pack()
         if not pack:
-            messagebox.showwarning("Set Active Pack", "Select a pack first.")
+            self._log_status("Set Active: select a pack first.")
             return
         try:
             active_pack.set_active_pack(pack)
         except Exception as exc:
-            messagebox.showerror("Set Active Pack", str(exc))
+            self._log_status(f"Set Active failed: {exc}")
             return
         self.active_pack_var.set(pack)
-        messagebox.showinfo("Set Active Pack", f"Active pack set to {pack}")
+        self._log_status(f"Active pack set to {pack}")
 
     def validate_selected_pack(self):
-        pack = self._selected_pack() or active_pack.get_active_pack()
-        content_root = Path("packs") / pack
-        if not content_root.is_dir():
-            messagebox.showerror("Validate Pack", f"Pack not found: {pack}")
+        selected = self._selected_pack()
+        try:
+            if selected:
+                pack = selected
+                content_root = get_content_root(pack)
+            else:
+                pack = active_pack.get_active_pack()
+                content_root = get_content_root_from_config()
+        except Exception as exc:
+            self._log_status(f"Validate failed: {exc}")
             return
         result = validate_pack(content_root, return_warnings=True)
         errors, warnings = result if isinstance(result, tuple) else (result, [])
-        msg = f"{pack} validation:\nErrors: {len(errors)}\nWarnings: {len(warnings)}"
-        detail_lines = errors[:5] + warnings[:5]
-        detail = "\n".join(detail_lines) if detail_lines else "No messages."
-        messagebox.showinfo("Validate Pack", f"{msg}\n\n{detail}")
+        self._log_status(f"Validate {pack}: {len(errors)} error(s), {len(warnings)} warning(s)")
+        for line in (errors[:3] + warnings[:3]):
+            self._log_status(f"  - {line}")
+
+    def clear_console(self, *_):
+        self.log_area.configure(state="normal")
+        self.log_area.delete("1.0", "end")
+        self.log_area.configure(state="disabled")
+
+    def send_command(self, event=None):
+        if not self.engine_process or self.engine_process.poll() is not None:
+            self._log_status("Engine is not running.")
+            return
+        if not self.engine_process.stdin:
+            self._log_status("Engine stdin unavailable.")
+            return
+        text = self.command_entry.get()
+        if not text.strip():
+            return
+        try:
+            self.engine_process.stdin.write(text + "\n")
+            self.engine_process.stdin.flush()
+        except Exception as exc:
+            self._log_status(f"Send failed: {exc}")
+            return
+        finally:
+            self.command_entry.delete(0, "end")
 
     def run_engine(self):
+        if self.engine_process and self.engine_process.poll() is None:
+            self._log_status("Engine already running.")
+            return
         try:
-            process = subprocess.Popen(
+            self.engine_process = subprocess.Popen(
                 [sys.executable, "-m", "engine.game_loop"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                stdin=subprocess.PIPE,
                 text=True,
+                bufsize=1,
             )
         except Exception as exc:
-            messagebox.showerror("Run Engine", str(exc))
+            self._log_status(f"Run Engine failed: {exc}")
+            self.engine_process = None
             return
 
-        self.log_area.configure(state="normal")
-        self.log_area.insert("end", "Starting engine...\n")
-        self.log_area.configure(state="disabled")
+        self._log_status("Engine started...")
+        self.run_button.configure(state="disabled")
+        self.stop_button.configure(state="normal")
+        self._toggle_command_input(True)
+        self.command_entry.focus_set()
 
-        def _stream_output():
-            assert process.stdout is not None
-            for line in process.stdout:
-                self.log_area.configure(state="normal")
-                self.log_area.insert("end", line)
-                self.log_area.see("end")
-                self.log_area.configure(state="disabled")
-            process.stdout.close()
+        def _stream_output(proc: subprocess.Popen[str]):
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                self._log_status(line.rstrip())
+            proc.stdout.close()
+            self.root.after(0, self._on_engine_exit)
 
-        threading.Thread(target=_stream_output, daemon=True).start()
+        threading.Thread(target=_stream_output, args=(self.engine_process,), daemon=True).start()
 
+    def _on_engine_exit(self):
+        proc = self.engine_process
+        self.engine_process = None
+        if proc and proc.stdin:
+            try:
+                proc.stdin.close()
+            except Exception:
+                pass
+        self._log_status("Engine stopped.")
+        self.run_button.configure(state="normal")
+        self.stop_button.configure(state="disabled")
+        self._toggle_command_input(False)
+
+    def stop_engine(self, *_):
+        if not self.engine_process or self.engine_process.poll() is not None:
+            self._log_status("Engine is not running.")
+            return
+        try:
+            self.engine_process.terminate()
+            self._log_status("Stopping engine...")
+            threading.Thread(target=self._await_stop, args=(self.engine_process,), daemon=True).start()
+        except Exception as exc:
+            self._log_status(f"Stop failed: {exc}")
+
+    def _await_stop(self, proc: subprocess.Popen[str]):
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
     def on_closing(self):
         """Handle the window closing event."""
         logger.info("Design Hub is closing.")
