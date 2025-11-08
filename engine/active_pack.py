@@ -78,6 +78,20 @@ def get_content_root_from_config() -> Path:
     return get_content_root(pack)
 
 
+def load_game_config() -> dict[str, Any]:
+    """Public helper to read the shared game configuration."""
+
+    return _load_config()
+
+
+def save_game_config(config: dict[str, Any]) -> None:
+    """Persist the shared game configuration."""
+
+    if not isinstance(config, dict):
+        raise ValueError("Config must be a dictionary")
+    _write_config(config)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Manage the active Starship Adventure pack")
     group = parser.add_mutually_exclusive_group(required=True)

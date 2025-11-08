@@ -11,6 +11,7 @@ from engine.content_root import get_content_root
 from engine.schemas import ObjectCategory
 from engine.validate_pack import validate_pack
 from tools.object_editor.object_data_manager import ObjectDataManager
+from tools.ui import layout, theme
 
 
 def _now_utc_iso() -> str:
@@ -22,7 +23,11 @@ class NewObjectEditorFrame(ctk.CTkFrame):
     """
     def __init__(self, master):
         super().__init__(master)
+        theme.apply_theme(self)
+        self.configure(fg_color=theme.PANEL_BG)
         logger.info("Initializing NewObjectEditorFrame...")
+        self.font_base = ctk.CTkFont(family=theme.FONT_BASE[0], size=theme.FONT_BASE[1])
+        self.font_bold = ctk.CTkFont(family=theme.FONT_BASE[0], size=theme.FONT_BASE[1], weight="bold")
         self.data_manager = ObjectDataManager()
         # Compute content root label for display
         try:
@@ -58,13 +63,13 @@ class NewObjectEditorFrame(ctk.CTkFrame):
 
         # === BARS LAYOUT BEGIN ===
         # --- Top Controls Frame ---
-        top_controls_frame = ctk.CTkFrame(self)
-        top_controls_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=(10, 5))
+        top_controls_frame = ctk.CTkFrame(self, fg_color=theme.PANEL_BG)
+        top_controls_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=theme.PADDING, pady=(theme.PADDING, theme.GAP))
         self.create_top_controls(top_controls_frame)
 
         # --- Main Content Area (Tabs) ---
-        main_content_frame = ctk.CTkFrame(self)
-        main_content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        main_content_frame = ctk.CTkFrame(self, fg_color=theme.PANEL_BG)
+        main_content_frame.grid(row=1, column=0, sticky="nsew", padx=theme.PADDING, pady=(theme.GAP, theme.PADDING))
         main_content_frame.grid_columnconfigure(0, weight=1)
         main_content_frame.grid_rowconfigure(0, weight=1)
 
@@ -83,8 +88,8 @@ class NewObjectEditorFrame(ctk.CTkFrame):
         self.setup_tabs()  # safe now
 
         # --- Side Panel (Help/Validation) ---
-        side_panel_frame = ctk.CTkFrame(self, width=250)
-        side_panel_frame.grid(row=1, column=1, sticky="ns", padx=(0, 10), pady=(5, 10))
+        side_panel_frame = ctk.CTkFrame(self, width=250, fg_color=theme.PANEL_BG)
+        side_panel_frame.grid(row=1, column=1, sticky="ns", padx=(0, theme.PADDING), pady=(theme.GAP, theme.PADDING))
         side_panel_frame.grid_rowconfigure(0, weight=1)
         side_panel_frame.grid_rowconfigure(1, weight=1)
         self.create_side_panel_content(side_panel_frame)
@@ -100,20 +105,26 @@ class NewObjectEditorFrame(ctk.CTkFrame):
             # Ensure grid accommodates status row
             self.grid_rowconfigure(999, weight=0)
             self.grid_columnconfigure(0, weight=1)
-            status = ctk.CTkFrame(self, height=36)
-            status.grid(row=999, column=0, columnspan=2, sticky="ew", padx=8, pady=(6, 6))
+            status = ctk.CTkFrame(self, height=36, fg_color=theme.PANEL_BG)
+            status.grid(row=999, column=0, columnspan=2, sticky="ew", padx=theme.PADDING, pady=(theme.GAP, theme.PADDING))
             status.grid_columnconfigure(0, weight=0)  # validate
             status.grid_columnconfigure(1, weight=1)  # path stretches
             status.grid_columnconfigure(2, weight=0)  # close
 
-            self.validate_btn = ctk.CTkButton(status, text="Validate Pack", width=120, command=self._on_validate_pack)
+            self.validate_btn = ctk.CTkButton(
+                status, text="Validate Pack", width=120, command=self._on_validate_pack, font=self.font_base
+            )
             self.validate_btn.grid(row=0, column=0, padx=(8, 8), pady=6, sticky="w")
+            self._style_button(self.validate_btn)
 
             self.content_path_label = ctk.CTkLabel(status, text=self._content_banner, anchor="w")
             self.content_path_label.grid(row=0, column=1, padx=(0, 8), pady=6, sticky="ew")
 
-            self.close_btn = ctk.CTkButton(status, text="Close", width=100, command=self._on_close_editor)
+            self.close_btn = ctk.CTkButton(
+                status, text="Close", width=100, command=self._on_close_editor, font=self.font_base
+            )
             self.close_btn.grid(row=0, column=2, padx=(8, 8), pady=6, sticky="e")
+            self._style_button(self.close_btn)
         except Exception:
             pass
         # === BARS LAYOUT END ===
@@ -150,16 +161,29 @@ class NewObjectEditorFrame(ctk.CTkFrame):
         self.object_load_combobox = ctk.CTkComboBox(frame, values=[""] + self.object_ids, width=250, command=self.on_object_selected)
         self.object_load_combobox.grid(row=0, column=1, padx=0, pady=10, sticky="w")
 
-        reload_button = ctk.CTkButton(frame, text="Reload", width=70, command=self.on_reload_button)
-        reload_button.grid(row=0, column=2, padx=(5,0), pady=10)
+        reload_button = ctk.CTkButton(frame, text="Reload", width=70, command=self.on_reload_button, font=self.font_base)
+        reload_button.grid(row=0, column=2, padx=(5, 0), pady=10)
+        self._style_button(reload_button)
 
-        new_button = ctk.CTkButton(frame, text="New", width=60, command=self.on_new_button)
+        new_button = ctk.CTkButton(frame, text="New", width=60, command=self.on_new_button, font=self.font_base)
         new_button.grid(row=0, column=3, padx=5, pady=10)
+        self._style_button(new_button)
 
-        self.save_button = ctk.CTkButton(frame, text="Save", width=70, command=self.on_save_button, state="disabled")
-        self.save_button.grid(row=0, column=4, padx=(5,0), pady=10)
+        self.save_button = ctk.CTkButton(
+            frame, text="Save", width=70, command=self.on_save_button, state="disabled", font=self.font_base
+        )
+        self.save_button.grid(row=0, column=4, padx=(5, 0), pady=10)
+        self._style_button(self.save_button)
 
-        delete_button = ctk.CTkButton(frame, text="Delete", width=70, fg_color="#b33a3a", hover_color="#992f2f", command=self.on_delete_button)
+        delete_button = ctk.CTkButton(
+            frame,
+            text="Delete",
+            width=70,
+            fg_color="#b33a3a",
+            hover_color="#992f2f",
+            command=self.on_delete_button,
+            font=self.font_base,
+        )
         delete_button.grid(row=0, column=5, padx=5, pady=10)
         
         total_frame = ctk.CTkFrame(frame, fg_color="transparent")
@@ -565,6 +589,10 @@ class NewObjectEditorFrame(ctk.CTkFrame):
         self.object_ids = self.data_manager.get_object_ids()
         self.object_load_combobox.configure(values=[""] + self.object_ids)
         self.refresh_counts()
+
+    def _style_button(self, button: ctk.CTkButton) -> None:
+        layout.style_button(button)
+        button.configure(font=self.font_base)
         # Clear fields
         self.clear_all_fields()
         self.current_object_id = None
@@ -1342,10 +1370,16 @@ class NewObjectEditorFrame(ctk.CTkFrame):
         self.storage_item_select.pack(padx=0, pady=(0,8))
         btns = ctk.CTkFrame(right_stack, fg_color="transparent")
         btns.pack(padx=0, pady=(0,0))
-        self.storage_add_button = ctk.CTkButton(btns, text="Add", width=70, state="disabled", command=self._on_storage_add)
+        self.storage_add_button = ctk.CTkButton(
+            btns, text="Add", width=70, state="disabled", command=self._on_storage_add, font=self.font_base
+        )
         self.storage_add_button.pack(side="left", padx=(0,8))
-        self.storage_remove_button = ctk.CTkButton(btns, text="Remove", width=90, state="disabled", command=self._on_storage_remove)
+        self.storage_remove_button = ctk.CTkButton(
+            btns, text="Remove", width=90, state="disabled", command=self._on_storage_remove, font=self.font_base
+        )
         self.storage_remove_button.pack(side="left")
+        self._style_button(self.storage_add_button)
+        self._style_button(self.storage_remove_button)
         
         # Internal list model for contents
         self.storage_contents: list[str] = []
@@ -2105,8 +2139,11 @@ class NewObjectEditorFrame(ctk.CTkFrame):
         self.yaml_header_label = ctk.CTkLabel(header_bar, text="YAML Preview - reflects saved data", font=title_font)
         self.yaml_header_label.grid(row=0, column=0, padx=10, pady=8, sticky="w")
 
-        self.copy_yaml_btn = ctk.CTkButton(header_bar, text="Copy", width=70, command=self._copy_yaml_preview_to_clipboard)
+        self.copy_yaml_btn = ctk.CTkButton(
+            header_bar, text="Copy", width=70, command=self._copy_yaml_preview_to_clipboard, font=self.font_base
+        )
         self.copy_yaml_btn.grid(row=0, column=1, padx=10, pady=8, sticky="e")
+        self._style_button(self.copy_yaml_btn)
 
         # Framed preview area for visual structure
         preview_frame = ctk.CTkFrame(wrap, corner_radius=8, border_width=1)

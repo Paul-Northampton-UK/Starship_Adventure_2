@@ -11,7 +11,7 @@ from ruamel.yaml.scanner import ScannerError
 from engine.active_pack import get_content_root_from_config
 
 
-AUTO_FILL_PLACEHOLDER = "TBD — auto-filled placeholder (remove before release)"
+AUTO_FILL_PLACEHOLDER = "TBD -- auto-filled placeholder (remove before release)"
 
 
 class ObjectDataManager:
@@ -549,4 +549,5 @@ if __name__ == "__main__":
             print(f"\nObject with ID '{test_id}' not found.")
     else:
         print("Failed to load data.") 
+
 

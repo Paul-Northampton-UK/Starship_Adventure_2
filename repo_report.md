@@ -1,8 +1,8 @@
-# Repo snapshot — 2025-11-08 00:07:19
+# Repo snapshot — 2025-11-08 00:59:37
 
 ## Summary
-- engine/: 27 files | ~5200 non-blank LOC
-- tools/: 9 files | ~4616 non-blank LOC
+- engine/: 27 files | ~5208 non-blank LOC
+- tools/: 11 files | ~4764 non-blank LOC
 - packs/: 7 files | ~2904 non-blank LOC
 - data/: 8 files | ~3906 non-blank LOC
 - docs/: 5 files | ~1131 non-blank LOC
@@ -14,9 +14,11 @@
 - Pack validation: OK
 
 ## Delta Since Last Snapshot
-- Added files: 0
+- Added files: 2
+  - + tools\ui\layout.py
+  - + tools\ui\theme.py
 - Removed files: 0
-- Net LOC change (non-blank): +60
+- Net LOC change (non-blank): +144
 
 ## Very Large Files (>50 KB)
 - `project_report.yaml` | 3021 KB
@@ -43,7 +45,7 @@
 - `docs\Starship Adventure Game - Product Requirement Docucument.md` | 265 loc | 2025-08-14 16:40
 - `docs\starship_adventure_todo_list.md` | 175 loc | 2025-08-16 12:46
 - `engine\__init__.py` | 4 loc | 2025-04-01 17:52
-- `engine\active_pack.py` | 76 loc | 2025-11-07 21:42
+- `engine\active_pack.py` | 84 loc | 2025-11-08 00:57
 - `engine\command_defs.py` | 58 loc | 2025-11-07 15:48
 - `engine\command_handlers\basic_commands.py` | 191 loc | 2025-11-07 15:48
 - `engine\command_handlers\equipment.py` | 209 loc | 2025-11-07 15:48
@@ -70,7 +72,7 @@
 - `engine\yaml_loader.py` | 180 loc | 2025-11-07 15:48
 - `examples\room_example.py` | 45 loc | 2025-11-07 15:48
 - `examples\room_validation_example.py` | 76 loc | 2025-11-07 15:48
-- `game_config.yaml` | 1 loc | 2025-11-07 22:07
+- `game_config.yaml` | 1 loc | 2025-11-08 00:53
 - `laptop_setup_guide.txt` | 0 loc | 2025-08-14 13:18
 - `main.py` | 93 loc | 2025-11-07 15:48
 - `packs\starship_adventure\game.yaml` | 12 loc | 2025-11-07 19:18
@@ -83,7 +85,7 @@
 - `project_report.py` | 42 loc | 2025-11-07 15:48
 - `pyproject.toml` | 15 loc | 2025-11-07 15:45
 - `README.md` | 92 loc | 2025-08-14 13:18
-- `repo_report.md` | 114 loc | 2025-11-07 22:03
+- `repo_report.md` | 102 loc | 2025-11-08 00:55
 - `requirements.txt` | 0 loc | 2025-08-14 13:18
 - `tests\test_active_pack.py` | 43 loc | 2025-11-07 21:42
 - `tests\test_engine_smoke.py` | 14 loc | 2025-11-07 16:42
@@ -98,10 +100,12 @@
 - `tests\test_validate_pack.py` | 60 loc | 2025-11-07 19:19
 - `tests\test_yaml_loader.py` | 294 loc | 2025-11-07 15:48
 - `tools\__init__.py` | 0 loc | 2025-11-07 15:53
-- `tools\main_design_hub.py` | 299 loc | 2025-11-08 00:07
+- `tools\main_design_hub.py` | 409 loc | 2025-11-08 00:59
 - `tools\object_editor\__init__.py` | 0 loc | 2025-11-07 15:53
-- `tools\object_editor\object_data_manager.py` | 468 loc | 2025-11-08 00:06
+- `tools\object_editor\object_data_manager.py` | 468 loc | 2025-11-08 00:53
 - `tools\pack_discovery.py` | 19 loc | 2025-11-07 22:02
 - `tools\repo_report.py` | 220 loc | 2025-11-07 17:40
 - `tools\tmp_normalize_objects.py` | 128 loc | 2025-11-07 15:48
+- `tools\ui\layout.py` | 18 loc | 2025-11-08 00:58
+- `tools\ui\theme.py` | 20 loc | 2025-11-08 00:58
 - `verb_categories.txt` | 0 loc | 2025-04-03 02:16
