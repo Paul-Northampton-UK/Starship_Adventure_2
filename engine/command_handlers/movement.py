@@ -137,7 +137,8 @@ def get_location_description(game_state: GameState, room_id: str, area_id: str |
                     location_data = ad
                     location_name = location_data.get("name", area_id) # Use area name
                     is_first_visit = not game_state.has_visited_area(area_id)
-                    if is_first_visit: game_state.visit_area(area_id, room_id)
+                    if is_first_visit:
+                        game_state.visit_area(area_id)
                     objects_present_ids = location_data.get("objects_present", [])
                     location_found = True
                     break # Found the area data

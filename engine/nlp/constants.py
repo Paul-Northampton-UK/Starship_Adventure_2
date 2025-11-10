@@ -118,6 +118,11 @@ VERB_PATTERNS = {
                         "phaser", "blaster", "laser", "tool", "device", "data pad", "access card", "credits", "artifact"],
         "priority": 85
     },
+    CommandIntent.USE: {
+        "verbs": ["use", "activate", "operate", "engage", "utilize", "apply"],
+        "context_words": ["with", "using", "on", "device", "tool", "key", "panel", "console", "system", "terminal", "lever"],
+        "priority": 80
+    },
     CommandIntent.DROP: {
         "verbs": ["drop", "put"],
         "context_words": ["down", "item", "object", "backpack", "key", "datapad"],
@@ -132,18 +137,7 @@ VERB_PATTERNS = {
         "verbs": ["take", "get", "retrieve", "remove", "extract", "withdraw"],
         "context_words": ["from", "out", "inside", "backpack", "box", "container", "locker", "chest", "cabinet"],
         "priority": 87
-    },
-    "use": {CommandIntent.MANIPULATE: 80},
-    "activate": {CommandIntent.MANIPULATE: 80},
-    "push": {CommandIntent.MANIPULATE: 70},
-    "pull": {CommandIntent.MANIPULATE: 70},
-    "turn": {CommandIntent.MANIPULATE: 70},
-    "press": {CommandIntent.MANIPULATE: 70},
-    "open": {CommandIntent.MANIPULATE: 85},
-    "close": {CommandIntent.MANIPULATE: 85},
-    "lock": {CommandIntent.MANIPULATE: 50, CommandIntent.LOCK: 90},
-    "unlock": {CommandIntent.MANIPULATE: 50, CommandIntent.UNLOCK: 90},
-    "read": {CommandIntent.GATHER_INFO: 85}
+    }
 }
 
 # Define intent priorities (higher number = higher priority)

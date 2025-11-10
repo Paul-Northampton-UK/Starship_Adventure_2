@@ -186,8 +186,7 @@ class YAMLLoader:
         Raises:
             ValueError: If validation fails
         """
-        required_fields = ['id', 'name', 'description', 'type']
-        valid_types = ['furniture', 'device', 'item', 'structure', 'lighting']
+        required_fields = ['id', 'name', 'description']
         
         # Check required fields
         for field in required_fields:
@@ -196,17 +195,24 @@ class YAMLLoader:
                 logger.error(msg)
                 raise ValueError(msg)
         
-        # Validate data types
+        # Validate required field types in a predictable order
         if not isinstance(data['id'], str):
             raise ValueError("Object id must be a string")
         if not isinstance(data['name'], str):
             raise ValueError("Object name must be a string")
         if not isinstance(data['description'], str):
             raise ValueError("Object description must be a string")
-        if not isinstance(data['type'], str):
-            raise ValueError("Object type must be a string")
-        if data['type'] not in valid_types:
-            raise ValueError(f"Invalid object type. Must be one of: {', '.join(valid_types)}")
+
+        if 'category' not in data and 'type' not in data:
+            msg = "Missing required field 'category' (or 'type') in object data"
+            logger.error(msg)
+            raise ValueError(msg)
+
+        obj_category = data.get('category') or data.get('type')
+        if not isinstance(obj_category, str) or not obj_category.strip():
+            msg = "Invalid category"
+            logger.error(msg)
+            raise ValueError(msg)
         
         # Validate optional fields if present
         if 'is_portable' in data and not isinstance(data['is_portable'], bool):
@@ -215,7 +221,10 @@ class YAMLLoader:
             raise ValueError("is_interactive must be a boolean")
         if 'weight' in data and not isinstance(data['weight'], (int, float)):
             raise ValueError("weight must be a number")
-        if 'size' in data and not isinstance(data['size'], str):
-            raise ValueError("size must be a string")
+        if 'size' in data:
+            if isinstance(data['size'], (int, float)):
+                data['size'] = str(data['size'])
+            elif not isinstance(data['size'], str):
+                raise ValueError("size must be a string")
             
         return True 

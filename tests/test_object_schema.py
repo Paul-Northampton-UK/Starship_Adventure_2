@@ -127,7 +127,7 @@ def test_empty_name():
 
 def test_load_from_yaml():
     """Test loading objects from YAML file"""
-    with open("data/objects.yaml") as file:
+    with open("data/objects.yaml", encoding="utf-8") as file:
         data = yaml.safe_load(file)
     
     # Skip the defaults section

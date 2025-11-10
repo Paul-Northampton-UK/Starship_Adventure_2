@@ -6,7 +6,7 @@ from engine.schemas import DeckLevel, LocationMode, Room
 def load_and_validate_rooms(yaml_file):
     """Load rooms from YAML and validate them using the schema"""
     try:
-        with open(yaml_file) as file:
+        with open(yaml_file, encoding="utf-8") as file:
             data = yaml.safe_load(file)
             
         # Validate each room in the YAML

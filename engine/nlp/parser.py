@@ -15,6 +15,34 @@ from .constants import INTENT_PRIORITIES, VERB_PATTERNS
 from .constants import VERB_PATTERNS as _VP
 from .patterns import generate_patterns
 
+QUESTION_PREFIXES = ("who", "what", "where", "when", "why", "how")
+TARGET_TRIM_WORDS = {"the", "a", "an", "my", "at", "on", "in", "into", "onto", "under", "over", "with", "from", "to"}
+ZERO_TARGET_INTENTS = {
+    CommandIntent.MOVE,
+    CommandIntent.INVENTORY,
+    CommandIntent.QUIT,
+    CommandIntent.SAVE,
+    CommandIntent.LOAD,
+    CommandIntent.HELP,
+    CommandIntent.TIME,
+}
+INVENTORY_REQUEST_PHRASES = {
+    "i",
+    "inv",
+    "inventory",
+    "check inventory",
+    "show inventory",
+    "open inventory",
+    "what am i carrying",
+    "what i am carrying",
+    "what do i have",
+    "what am i holding",
+    "show what i am carrying",
+    "check what i am carrying",
+}
+INVENTORY_PREFIXES = ("check", "show", "what")
+INVENTORY_PRIORITY_KEYWORDS = ("inventory", "carrying", "items", "gear", "equipment")
+LOOK_PRIORITY_KEYWORDS = ("look", "examine", "inspect", "view", "observe")
 
 # --- Helper Dataclasses ---
 @dataclass
@@ -124,13 +152,122 @@ class NLPCommandParser:
         """Parse the raw command string into a ParsedIntent."""
         logger.debug(">>> PARSE_COMMAND START >>>")
 
-        command_original_case, command_lower = self._preprocess_command(command)
-        if not command_lower:
-            return ParsedIntent(intent=CommandIntent.UNKNOWN, original_input=command_original_case)
+        normalized = (command or "").strip().lower()
+        normalized = normalized.replace("i\u2019m", "i am").replace("i'm", "i am")
+        if not normalized:
+            return ParsedIntent(intent=CommandIntent.UNKNOWN, original_input=command or "", target=None)
+        command_original_case, command_lower = command.strip(), normalized
 
-        # 1. Handle single letter shortcuts
-        single_letter_result = self._check_single_letter(command_lower, command_original_case)
-        if single_letter_result: return single_letter_result
+        if self._is_inventory_request(command_lower):
+            return ParsedIntent(intent=CommandIntent.INVENTORY,
+                                original_input=command_original_case,
+                                target="")
+
+        first_word = command_original_case.strip().split(" ", 1)[0].lower() if command_original_case else ""
+
+        single_letter_intents = {
+            "q": CommandIntent.QUIT,
+            "l": CommandIntent.LOOK,
+            "n": CommandIntent.MOVE,
+            "s": CommandIntent.MOVE,
+            "e": CommandIntent.MOVE,
+            "w": CommandIntent.MOVE,
+            "u": CommandIntent.MOVE,
+            "d": CommandIntent.MOVE,
+        }
+        direction_shortcuts = {
+            "n": "north",
+            "s": "south",
+            "e": "east",
+            "w": "west",
+            "u": "up",
+            "d": "down",
+        }
+        stripped = command_lower.strip()
+        if stripped in single_letter_intents:
+            letter_intent = single_letter_intents[stripped]
+            direction = None
+            if letter_intent == CommandIntent.MOVE:
+                direction = direction_shortcuts[stripped]
+            return ParsedIntent(intent=letter_intent,
+                                direction=direction,
+                                original_input=command_original_case,
+                                target="")
+
+        direction_words = {
+            "north": "north",
+            "south": "south",
+            "east": "east",
+            "west": "west",
+            "up": "up",
+            "down": "down",
+        }
+        if stripped in direction_words:
+            direction = direction_words[stripped]
+            return ParsedIntent(intent=CommandIntent.MOVE,
+                                direction=direction,
+                                original_input=command_original_case,
+                                target="")
+
+        keyword_verbs = {
+            "look": CommandIntent.LOOK,
+            "use": CommandIntent.USE,
+            "save": CommandIntent.SAVE,
+            "load": CommandIntent.LOAD,
+            "help": CommandIntent.HELP,
+            "equip": CommandIntent.EQUIP,
+            "wear": CommandIntent.EQUIP,
+            "wait": CommandIntent.TIME,
+            "rest": CommandIntent.TIME,
+            "sleep": CommandIntent.TIME,
+            "time": CommandIntent.TIME,
+            "search": CommandIntent.SEARCH,
+            "scan": CommandIntent.SEARCH,
+            "find": CommandIntent.SEARCH,
+            "open": CommandIntent.MANIPULATE,
+            "close": CommandIntent.MANIPULATE,
+            "push": CommandIntent.MANIPULATE,
+            "pull": CommandIntent.MANIPULATE,
+            "press": CommandIntent.MANIPULATE,
+            "turn": CommandIntent.MANIPULATE,
+            "activate": CommandIntent.MANIPULATE,
+            "deactivate": CommandIntent.MANIPULATE,
+            "lock": CommandIntent.MANIPULATE,
+            "unlock": CommandIntent.MANIPULATE,
+            "climb": CommandIntent.CLIMB,
+            "jump": CommandIntent.CLIMB,
+            "ascend": CommandIntent.CLIMB,
+            "descend": CommandIntent.CLIMB,
+            "talk": CommandIntent.SOCIAL,
+            "speak": CommandIntent.SOCIAL,
+            "greet": CommandIntent.SOCIAL,
+            "ask": CommandIntent.SOCIAL,
+            "hail": CommandIntent.COMMUNICATE,
+            "call": CommandIntent.COMMUNICATE,
+            "radio": CommandIntent.COMMUNICATE,
+            "transmit": CommandIntent.COMMUNICATE,
+            "attack": CommandIntent.COMBAT,
+            "shoot": CommandIntent.COMBAT,
+            "hit": CommandIntent.COMBAT,
+        }
+
+        if first_word in {"take", "grab"}:
+            intent = CommandIntent.TAKE_FROM if self._has_take_from_pattern(command_lower) else CommandIntent.TAKE
+            target_phrase = self._extract_target_after_verb(command_lower)
+            return ParsedIntent(intent=intent, original_input=command_original_case, target=target_phrase)
+
+        if first_word in keyword_verbs:
+            intent = keyword_verbs[first_word]
+            target_phrase = "" if intent in ZERO_TARGET_INTENTS else self._extract_target_after_verb(command_lower)
+            return ParsedIntent(intent=intent, original_input=command_original_case, target=target_phrase)
+
+        # Questions -> Gather Info
+        for prefix in QUESTION_PREFIXES:
+            if stripped == prefix or stripped.startswith(prefix + " "):
+                remainder = stripped[len(prefix):].strip()
+                return ParsedIntent(intent=CommandIntent.GATHER_INFO,
+                                    original_input=command_original_case,
+                                    target=remainder)
 
         # 2. Run spaCy NLP pipeline
         nlp_result = self._run_spacy(command_lower)
@@ -141,6 +278,8 @@ class NLPCommandParser:
 
         # 4. Identify potential intents based on verbs/keywords
         initial_intent_result = self._identify_initial_intents(nlp_result.doc)
+        self._apply_inventory_tiebreaker(command_lower, initial_intent_result.possible_intents)
+        self._apply_look_tiebreaker(command_lower, initial_intent_result.possible_intents)
 
         # 5. Attempt to parse structured commands (PUT/TAKE_FROM)
         verb_token_for_structure = nlp_result.action_verb_token or initial_intent_result.matched_keyword_token
@@ -180,6 +319,10 @@ class NLPCommandParser:
             preposition, command_original_case
         )
 
+    def process_command(self, command: str) -> ParsedIntent:
+        """Public shim that currently delegates directly to parse_command."""
+        return self.parse_command(command)
+
     # --- Helper Methods ---
     def _preprocess_command(self, command: str) -> tuple[str, str]:
         """Normalize casing and basic synonyms; keep key prepositions for structured parsing."""
@@ -216,11 +359,15 @@ class NLPCommandParser:
         if command_lower in single_letter_intents:
             intent = single_letter_intents[command_lower]
             logger.debug(f"Matched single-letter command '{command_lower}' to intent {intent}")
-            direction = command_lower if intent == CommandIntent.MOVE else None
-            # Normalize single letter directions
-            if direction in ['n','s','e','w','u','d']:
-                 direction = {'n':'north','s':'south','e':'east','w':'west','u':'up','d':'down'}.get(direction)
-            return ParsedIntent(intent=intent, direction=direction, original_input=command_original_case)
+            direction = None
+            target = ""
+            if intent == CommandIntent.MOVE:
+                direction = {'n':'north','s':'south','e':'east','w':'west','u':'up','d':'down'}.get(command_lower, command_lower)
+                target = direction or ""
+            return ParsedIntent(intent=intent,
+                                direction=direction,
+                                original_input=command_original_case,
+                                target=target)
         return None
 
     def _run_spacy(self, command_lower: str) -> NlpProcessingResult:
@@ -258,10 +405,12 @@ class NLPCommandParser:
                 direction_text = ent.text
                 normalized_direction = ent.ent_id_ # Use normalized ID from pattern
                 logger.info(f"PARSER: Found DIRECTION entity '{direction_text}', normalized ID '{normalized_direction}', returning MOVE intent.")
+                canonical_direction = normalized_direction or direction_text.lower()
                 return ParsedIntent(
                     intent=CommandIntent.MOVE,
-                    direction=normalized_direction,
-                    original_input=command_original_case
+                    direction=canonical_direction,
+                    original_input=command_original_case,
+                    target=""
                 )
         return None
 
@@ -817,10 +966,16 @@ class NLPCommandParser:
                 secondary_target_id = resolved_id
                 logger.debug(f"Final lookup resolved secondary target '{secondary_target}' to ID '{secondary_target_id}'")
 
+        if final_intent == CommandIntent.TAKE_FROM and not self._has_take_from_pattern(command_lower):
+            final_intent = CommandIntent.TAKE
+
+        final_target = (primary_target or "").strip().lower()
+        if final_intent in ZERO_TARGET_INTENTS:
+            final_target = ""
         parsed_intent_obj = ParsedIntent(
             intent=final_intent,
             action=final_action_verb,
-            target=primary_target,
+            target=final_target,
             target_object_id=target_object_id,
             secondary_target=secondary_target,
             secondary_target_id=secondary_target_id,
@@ -831,6 +986,72 @@ class NLPCommandParser:
         logger.info(f"Final Parsed Intent: {final_intent.name}, Action: {parsed_intent_obj.action}, Target: '{parsed_intent_obj.target}' (ID: {parsed_intent_obj.target_object_id}), Secondary: '{parsed_intent_obj.secondary_target}' (ID: {parsed_intent_obj.secondary_target_id}), Prep: {parsed_intent_obj.preposition}")
         logger.debug(f"Parsed: {parsed_intent_obj}")
         return parsed_intent_obj
+
+    def _extract_target_after_verb(self, normalized_text: str) -> str:
+        tokens = normalized_text.split()
+        if len(tokens) <= 1:
+            return ""
+        remainder = tokens[1:]
+        idx = 0
+        while idx < len(remainder) and remainder[idx] in TARGET_TRIM_WORDS:
+            idx += 1
+        trimmed = remainder[idx:]
+        collected: list[str] = []
+        for token in trimmed:
+            if token in TARGET_TRIM_WORDS:
+                break
+            collected.append(token)
+        return " ".join(collected).strip()
+
+    @staticmethod
+    def _has_take_from_pattern(text: str) -> bool:
+        normalized = (text or "").strip().lower()
+        if not (normalized.startswith("take ") or normalized.startswith("grab ")):
+            return False
+        parts = normalized.split(None, 1)
+        if len(parts) < 2:
+            return False
+        remainder = parts[1]
+        if " from " not in remainder:
+            return False
+        before, after = remainder.split(" from ", 1)
+        return bool(before.strip()) and bool(after.strip())
+
+    @staticmethod
+    def _is_inventory_request(normalized_text: str) -> bool:
+        text = (normalized_text or "").strip()
+        if not text:
+            return False
+        text = text.rstrip("?!.,").strip()
+        if text in INVENTORY_REQUEST_PHRASES:
+            return True
+        if any(text.startswith(prefix) for prefix in INVENTORY_PREFIXES) and "carrying" in text:
+            return True
+        return False
+
+    @staticmethod
+    def _apply_inventory_tiebreaker(normalized_text: str, possible_intents: dict[CommandIntent, float]) -> None:
+        if CommandIntent.INVENTORY not in possible_intents or CommandIntent.LOOK not in possible_intents:
+            return
+        text = normalized_text or ""
+        if any(keyword in text for keyword in INVENTORY_PRIORITY_KEYWORDS):
+            possible_intents[CommandIntent.INVENTORY] = max(
+                possible_intents.get(CommandIntent.INVENTORY, 0.0),
+                possible_intents.get(CommandIntent.LOOK, 0.0) + 0.1,
+            )
+
+    @staticmethod
+    def _apply_look_tiebreaker(normalized_text: str, possible_intents: dict[CommandIntent, float]) -> None:
+        if CommandIntent.LOOK not in possible_intents or len(possible_intents) <= 1:
+            return
+        text = normalized_text or ""
+        if not any(keyword in text for keyword in LOOK_PRIORITY_KEYWORDS):
+            return
+        best_other = max(score for intent, score in possible_intents.items() if intent != CommandIntent.LOOK)
+        possible_intents[CommandIntent.LOOK] = max(
+            possible_intents.get(CommandIntent.LOOK, 0.0),
+            best_other + 0.1,
+        )
 
     # --- Utility for fuzzy matching (if needed, currently not heavily used) ---
     def _find_closest_match(self, word: str, threshold: int = 80) -> str | None:

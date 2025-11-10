@@ -12,7 +12,7 @@ objects:
     edges from long shifts and countless decisions. Integrated arm panels house faded
     control interfaces, now dormant. A small indentation at the base suggests biometric
     access, long inactive. Despite the silence, the chair still carries the weight
-    of authority—it feels like it's waiting for someone to take command.
+    of authority. It feels like it's waiting for someone to take command.
   properties:
     is_interactive: true
 
@@ -49,7 +49,7 @@ objects:
   description: A sleek, futuristic navigation console commands your attention, its
     smooth touchscreen aglow with an otherworldly light. A blinking cursor dances
     invitingly across the interface, as if urging you to start typing. Atop the display,
-    a striking framed photo catches your eye—its vibrant colors and surreal composition
+    a striking framed photo catches your eye, its vibrant colors and surreal composition
     draws your attention. The console stands ready, its mysterious login prompt, a
     silent invitation to step into a world of untold navigational wonders. There might
     be something interesting in there, if only you can login!
@@ -192,7 +192,7 @@ objects:
   size: 4.0
   description: A small, oval mirror clings to the wall above a narrow metal sink,
     its once-polished frame now dulled by time and fine particles of dust. The surface
-    is mottled with age—tiny blooms of corrosion creep in from the edges, silver backing
+    is mottled with age, tiny blooms of corrosion creep in from the edges, silver backing
     flaking away like a slow rot, leaving cloudy patches that distort any reflection.
   synonyms:
   - mirror
@@ -217,7 +217,7 @@ objects:
     flexible nano-fabric, its surface dull and lightly textured. A narrow visor shades
     the eyes, embedded with a faint, inactive thread of circuitry along the brim.
     The inner band is lined with soft mesh for comfort and grip. Stitched into the
-    side is a worn patch—just a symbol now, the meaning currently lost on you. It's
+    side is a worn patch, just a symbol now, the meaning currently lost on you. It's
     the kind of cap made to be worn, not admired.
   synonyms:
   - coif
@@ -241,9 +241,9 @@ objects:
   description: A narrow bunk is recessed into the wall of the cabin, half-hidden behind
     A narrow sleep-bunk is mounted against the wall, framed in dull steel and fitted
     with a thin but functional mattress. The bedding is creased and slightly warm,
-    as though someone just climbed out — which, of course, they did. A single, slightly
+    as though someone just climbed out of it, which of course, they did. A single, slightly
     lumpy pillow rests at the head, its fabric worn and creased. There's a faint impression
-    in it… maybe more than just a head left its mark.
+    in it, maybe more than just a head left its mark.
   synonyms:
   - bed
   - cot
@@ -290,7 +290,7 @@ objects:
     from long shifts on metal decks and emergency ladders. They rise just above the
     ankle, with reinforced soles designed to grip everything from smooth corridors
     to grated service tunnels. Along the inner heel, a faint engraving reads: "E.V.
-    Ready – Class II", suggesting they were rated for vacuum use, or at least long
+    Ready - Class II", suggesting they were rated for vacuum use, or at least long
     hours near exposed hull sections.'
   synonyms:
   - boots
@@ -316,8 +316,8 @@ objects:
     thinned at the toes and lightly frayed along the seams. The soles are flexible,
     with a faint tread pattern designed for quiet steps on smooth flooring. Faint
     discoloration marks the insides, shaped by repeated use. A small, faded label
-    stitched inside reads "Deck Standard – Rest Use Only." Despite their plainness,
-    there's a quiet familiarity to them—functional, personal, and utterly unremarkable.
+    stitched inside reads "Deck Standard - Rest Use Only." Despite their plainness,
+    there's a quiet familiarity to them, functional, personal, and utterly unremarkable.
   synonyms:
   - slippers
   - slipper
@@ -374,7 +374,7 @@ objects:
   description: A sleek blue keycard, slightly worn at the edges, with a faint shimmer
     across its surface. Embedded circuitry runs just beneath the glossy coating, and
     a small emblem of the ship's security division is printed near the top. It feels
-    important — the kind of thing that might grant access to something secure or personal.
+    important. The kind of thing that might grant access to something secure or personal.
   synonyms:
   - key
   - keycard
@@ -440,11 +440,11 @@ objects:
   description: "It's a sleek, palm-sized weapon with a matte black casing and subtle
     indigo glow pulsing along its spine. Lightweight but deadly, the grip conforms
     naturally to your hand, as if tailored for you. A small holographic display flickers
-    to life near the trigger, reading: \"Charge: 87% – Mode: Stun.\" There's a recessed
-    dial at the rear marked with faint symbols—Stun, Disrupt, Burn—but it seems locked
+    to life near the trigger, reading: \"Charge: 87% \ Mode: Stun.\" There's a recessed
+    dial at the rear marked with faint symbols: Stun, Disrupt, Burn, but it seems locked
     to its current setting. You notice fine microfractures in the emitter lens, hinting
     at heavy past use, yet the weapon hums with quiet potential. A tiny maintenance
-    port on the underside suggests it could be upgraded… or modified."
+    port on the underside suggests it could be upgraded, or modified."
   synonyms:
   - gun
   - weapon
@@ -464,13 +464,13 @@ objects:
   count: 19
   weight: 1.0
   size: 1.0
-  description: 'The cover explodes with color—a rugged space marine stands atop a
+  description: 'The cover explodes with color, a rugged space marine stands atop a
     jagged alien cliff, muscles flexing beneath a battle-worn exo-suit. His helmet
     is tucked under one arm, and in the other hand, he defiantly plants a tattered
     blue flag emblazoned with a silver star encircled by the words "United Federation
     of Planets." Behind him, twin suns blaze over a horizon filled with hostile alien
-    ships and looming monoliths. Bold lettering arcs across the top: “TO INFINITY
-    AND BEYOND...” with an overly dramatic ellipsis, naturally.'
+    ships and looming monoliths. Bold lettering arcs across the top: "TO INFINITY
+    AND BEYOND..." with an overly dramatic ellipsis, naturally.'
   synonyms:
   - book
   - comic

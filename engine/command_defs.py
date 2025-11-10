@@ -48,6 +48,7 @@ class ParsedIntent:
     direction: str | None = None
     preposition: str | None = None
     original_input: str = ""
+    confidence: float = 1.0
 
 @dataclass
 class CommandResponse:

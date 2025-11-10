@@ -7,32 +7,32 @@ Description: Commands for viewing inventory and equipment
 
 Verbs:
   - i
-    Action: inventory
+    Action: None
     Target: 
     Intent: CommandIntent.INVENTORY
 
   - inventory
-    Action: inventory
+    Action: None
     Target: 
     Intent: CommandIntent.INVENTORY
 
   - inv
-    Action: inventory
+    Action: None
     Target: 
     Intent: CommandIntent.INVENTORY
 
   - items
-    Action: inventory
+    Action: items
     Target: 
     Intent: CommandIntent.INVENTORY
 
   - cargo
-    Action: inventory
+    Action: cargo
     Target: 
     Intent: CommandIntent.INVENTORY
 
   - loadout
-    Action: inventory
+    Action: loadout
     Target: 
     Intent: CommandIntent.INVENTORY
 
@@ -43,32 +43,32 @@ Description: Commands for exiting the game
 
 Verbs:
   - q
-    Action: quit
+    Action: None
     Target: 
     Intent: CommandIntent.QUIT
 
   - quit
-    Action: quit
+    Action: None
     Target: 
     Intent: CommandIntent.QUIT
 
   - exit
-    Action: quit
+    Action: None
     Target: 
     Intent: CommandIntent.QUIT
 
   - bye
-    Action: quit
+    Action: None
     Target: 
-    Intent: CommandIntent.QUIT
+    Intent: CommandIntent.UNKNOWN
 
   - logout
-    Action: quit
+    Action: logout
     Target: 
     Intent: CommandIntent.QUIT
 
   - disconnect
-    Action: quit
+    Action: disconnect
     Target: 
     Intent: CommandIntent.QUIT
 
@@ -79,32 +79,32 @@ Description: Commands for getting help and information
 
 Verbs:
   - h
-    Action: help
+    Action: h
     Target: 
     Intent: CommandIntent.HELP
 
   - help
-    Action: help
+    Action: None
     Target: 
     Intent: CommandIntent.HELP
 
   - ?
-    Action: help
+    Action: ?
     Target: 
     Intent: CommandIntent.HELP
 
   - commands
-    Action: help
+    Action: None
     Target: 
-    Intent: CommandIntent.HELP
+    Intent: CommandIntent.UNKNOWN
 
   - tutorial
-    Action: help
+    Action: tutorial
     Target: 
     Intent: CommandIntent.HELP
 
   - manual
-    Action: help
+    Action: manual
     Target: 
     Intent: CommandIntent.HELP
 
@@ -151,82 +151,82 @@ Verbs:
 
 Directions:
   - north
-    Action: move
+    Action: None
     Target: 
     Intent: CommandIntent.MOVE
     Direction: north
 
   - south
-    Action: move
+    Action: None
     Target: 
     Intent: CommandIntent.MOVE
     Direction: south
 
   - east
-    Action: move
+    Action: None
     Target: 
     Intent: CommandIntent.MOVE
     Direction: east
 
   - west
-    Action: move
+    Action: None
     Target: 
     Intent: CommandIntent.MOVE
     Direction: west
 
   - up
-    Action: move
+    Action: None
     Target: 
     Intent: CommandIntent.MOVE
     Direction: up
 
   - down
-    Action: move
+    Action: None
     Target: 
     Intent: CommandIntent.MOVE
     Direction: down
 
   - forward
-    Action: move
+    Action: None
     Target: 
-    Intent: CommandIntent.MOVE
-    Direction: forward
+    Intent: CommandIntent.UNKNOWN
+    Direction: None
 
   - backward
-    Action: move
+    Action: None
     Target: 
-    Intent: CommandIntent.MOVE
-    Direction: backward
+    Intent: CommandIntent.UNKNOWN
+    Direction: None
 
 Locations:
   - bridge
     Action: go
-    Target: to bridge
+    Target: 
     Intent: CommandIntent.MOVE
 
   - engineering
     Action: go
-    Target: to engineering
+    Target: 
     Intent: CommandIntent.MOVE
 
   - cargo bay
     Action: go
-    Target: to cargo bay
+    Target: 
     Intent: CommandIntent.MOVE
 
   - airlock
     Action: go
-    Target: to airlock
+    Target: 
     Intent: CommandIntent.MOVE
 
   - medbay
     Action: go
-    Target: to medbay
+    Target: 
     Intent: CommandIntent.MOVE
 
   - quarters
     Action: go
-    Target: to quarters
+    Target: 
     Intent: CommandIntent.MOVE
 
 
@@ -236,12 +236,12 @@ Description: Commands for looking at surroundings and objects
 
 Verbs:
   - look
-    Action: look
+    Action: None
     Target: 
     Intent: CommandIntent.LOOK
 
   - l
-    Action: l
+    Action: None
     Target: 
     Intent: CommandIntent.LOOK
 
@@ -267,42 +267,42 @@ Verbs:
 
 Objects:
   - console
-    Action: look
+    Action: None
     Target: console
     Intent: CommandIntent.LOOK
 
   - panel
-    Action: look
+    Action: None
     Target: panel
     Intent: CommandIntent.LOOK
 
   - terminal
-    Action: look
+    Action: None
     Target: terminal
     Intent: CommandIntent.LOOK
 
   - display
-    Action: look
+    Action: None
     Target: display
     Intent: CommandIntent.LOOK
 
   - hologram
-    Action: look
+    Action: None
     Target: hologram
     Intent: CommandIntent.LOOK
 
   - device
-    Action: look
+    Action: None
     Target: device
     Intent: CommandIntent.LOOK
 
   - equipment
-    Action: look
+    Action: None
     Target: equipment
     Intent: CommandIntent.LOOK
 
   - machinery
-    Action: look
+    Action: None
     Target: machinery
     Intent: CommandIntent.LOOK
 
@@ -313,14 +313,14 @@ Description: Commands for communication and interaction
 
 Verbs:
   - talk
-    Action: talk
+    Action: None
     Target: 
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - speak
-    Action: speak
+    Action: None
     Target: 
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - chat
     Action: chat
@@ -338,12 +338,12 @@ Verbs:
     Intent: CommandIntent.COMMUNICATE
 
   - hail
-    Action: hail
+    Action: None
     Target: 
     Intent: CommandIntent.COMMUNICATE
 
   - transmit
-    Action: transmit
+    Action: None
     Target: 
     Intent: CommandIntent.COMMUNICATE
 
@@ -354,64 +354,64 @@ Verbs:
 
 Targets:
   - alien
-    Action: talk
+    Action: None
     Target: alien
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - robot
-    Action: talk
+    Action: None
     Target: robot
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - android
-    Action: talk
+    Action: None
     Target: android
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - ai
-    Action: talk
+    Action: None
     Target: ai
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - computer
-    Action: talk
+    Action: None
     Target: computer
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - crew
-    Action: talk
+    Action: None
     Target: crew
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - captain
-    Action: talk
+    Action: None
     Target: captain
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
   - officer
-    Action: talk
+    Action: None
     Target: officer
-    Intent: CommandIntent.COMMUNICATE
+    Intent: CommandIntent.SOCIAL
 
 Complex Commands:
   - hail the alien ship
-    Action: hail
+    Action: None
     Target: alien ship
     Intent: CommandIntent.COMMUNICATE
 
   - contact engineering
     Action: contact
-    Target: engineering
+    Target: 
     Intent: CommandIntent.COMMUNICATE
 
   - transmit distress signal
-    Action: transmit
+    Action: None
     Target: distress signal
     Intent: CommandIntent.COMMUNICATE
 
   - broadcast message to all stations
     Action: broadcast
-    Target: message all stations
+    Target: message
     Intent: CommandIntent.COMMUNICATE
 
 
@@ -421,7 +421,7 @@ Description: Commands for combat and combat-related actions
 
 Verbs:
   - attack
-    Action: attack
+    Action: None
     Target: 
     Intent: CommandIntent.COMBAT
 
@@ -431,7 +431,7 @@ Verbs:
     Intent: CommandIntent.COMBAT
 
   - hit
-    Action: hit
+    Action: None
     Target: 
     Intent: CommandIntent.COMBAT
 
@@ -441,7 +441,7 @@ Verbs:
     Intent: CommandIntent.COMBAT
 
   - shoot
-    Action: shoot
+    Action: None
     Target: 
     Intent: CommandIntent.COMBAT
 
@@ -472,79 +472,79 @@ Verbs:
 
 Targets:
   - alien
-    Action: attack
+    Action: None
     Target: alien
     Intent: CommandIntent.COMBAT
 
   - robot
-    Action: attack
+    Action: None
     Target: robot
     Intent: CommandIntent.COMBAT
 
   - android
-    Action: attack
+    Action: None
     Target: android
     Intent: CommandIntent.COMBAT
 
   - drone
-    Action: attack
+    Action: None
     Target: drone
     Intent: CommandIntent.COMBAT
 
   - hostile
-    Action: attack
+    Action: None
     Target: hostile
     Intent: CommandIntent.COMBAT
 
   - threat
-    Action: attack
+    Action: None
     Target: threat
     Intent: CommandIntent.COMBAT
 
   - enemy
-    Action: attack
+    Action: None
     Target: enemy
     Intent: CommandIntent.COMBAT
 
   - creature
-    Action: attack
+    Action: None
     Target: creature
     Intent: CommandIntent.COMBAT
 
 Weapons:
   - phaser
-    Action: attack
-    Target: alien phaser
+    Action: None
+    Target: alien
     Intent: CommandIntent.COMBAT
 
   - blaster
-    Action: attack
-    Target: alien blaster
+    Action: None
+    Target: alien
     Intent: CommandIntent.COMBAT
 
   - laser
-    Action: attack
-    Target: alien laser
+    Action: None
+    Target: alien
     Intent: CommandIntent.COMBAT
 
   - pulse
-    Action: attack
-    Target: alien pulse
+    Action: None
+    Target: alien
     Intent: CommandIntent.COMBAT
 
   - beam
-    Action: attack
-    Target: alien beam
+    Action: None
+    Target: alien
     Intent: CommandIntent.COMBAT
 
   - torpedo
-    Action: attack
-    Target: alien torpedo
+    Action: None
+    Target: alien
     Intent: CommandIntent.COMBAT
 
   - missile
-    Action: attack
-    Target: alien missile
+    Action: None
+    Target: alien
     Intent: CommandIntent.COMBAT
 
 
@@ -554,12 +554,12 @@ Description: Commands for searching and finding objects
 
 Verbs:
   - search
-    Action: search
+    Action: None
     Target: 
     Intent: CommandIntent.SEARCH
 
   - find
-    Action: find
+    Action: None
     Target: 
     Intent: CommandIntent.SEARCH
 
@@ -595,47 +595,47 @@ Verbs:
 
 Targets:
   - console
-    Action: search
+    Action: None
     Target: console
     Intent: CommandIntent.SEARCH
 
   - panel
-    Action: search
+    Action: None
     Target: panel
     Intent: CommandIntent.SEARCH
 
   - terminal
-    Action: search
+    Action: None
     Target: terminal
     Intent: CommandIntent.SEARCH
 
   - device
-    Action: search
+    Action: None
     Target: device
     Intent: CommandIntent.SEARCH
 
   - data
-    Action: search
+    Action: None
     Target: data
     Intent: CommandIntent.SEARCH
 
   - information
-    Action: search
+    Action: None
     Target: information
     Intent: CommandIntent.SEARCH
 
   - signal
-    Action: search
+    Action: None
     Target: signal
     Intent: CommandIntent.SEARCH
 
   - lifeform
-    Action: search
+    Action: None
     Target: lifeform
     Intent: CommandIntent.SEARCH
 
   - artifact
-    Action: search
+    Action: None
     Target: artifact
     Intent: CommandIntent.SEARCH
 
@@ -646,52 +646,52 @@ Description: Commands for manipulating objects and devices
 
 Verbs:
   - open
-    Action: open
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - close
-    Action: close
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - lock
-    Action: lock
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - unlock
-    Action: unlock
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - push
-    Action: push
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - pull
-    Action: pull
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - turn
-    Action: turn
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - press
-    Action: press
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - activate
-    Action: activate
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
   - deactivate
-    Action: deactivate
+    Action: None
     Target: 
     Intent: CommandIntent.MANIPULATE
 
@@ -707,52 +707,52 @@ Verbs:
 
 Objects:
   - console
-    Action: open
+    Action: None
     Target: console
     Intent: CommandIntent.MANIPULATE
 
   - panel
-    Action: open
+    Action: None
     Target: panel
     Intent: CommandIntent.MANIPULATE
 
   - terminal
-    Action: open
+    Action: None
     Target: terminal
     Intent: CommandIntent.MANIPULATE
 
   - screen
-    Action: open
+    Action: None
     Target: screen
     Intent: CommandIntent.MANIPULATE
 
   - hatch
-    Action: open
+    Action: None
     Target: hatch
     Intent: CommandIntent.MANIPULATE
 
   - airlock
-    Action: open
+    Action: None
     Target: airlock
     Intent: CommandIntent.MANIPULATE
 
   - gate
-    Action: open
+    Action: None
     Target: gate
     Intent: CommandIntent.MANIPULATE
 
   - valve
-    Action: open
+    Action: None
     Target: valve
     Intent: CommandIntent.MANIPULATE
 
   - circuit
-    Action: open
+    Action: None
     Target: circuit
     Intent: CommandIntent.MANIPULATE
 
   - system
-    Action: open
+    Action: None
     Target: system
     Intent: CommandIntent.MANIPULATE
 
@@ -763,14 +763,14 @@ Description: Commands for climbing and movement in different environments
 
 Verbs:
   - climb
-    Action: climb
+    Action: None
     Target: 
     Intent: CommandIntent.CLIMB
 
   - jump
-    Action: jump
+    Action: None
     Target: 
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.CLIMB
 
   - crawl
     Action: crawl
@@ -804,52 +804,52 @@ Verbs:
 
 Objects:
   - ladder
-    Action: climb
+    Action: None
     Target: ladder
     Intent: CommandIntent.CLIMB
 
   - wall
-    Action: climb
+    Action: None
     Target: wall
     Intent: CommandIntent.CLIMB
 
   - rope
-    Action: climb
+    Action: None
     Target: rope
     Intent: CommandIntent.CLIMB
 
   - gap
-    Action: climb
+    Action: None
     Target: gap
     Intent: CommandIntent.CLIMB
 
   - fence
-    Action: climb
+    Action: None
     Target: fence
     Intent: CommandIntent.CLIMB
 
   - pit
-    Action: climb
+    Action: None
     Target: pit
     Intent: CommandIntent.CLIMB
 
   - tunnel
-    Action: climb
+    Action: None
     Target: tunnel
     Intent: CommandIntent.CLIMB
 
   - vent
-    Action: climb
+    Action: None
     Target: vent
     Intent: CommandIntent.CLIMB
 
   - pipe
-    Action: climb
+    Action: None
     Target: pipe
     Intent: CommandIntent.CLIMB
 
   - space
-    Action: climb
+    Action: None
     Target: space
     Intent: CommandIntent.CLIMB
 
@@ -880,7 +880,7 @@ Verbs:
     Intent: CommandIntent.SOCIAL
 
   - greet
-    Action: greet
+    Action: None
     Target: 
     Intent: CommandIntent.SOCIAL
 
@@ -932,12 +932,12 @@ Objects:
 
   - data pad
     Action: give
-    Target: data pad
+    Target: pad
     Intent: CommandIntent.SOCIAL
 
   - access card
     Action: give
-    Target: access card
+    Target: card
     Intent: CommandIntent.SOCIAL
 
   - credits
@@ -978,7 +978,7 @@ Verbs:
 
   - light
     Action: light
-    Target: 
+    Target: light
     Intent: CommandIntent.ENVIRONMENT
 
   - extinguish
@@ -1029,12 +1029,12 @@ Objects:
 
   - terminal
     Action: dig
-    Target: terminal
+    Target: 
     Intent: CommandIntent.ENVIRONMENT
 
   - system
     Action: dig
-    Target: system
+    Target: 
     Intent: CommandIntent.ENVIRONMENT
 
   - device
@@ -1044,18 +1044,18 @@ Objects:
 
   - equipment
     Action: dig
-    Target: equipment
+    Target: 
     Intent: CommandIntent.ENVIRONMENT
 
   - machinery
     Action: dig
-    Target: machinery
+    Target: 
     Intent: CommandIntent.ENVIRONMENT
 
   - power
     Action: dig
     Target: power
-    Intent: CommandIntent.ENVIRONMENT
+    Intent: CommandIntent.EQUIP
 
   - energy
     Action: dig
@@ -1063,8 +1063,8 @@ Objects:
     Intent: CommandIntent.ENVIRONMENT
 
   - shield
-    Action: dig
-    Target: shield
+    Action: shield
+    Target: 
     Intent: CommandIntent.ENVIRONMENT
 
 
@@ -1109,9 +1109,9 @@ Verbs:
     Intent: CommandIntent.GATHER_INFO
 
   - scan
-    Action: scan
+    Action: None
     Target: 
-    Intent: CommandIntent.GATHER_INFO
+    Intent: CommandIntent.SEARCH
 
   - monitor
     Action: monitor
@@ -1132,7 +1132,7 @@ Objects:
   - signal
     Action: read
     Target: signal
-    Intent: CommandIntent.GATHER_INFO
+    Intent: CommandIntent.SOCIAL
 
   - display
     Action: read
@@ -1176,12 +1176,12 @@ Description: Commands for equipment management and usage
 
 Verbs:
   - equip
-    Action: equip
+    Action: None
     Target: 
     Intent: CommandIntent.EQUIP
 
   - wear
-    Action: wear
+    Action: None
     Target: 
     Intent: CommandIntent.EQUIP
 
@@ -1203,7 +1203,7 @@ Verbs:
   - hold
     Action: hold
     Target: 
-    Intent: CommandIntent.TIME
+    Intent: CommandIntent.EQUIP
 
   - power
     Action: power
@@ -1217,52 +1217,52 @@ Verbs:
 
 Objects:
   - phaser
-    Action: equip
+    Action: None
     Target: phaser
     Intent: CommandIntent.EQUIP
 
   - blaster
-    Action: equip
+    Action: None
     Target: blaster
     Intent: CommandIntent.EQUIP
 
   - laser
-    Action: equip
+    Action: None
     Target: laser
     Intent: CommandIntent.EQUIP
 
   - suit
-    Action: equip
+    Action: None
     Target: suit
     Intent: CommandIntent.EQUIP
 
   - armor
-    Action: equip
+    Action: None
     Target: armor
     Intent: CommandIntent.EQUIP
 
   - shield
-    Action: equip
+    Action: None
     Target: shield
     Intent: CommandIntent.EQUIP
 
   - generator
-    Action: equip
+    Action: None
     Target: generator
     Intent: CommandIntent.EQUIP
 
   - battery
-    Action: equip
+    Action: None
     Target: battery
     Intent: CommandIntent.EQUIP
 
   - power pack
-    Action: equip
+    Action: None
     Target: power pack
     Intent: CommandIntent.EQUIP
 
   - jetpack
-    Action: equip
+    Action: None
     Target: jetpack
     Intent: CommandIntent.EQUIP
 
@@ -1273,17 +1273,17 @@ Description: Commands for time-related actions and waiting
 
 Verbs:
   - wait
-    Action: wait
+    Action: None
     Target: 
     Intent: CommandIntent.TIME
 
   - rest
-    Action: rest
+    Action: None
     Target: 
     Intent: CommandIntent.TIME
 
   - sleep
-    Action: sleep
+    Action: None
     Target: 
     Intent: CommandIntent.TIME
 
@@ -1315,7 +1315,7 @@ Verbs:
   - hold
     Action: hold
     Target: 
-    Intent: CommandIntent.TIME
+    Intent: CommandIntent.EQUIP
 
   - standby
     Action: standby
@@ -1431,12 +1431,12 @@ Description: Commands for picking up and collecting items
 
 Verbs:
   - take
-    Action: take
+    Action: None
     Target: 
     Intent: CommandIntent.TAKE
 
   - grab
-    Action: grab
+    Action: None
     Target: 
     Intent: CommandIntent.TAKE
 
@@ -1477,47 +1477,47 @@ Verbs:
 
 Objects:
   - phaser
-    Action: take
+    Action: None
     Target: phaser
     Intent: CommandIntent.TAKE
 
   - blaster
-    Action: take
+    Action: None
     Target: blaster
     Intent: CommandIntent.TAKE
 
   - laser
-    Action: take
+    Action: None
     Target: laser
     Intent: CommandIntent.TAKE
 
   - tool
-    Action: take
+    Action: None
     Target: tool
     Intent: CommandIntent.TAKE
 
   - device
-    Action: take
+    Action: None
     Target: device
     Intent: CommandIntent.TAKE
 
   - data pad
-    Action: take
+    Action: None
     Target: data pad
     Intent: CommandIntent.TAKE
 
   - access card
-    Action: take
+    Action: None
     Target: access card
     Intent: CommandIntent.TAKE
 
   - credits
-    Action: take
+    Action: None
     Target: credits
     Intent: CommandIntent.TAKE
 
   - artifact
-    Action: take
+    Action: None
     Target: artifact
     Intent: CommandIntent.TAKE
 

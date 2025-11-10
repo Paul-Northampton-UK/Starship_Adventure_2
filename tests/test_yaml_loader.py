@@ -46,10 +46,10 @@ def test_load_objects():
     
     # Check first object
     chair = data["objects"][0]
-    assert chair["id"] == "captain_chair"
+    assert chair["id"] == "cap_captains_chair"
     assert chair["name"] == "Captain's Chair"
     assert "description" in chair
-    assert "type" in chair
+    assert "category" in chair
     
     # Validate object data
     assert loader.validate_object_data(chair)

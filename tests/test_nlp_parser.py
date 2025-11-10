@@ -118,7 +118,7 @@ class TestNLPCommandParser:
         }
         
         # Generate the documentation file
-        with open("verb_categories.txt", "w") as f:
+        with open("verb_categories.txt", "w", encoding="utf-8") as f:
             f.write("Verb Categories Documentation\n")
             f.write("===========================\n\n")
             

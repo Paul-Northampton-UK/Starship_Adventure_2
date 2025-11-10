@@ -2,9 +2,16 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
+
+from .active_pack import get_active_pack
+from .yaml_loader import YAMLLoader
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class PowerState(Enum):
@@ -13,6 +20,8 @@ class PowerState(Enum):
     EMERGENCY = "emergency"
     MAIN_POWER = "main_power"
     TORCH_LIGHT = "torch_light"
+
+
 
 @dataclass
 class PlayerStatus:
@@ -30,10 +39,11 @@ class PlayerStatus:
 class GameState:
     """Manages the current state of the game."""
     current_room_id: str
-    rooms_data: dict[str, Any]  # Added to store loaded room definitions
-    objects_data: dict[str, Any]  # Added objects_data
-    responses_data: dict[str, Any] # Added for storing loaded response templates
-    power_state: PowerState
+    rooms_data: dict[str, Any] | None = None  # Added to store loaded room definitions
+    objects_data: dict[str, Any] | None = None  # Added objects_data
+    responses_data: dict[str, Any] | None = None # Added for storing loaded response templates
+    power_state: PowerState = PowerState.OFFLINE
+    power_info: dict[str, Any] = field(default_factory=dict)
     current_area_id: str | None = None
     inventory: list[str] = field(default_factory=list)
     hand_slot: list[str] = field(default_factory=list)
@@ -49,6 +59,10 @@ class GameState:
 
     def __post_init__(self):
         """Initialize collections if they're None."""
+        needs_pack_bootstrap = any(
+            value is None for value in (self.rooms_data, self.objects_data, self.responses_data)
+        )
+
         if self.inventory is None:
             self.inventory = []
         if self.worn_items is None:
@@ -65,23 +79,161 @@ class GameState:
             self.game_time = datetime.now()
         if self.object_states is None:
             self.object_states = {}
-        if self.responses_data is None: # Ensure responses_data is also initialized
+        if self.power_info is None:
+            self.power_info = {}
+
+        if needs_pack_bootstrap:
+            self._load_pack_defaults()
+
+        if self.rooms_data is None:
+            self.rooms_data = {}
+        if self.objects_data is None:
+            self.objects_data = {}
+        if self.responses_data is None:  # Ensure responses_data is also initialized
             self.responses_data = {}
+
+        if not isinstance(self.power_state, PowerState):
+            self._set_power_state_from_payload(self.power_state, replace_info=False)
+        elif self.power_state is None:
+            self.power_state = PowerState.OFFLINE
+
+    def _set_power_state_from_payload(self, payload: Any, *, replace_info: bool) -> None:
+        """Apply a power payload, splitting enum and auxiliary info."""
+        state, info = self._parse_power_payload(payload)
+        self.power_state = state
+        if replace_info or not hasattr(self, "power_info") or self.power_info is None:
+            self.power_info = info
+        elif info:
+            self.power_info.update(info)
+
+    @staticmethod
+    def _parse_power_payload(payload: Any) -> tuple[PowerState, dict[str, Any]]:
+        """Convert a raw payload into a PowerState and auxiliary info."""
+        info: dict[str, Any] = {}
+        candidate = payload
+
+        if isinstance(candidate, dict):
+            info = {
+                k: v for k, v in candidate.items()
+                if k not in {"mode", "state", "power_state", "value"}
+            }
+            candidate = (
+                candidate.get("mode")
+                or candidate.get("state")
+                or candidate.get("power_state")
+                or candidate.get("value")
+            )
+
+        if isinstance(candidate, PowerState):
+            return candidate, info
+
+        if isinstance(candidate, str):
+            normalized = candidate.strip().lower()
+            if normalized.startswith("powerstate."):
+                normalized = normalized.split(".", 1)[1]
+            try:
+                return PowerState(normalized), info
+            except ValueError:
+                logger.warning(f"Unknown power_state string '{candidate}', defaulting to OFFLINE.")
+                return PowerState.OFFLINE, info
+
+        if candidate is None:
+            return PowerState.OFFLINE, info
+
+        logger.warning(f"Unsupported power_state payload type '{type(candidate)}'; defaulting to OFFLINE.")
+        return PowerState.OFFLINE, info
+
+    def _load_pack_defaults(self) -> None:
+        """Populate missing data fields by loading the active content pack."""
+        data_dir = self._resolve_pack_data_dir()
+        loader = YAMLLoader(str(data_dir))
+
+        def _safe_load(filename: str) -> Any:
+            try:
+                return loader.load_file(filename)
+            except Exception as exc:  # YAMLLoader already logs specifics
+                logger.error(f"Failed to load '{filename}' from {data_dir}: {exc}")
+                return None
+
+        if self.rooms_data is None:
+            rooms_raw = _safe_load("rooms.yaml")
+            rooms_list: list[dict[str, Any]] = []
+            if isinstance(rooms_raw, dict):
+                maybe_rooms = rooms_raw.get("rooms")
+                if isinstance(maybe_rooms, list):
+                    rooms_list = maybe_rooms
+                else:
+                    rooms_list = [rooms_raw]
+            elif isinstance(rooms_raw, list):
+                rooms_list = rooms_raw
+            self.rooms_data = {
+                room.get("room_id"): room
+                for room in rooms_list
+                if isinstance(room, dict) and room.get("room_id")
+            }
+
+        if self.objects_data is None:
+            objects_raw = _safe_load("objects.yaml")
+            objects_list: list[dict[str, Any]] = []
+            if isinstance(objects_raw, dict):
+                maybe_objects = objects_raw.get("objects")
+                if isinstance(maybe_objects, list):
+                    objects_list = maybe_objects
+            elif isinstance(objects_raw, list):
+                objects_list = objects_raw
+            self.objects_data = {
+                obj.get("id"): obj
+                for obj in objects_list
+                if isinstance(obj, dict) and obj.get("id")
+            }
+
+        if self.responses_data is None:
+            responses_raw = _safe_load("responses.yaml")
+            self.responses_data = responses_raw if isinstance(responses_raw, dict) else {}
+
+        if self.power_state is None:
+            game_raw = _safe_load("game.yaml")
+            start_power: Any = "emergency"
+            if isinstance(game_raw, dict):
+                start_power = game_raw.get("start_power_state", start_power)
+                pack_power_info = game_raw.get("power_info")
+                if isinstance(pack_power_info, dict):
+                    self.power_info.update(pack_power_info)
+            self._set_power_state_from_payload(start_power, replace_info=True)
+
+    def _resolve_pack_data_dir(self) -> Path:
+        """Return the preferred directory for content data."""
+        try:
+            pack_name = get_active_pack()
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning(f"Unable to resolve active pack: {exc}. Falling back to defaults.")
+            pack_name = "starship_adventure"
+
+        candidates = []
+        if pack_name:
+            candidates.append(REPO_ROOT / "packs" / pack_name)
+        candidates.append(REPO_ROOT / "packs" / "starship_adventure")
+        candidates.append(REPO_ROOT / "data")
+
+        for candidate in candidates:
+            if candidate.is_dir():
+                return candidate
+
+        logger.warning("No pack directories found. Defaulting to 'data/'.")
+        return REPO_ROOT / "data"
 
     def visit_room(self, room_id: str) -> None:
         """Mark a room as visited."""
         self.visited_rooms.add(room_id)
 
-    def visit_area(self, area_id: str, room_id: str) -> None:
-        """Mark an area within a specific room as visited."""
+    def visit_area(self, area_id: str) -> None:
+        """Mark an area within the current room as visited."""
         if area_id not in self.visited_areas:
             self.visited_areas[area_id] = []
-        # Store the room_id to know which room this area visit was in
-        # (Prevents marking area X in room A as visited when entering area X in room B)
-        # For simplicity now, let's just record the visit. A more complex structure
-        # might store (room_id, area_id) tuples or similar.
-        if room_id not in self.visited_areas[area_id]: # Avoid duplicates if re-entering
-             self.visited_areas[area_id].append(room_id)
+
+        room_id = self.current_room_id
+        if room_id and room_id not in self.visited_areas[area_id]:  # Avoid duplicates if re-entering
+            self.visited_areas[area_id].append(room_id)
 
     def has_visited_room(self, room_id: str) -> bool:
         """Check if a room has been visited."""
@@ -105,9 +257,25 @@ class GameState:
         """Check if the player has a specific object."""
         return object_id in self.inventory
 
-    def set_power_state(self, state: PowerState) -> None:
-        """Change the current power state."""
-        self.power_state = state
+    def set_power_state(
+        self,
+        state: PowerState | str | dict[str, Any] | None,
+        power_info: dict[str, Any] | None = None,
+    ) -> None:
+        """Change the current power state, optionally updating auxiliary power info."""
+        payload: Any = state
+        if power_info is not None:
+            mode_value = None
+            if isinstance(state, PowerState):
+                mode_value = state.value
+            elif isinstance(state, str):
+                mode_value = state
+            elif isinstance(state, dict):
+                payload = dict(state)
+                payload.update(power_info)
+            if mode_value is not None:
+                payload = {"mode": mode_value, **power_info}
+        self._set_power_state_from_payload(payload, replace_info=True)
 
     def set_game_flag(self, flag: str, value: bool = True) -> None:
         """Set a game flag (for tracking puzzles/progress)."""
@@ -139,6 +307,7 @@ class GameState:
             'current_room_id': self.current_room_id,
             'current_area_id': self.current_area_id,
             'power_state': self.power_state.value,
+            'power_info': self.power_info,
             'inventory': self.inventory,
             'visited_rooms': list(self.visited_rooms),
             'visited_areas': self.visited_areas,
@@ -150,17 +319,24 @@ class GameState:
             'last_save_time': datetime.now().isoformat()
         }
         
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump(save_data, f, indent=4)
         self.last_save_time = datetime.now()
 
     @classmethod
     def load_game(cls, filename: str) -> 'GameState':
         """Load a game state from a file."""
-        with open(filename) as f:
+        with open(filename, encoding='utf-8') as f:
             save_data = json.load(f)
         
-        game_state = cls(current_room_id=save_data['current_room_id'], power_state=PowerState(save_data['power_state']))
+        saved_power_state = save_data.get('power_state', PowerState.OFFLINE.value)
+        saved_power_info = save_data.get('power_info') or {}
+
+        game_state = cls(
+            current_room_id=save_data['current_room_id'],
+            power_state=saved_power_state,
+            power_info=saved_power_info if isinstance(saved_power_info, dict) else {},
+        )
         game_state.current_area_id = save_data['current_area_id']
         game_state.inventory = save_data['inventory']
         game_state.visited_rooms = set(save_data['visited_rooms'])
@@ -309,6 +485,9 @@ class GameState:
 
     def set_object_state(self, object_id: str, state_key: str, value: Any) -> None:
         """Set a specific key within an object's runtime state."""
+        if not isinstance(state_key, str) or not state_key.strip():
+            raise TypeError("state_key must be a non-empty string.")
+
         # Ensure the base state dictionary exists and is initialized using get_object_state
         # This call will perform initialization/rebuild if needed
         _ = self.get_object_state(object_id) # Call primarily for side effect of initialization
@@ -320,7 +499,7 @@ class GameState:
 
         # Set the specific key in the object's state dictionary
         self.object_states[object_id][state_key] = value
-        logger.debug(f"Updated object state for '{object_id}': Set '{state_key}' = {value}")
+        logger.debug(f"Updated object state for '{object_id}': Set '{state_key}' = {value!r}")
 
     def update_object_lock_state(self, object_id: str, locked: bool) -> bool:
         """Updates the 'locked' status within an object's runtime lock_details."""

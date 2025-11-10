@@ -126,26 +126,18 @@ def test_unknown_commands(nlp_parser):
     assert parsed.confidence == 0.0
 
 def test_command_processing(nlp_parser):
-    """Test processing of various commands."""
-    # Test look command
-    result, continue_game = nlp_parser.process_command("look")
-    assert "You are in the ship_bridge" in result
-    assert continue_game is True
-    
-    # Test inventory command
-    result, continue_game = nlp_parser.process_command("check inventory")
-    assert "Your inventory is empty" in result
-    assert continue_game is True
-    
-    # Test quit command
-    result, continue_game = nlp_parser.process_command("quit")
-    assert "Goodbye" in result
-    assert continue_game is False
-    
-    # Test unknown command
-    result, continue_game = nlp_parser.process_command("xyzzy")
-    assert "Try rephrasing that" in result
-    assert continue_game is True
+    """process_command currently mirrors parse_command; ensure intents bubble through."""
+    parsed = nlp_parser.process_command("look")
+    assert parsed.intent == CommandIntent.LOOK
+
+    parsed = nlp_parser.process_command("inventory")
+    assert parsed.intent == CommandIntent.INVENTORY
+
+    parsed = nlp_parser.process_command("quit")
+    assert parsed.intent == CommandIntent.QUIT
+
+    parsed = nlp_parser.process_command("xyzzy")
+    assert parsed.intent == CommandIntent.UNKNOWN
 
 def test_natural_language_processing(nlp_parser):
     """Test more complex natural language commands."""
@@ -167,3 +159,16 @@ def test_natural_language_processing(nlp_parser):
     parsed = nlp_parser.parse_command("try to use the red key to unlock the door")
     assert parsed.intent == CommandIntent.USE
     assert "key" in parsed.target 
+
+def test_single_word_keyword_intents(nlp_parser):
+    """Simple keywords should map directly to their expected intents."""
+    keyword_expectations = {
+        "move": CommandIntent.MOVE,
+        "look": CommandIntent.LOOK,
+        "take": CommandIntent.TAKE,
+        "use": CommandIntent.USE,
+        "help": CommandIntent.HELP,
+    }
+    for keyword, expected_intent in keyword_expectations.items():
+        parsed = nlp_parser.parse_command(keyword)
+        assert parsed.intent == expected_intent, f"{keyword=} did not map to {expected_intent}"

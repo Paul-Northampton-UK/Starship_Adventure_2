@@ -143,7 +143,8 @@ def test_game_time_management(game_state):
 def test_object_state_management(game_state):
     """Test object state tracking."""
     # Test setting object state
-    game_state.set_object_state("door_1", {"locked": True, "position": "closed"})
+    game_state.set_object_state("door_1", "locked", True)
+    game_state.set_object_state("door_1", "position", "closed")
     assert game_state.is_object_interacted_with("door_1")
     
     # Test getting object state
@@ -162,7 +163,7 @@ def test_save_and_load_game(game_state, tmp_path):
     game_state.add_to_inventory("torch")
     game_state.set_game_flag("puzzle_solved")
     game_state.update_player_status(health_change=-20)
-    game_state.set_object_state("door_1", {"locked": True})
+    game_state.set_object_state("door_1", "locked", True)
     
     # Save game
     save_file = tmp_path / "test_save.json"
