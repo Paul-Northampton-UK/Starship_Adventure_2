@@ -40,7 +40,7 @@ INVENTORY_REQUEST_PHRASES = {
 INVENTORY_PREFIXES = ("check", "show", "what")
 INVENTORY_PRIORITY_KEYWORDS = ("inventory", "carrying", "items", "gear", "equipment")
 LOOK_PRIORITY_KEYWORDS = ("look", "examine", "inspect", "view", "observe")
-LOOK_VERBS = {"look", "examine", "inspect", "check", "scan"}
+LOOK_VERBS = {"look", "examine", "inspect", "check"}
 TAKE_KEYWORDS = {"take", "grab", "collect"}
 MOVE_VERBS = {"move", "go", "walk", "run", "head", "float", "drift"}
 COMBAT_VERBS = {"attack", "hit", "strike", "shoot", "punch", "kick", "fight", "kill", "stab", "blast", "engage"}
@@ -58,15 +58,15 @@ MANIPULATE_PRIORITY_VERBS = {
     "engage",
     "disengage",
 }
-MANIPULATE_VERBS = set(MANIPULATE_PRIORITY_VERBS) | {"open", "close", "turn", "lock"}
+MANIPULATE_VERBS = set(MANIPULATE_PRIORITY_VERBS) | {"open", "close", "turn", "lock", "unlock"}
 EQUIP_PRIORITY_VERBS = {"equip", "wear", "put", "don", "ready"}
-SEARCH_VERBS = {"search", "find", "locate", "seek", "probe", "detect", "discover", "track"}
-COMMUNICATE_VERBS = {"talk", "speak", "chat", "converse", "contact", "hail", "transmit", "broadcast", "ask", "tell"}
+SEARCH_VERBS = {"search", "find", "locate", "seek", "probe", "detect", "discover", "track", "scout", "hunt"}
+COMMUNICATE_VERBS = {"talk", "speak", "say", "chat", "converse", "contact", "hail", "transmit", "broadcast", "ask", "tell"}
 SOCIAL_VERBS = {"give", "show", "trade", "follow", "greet", "salute", "wave", "gesture", "signal"}
 ENVIRONMENT_VERBS = {"dig", "cut", "burn", "pour", "light", "extinguish", "fill", "break", "smash", "destroy", "shatter"}
-GATHER_INFO_VERBS = {"read", "listen", "smell", "touch", "taste", "study", "analyze", "monitor", "review"}
-EQUIP_VERBS = {"equip", "wear", "put", "don", "ready"}
-TIME_VERBS = {"wait", "rest", "sleep"}
+GATHER_INFO_VERBS = {"read", "listen", "smell", "touch", "taste", "study", "analyze", "monitor", "review", "scan", "status", "diagnose", "readout"}
+EQUIP_VERBS = {"equip", "wear", "remove", "unequip", "wield", "hold", "put", "don", "ready", "power", "charge"}
+TIME_VERBS = {"wait", "rest", "sleep", "pause", "meditate", "nap", "stop", "delay", "hold", "standby"}
 INVENTORY_KEYWORDS = {"inventory", "inv", "items", "item", "backpack", "bag"}
 HELP_KEYWORDS = {"help", "commands", "tutorial", "manual", "guide", "assist", "info", "information"}
 QUIT_KEYWORDS = {"quit", "exit", "bye", "logout", "disconnect"}
@@ -362,6 +362,17 @@ class NLPCommandParser:
                                 confidence=1.0,
                                 target="")
 
+        tokens_split = stripped.split()
+        movement_leads = {"go", "walk", "run", "move", "head", "float", "drift"}
+        if len(tokens_split) >= 2 and tokens_split[0] in movement_leads and tokens_split[1] in DIRECTION_KEYWORDS:
+            direction = DIRECTION_KEYWORDS[tokens_split[1]]
+            return ParsedIntent(intent=CommandIntent.MOVE,
+                                action=tokens_split[0],
+                                direction=direction,
+                                original_input=command_original_case,
+                                confidence=1.0,
+                                target="")
+
         if first_word_lower in DIRECTION_KEYWORDS:
             direction = DIRECTION_KEYWORDS[first_word_lower]
             remainder = stripped[len(first_word_lower):].strip()
@@ -389,10 +400,6 @@ class NLPCommandParser:
         if self._is_inventory_request(stripped) or (contains_inventory_reference and not contains_equip_reference):
             return self._build_inventory_intent(command_original_case)
 
-        # Look
-        if self._is_look_command(first_word_lower, stripped):
-            return self._build_look_intent(command_original_case, command_lower)
-
         if any(stripped.startswith(prefix) for prefix in CHECK_LOGS_PREFIXES):
             target_phrase = self._extract_target_after_verb(command_lower) or "logs"
             return ParsedIntent(intent=CommandIntent.GATHER_INFO,
@@ -400,6 +407,10 @@ class NLPCommandParser:
                                 original_input=command_original_case,
                                 confidence=1.0,
                                 target=target_phrase)
+
+        # Look
+        if self._is_look_command(first_word_lower, stripped):
+            return self._build_look_intent(command_original_case, command_lower)
 
         keyword_verbs = KEYWORD_VERB_INTENTS
 
@@ -418,7 +429,7 @@ class NLPCommandParser:
 
         # Take
         if stripped.startswith("pick up"):
-            target_phrase = self._extract_target_after_phrase(stripped, "pick up")
+            target_phrase = self._clean_target_phrase(self._extract_target_after_phrase(stripped, "pick up"))
             return ParsedIntent(intent=CommandIntent.TAKE,
                                 action="pick",
                                 original_input=command_original_case,
@@ -428,8 +439,27 @@ class NLPCommandParser:
         if first_word_lower in TAKE_KEYWORDS:
             if contains_look_keyword:
                 return self._build_look_intent(command_original_case, command_lower)
-            target_phrase = self._extract_target_after_verb(command_lower)
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
             return ParsedIntent(intent=CommandIntent.TAKE,
+                                action=first_word_lower,
+                                original_input=command_original_case,
+                                confidence=1.0,
+                                target=target_phrase or None)
+
+        # Search
+        if self._is_search_command(first_word_lower, stripped):
+            target_phrase = self._extract_search_target(command_lower, first_word_lower)
+            search_action = first_word_lower if first_word_lower in SEARCH_VERBS else "search"
+            return ParsedIntent(intent=CommandIntent.SEARCH,
+                                action=search_action,
+                                original_input=command_original_case,
+                                confidence=1.0,
+                                target=target_phrase or None)
+
+        # Communicate
+        if self._is_communicate_command(first_word_lower):
+            target_phrase = self._extract_communicate_target(command_lower)
+            return ParsedIntent(intent=CommandIntent.COMMUNICATE,
                                 action=first_word_lower,
                                 original_input=command_original_case,
                                 confidence=1.0,
@@ -437,7 +467,7 @@ class NLPCommandParser:
 
         # Combat
         if combat_reference:
-            target_phrase = self._extract_target_after_verb(command_lower)
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
             return ParsedIntent(intent=CommandIntent.COMBAT,
                                 action=first_word_lower or "attack",
                                 original_input=command_original_case,
@@ -446,7 +476,7 @@ class NLPCommandParser:
 
         # Manipulate
         if first_word_lower in MANIPULATE_VERBS or contains_manipulation_reference or self._tokens_have_manipulation_object(tokens_for_match):
-            target_phrase = self._extract_target_after_verb(command_lower)
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
             return ParsedIntent(intent=CommandIntent.MANIPULATE,
                                 action=first_word_lower if first_word_lower in MANIPULATE_VERBS else "manipulate",
                                 original_input=command_original_case,
@@ -455,7 +485,7 @@ class NLPCommandParser:
 
         # Use
         if first_word_lower == "use":
-            target_phrase = self._extract_target_after_verb(command_lower)
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
             return ParsedIntent(intent=CommandIntent.USE,
                                 action="use",
                                 original_input=command_original_case,
@@ -464,7 +494,7 @@ class NLPCommandParser:
 
         # Gather info
         if first_word_lower in GATHER_INFO_VERBS:
-            target_phrase = self._extract_target_after_verb(command_lower)
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
             return ParsedIntent(intent=CommandIntent.GATHER_INFO,
                                 action=first_word_lower,
                                 original_input=command_original_case,
@@ -472,8 +502,9 @@ class NLPCommandParser:
                                 target=target_phrase or None)
 
         # Equip
-        if contains_equip_reference or self._is_equip_command(first_word_lower, stripped):
-            target_phrase = self._extract_target_after_verb(command_lower)
+        has_additional_words = " " in stripped
+        if (contains_equip_reference or self._is_equip_command(first_word_lower, stripped)) and has_additional_words:
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
             return ParsedIntent(intent=CommandIntent.EQUIP,
                                 action="equip",
                                 original_input=command_original_case,
@@ -481,39 +512,13 @@ class NLPCommandParser:
                                 target=target_phrase or None)
 
         # Time
-        if first_word_lower in TIME_VERBS:
+        time_action = self._get_time_action(first_word_lower, tokens_for_match)
+        if time_action:
             return ParsedIntent(intent=CommandIntent.TIME,
-                                action=first_word_lower,
+                                action=time_action,
                                 original_input=command_original_case,
                                 confidence=1.0,
                                 target=None)
-
-        keyword_verbs = KEYWORD_VERB_INTENTS
-
-        if first_word_lower in keyword_verbs:
-            intent = keyword_verbs[first_word_lower]
-            target_phrase = self._extract_target_after_verb(command_lower)
-            if intent == CommandIntent.TAKE and contains_look_keyword:
-                return self._build_look_intent(command_original_case, command_lower)
-            if first_word_lower == "hold" and not target_phrase:
-                intent = CommandIntent.TIME
-            if first_word_lower == "scan" and any(hint in stripped for hint in GATHER_INFO_HINT_WORDS):
-                intent = CommandIntent.GATHER_INFO
-            if first_word_lower == "engage":
-                if target_phrase and any(hint in target_phrase for hint in MANIPULATION_OBJECT_HINTS):
-                    intent = CommandIntent.MANIPULATE
-                else:
-                    intent = CommandIntent.COMBAT
-            if first_word_lower == "use" and (
-                contains_manipulation_reference or self._target_matches_manipulation_hint(target_phrase)
-            ):
-                intent = CommandIntent.MANIPULATE
-            target_value = "" if intent in ZERO_TARGET_INTENTS else (target_phrase or None)
-            return ParsedIntent(intent=intent,
-                                action=first_word_lower,
-                                original_input=command_original_case,
-                                confidence=1.0,
-                                target=target_value)
 
         for prefix in QUESTION_PREFIXES:
             if stripped == prefix or stripped.startswith(prefix + " "):
@@ -711,6 +716,15 @@ class NLPCommandParser:
             return phrase_candidate
         return " ".join(collected).strip()
 
+    @staticmethod
+    def _clean_target_phrase(phrase: str | None) -> str | None:
+        if phrase is None:
+            return None
+        tokens = phrase.split()
+        while tokens and tokens[0] in {"the", "a", "an", "my"}:
+            tokens.pop(0)
+        return " ".join(tokens) if tokens else None
+
     def _extract_target_after_phrase(self, text: str, phrase: str) -> str:
         remainder = text[len(phrase):].strip()
         if " from " in remainder:
@@ -795,6 +809,8 @@ class NLPCommandParser:
 
     @staticmethod
     def _is_look_command(first_word: str, stripped: str) -> bool:
+        if stripped.startswith("look for "):
+            return False
         if stripped in {"l", "look"}:
             return True
         if first_word in LOOK_VERBS:
@@ -806,6 +822,36 @@ class NLPCommandParser:
         if first_word in EQUIP_VERBS:
             return True
         return stripped.startswith("put on ")
+
+    @staticmethod
+    def _is_search_command(first_word: str, stripped: str) -> bool:
+        if first_word in SEARCH_VERBS:
+            return True
+        lowered = stripped.lower()
+        return lowered.startswith("look for ") or lowered.startswith("hunt for ")
+
+    @staticmethod
+    def _is_communicate_command(first_word: str) -> bool:
+        return first_word in COMMUNICATE_VERBS
+
+    def _extract_search_target(self, normalized_text: str, first_word: str) -> str | None:
+        lower = normalized_text
+        if lower.startswith("look for "):
+            remainder = lower[len("look for "):]
+        elif lower.startswith("hunt for "):
+            remainder = lower[len("hunt for "):]
+        else:
+            remainder = lower[len(first_word):].strip()
+            if remainder.startswith("for "):
+                remainder = remainder[4:]
+        return self._clean_target_phrase(remainder)
+
+    def _extract_communicate_target(self, normalized_text: str) -> str | None:
+        lower = normalized_text
+        for marker in (" to ", " with ", " at "):
+            if marker in lower:
+                return self._clean_target_phrase(lower.split(marker, 1)[1])
+        return self._clean_target_phrase(self._extract_target_after_verb(normalized_text))
 
     @staticmethod
     def _contains_inventory_reference(normalized_text: str, tokens: list[str]) -> bool:
@@ -873,6 +919,21 @@ class NLPCommandParser:
             return False
         value = target.lower()
         return any(hint in value for hint in COMBAT_OBJECT_HINTS)
+
+    @staticmethod
+    def _contains_time_reference(tokens: list[str]) -> bool:
+        if not tokens:
+            return False
+        return any(token in TIME_VERBS for token in tokens)
+
+    @staticmethod
+    def _get_time_action(first_word: str, tokens: list[str]) -> str | None:
+        if first_word in TIME_VERBS:
+            return first_word
+        for token in tokens:
+            if token in TIME_VERBS:
+                return token
+        return None
 
     @staticmethod
     def _is_inventory_request(normalized_text: str) -> bool:
