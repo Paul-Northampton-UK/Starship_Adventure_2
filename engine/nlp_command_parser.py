@@ -730,12 +730,21 @@ class NLPCommandParser:
             return ""
         return self._extract_target_after_verb(best_substring)
 
-    def _build_look_intent(self, original_input: str, normalized_text: str) -> ParsedIntent:
+    def _build_look_intent(
+        self,
+        original_input: str,
+        normalized_text: str,
+    ) -> ParsedIntent:
         target_phrase = self._extract_target_after_keywords(normalized_text, LOOK_VERBS)
+        if normalized_text.strip() in {"look", "l"}:
+            target_value: str | None = ""
+        else:
+            target_value = target_phrase or None
+
         return ParsedIntent(
             intent=CommandIntent.LOOK,
             action="look",
-            target=target_phrase or None,
+            target=target_value,
             original_input=original_input,
             confidence=1.0,
         )
