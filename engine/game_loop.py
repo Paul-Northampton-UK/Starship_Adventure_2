@@ -46,6 +46,28 @@ from .command_handlers.stealth import (
     handle_pickpocket,
     handle_sneak,
 )
+from .command_handlers.crafting import (
+    handle_craft,
+    handle_combine,
+    handle_gather,
+)
+from .command_handlers.magic import (
+    handle_bless,
+    handle_cast,
+    handle_channel,
+    handle_curse,
+    handle_dismiss,
+    handle_enchant,
+    handle_identify,
+    handle_ritual,
+    handle_summon,
+    handle_transmute,
+)
+from .command_handlers.throw_catch import handle_catch, handle_throw
+from .command_handlers.wait import handle_wait
+from .command_handlers.interaction import handle_use, handle_use_on
+from .command_handlers.transition import handle_enter, handle_exit
+from .command_handlers.swim import handle_swim
 from .command_handlers.social import handle_ask, handle_give, handle_show, handle_talk
 from .active_pack import get_active_pack, get_content_root_from_config
 from .game_state import GameState, PowerState
@@ -368,6 +390,96 @@ class GameLoop:
         elif intent == CommandIntent.DISARM_TRAP:
             trap_name = (data.get("trap") or "").strip()
             target = trap_name or None
+        elif intent == CommandIntent.CRAFT:
+            item_name = (data.get("item") or "").strip()
+            target = item_name or None
+        elif intent == CommandIntent.COMBINE:
+            item_a = (data.get("item_a") or "").strip()
+            item_b = (data.get("item_b") or "").strip()
+            target = item_a or None
+            secondary_target = item_b or None
+        elif intent == CommandIntent.GATHER:
+            resource = (data.get("resource") or "").strip()
+            target = resource or None
+        elif intent == CommandIntent.CAST:
+            spell_name = (data.get("spell") or "").strip()
+            spell_target = (data.get("target") or "").strip()
+            target = spell_name or None
+            secondary_target = spell_target or None
+        elif intent == CommandIntent.CHANNEL:
+            power_name = (data.get("power") or "").strip()
+            target = power_name or None
+        elif intent == CommandIntent.SUMMON:
+            entity_name = (data.get("entity") or "").strip()
+            target = entity_name or None
+        elif intent == CommandIntent.DISMISS:
+            entity_name = (data.get("entity") or "").strip()
+            target = entity_name or None
+        elif intent == CommandIntent.ENCHANT:
+            item_name = (data.get("item") or "").strip()
+            effect_name = (data.get("effect") or "").strip()
+            target = item_name or None
+            secondary_target = effect_name or None
+        elif intent == CommandIntent.IDENTIFY:
+            identify_target = (data.get("target") or "").strip()
+            target = identify_target or None
+        elif intent == CommandIntent.BLESS:
+            bless_target = (data.get("target") or "").strip()
+            target = bless_target or None
+        elif intent == CommandIntent.CURSE:
+            curse_target = (data.get("target") or "").strip()
+            target = curse_target or None
+        elif intent == CommandIntent.TRANSMUTE:
+            from_item = (data.get("from") or "").strip()
+            to_item = (data.get("to") or "").strip()
+            target = from_item or None
+            secondary_target = to_item or None
+        elif intent == CommandIntent.RITUAL:
+            ritual_name = (data.get("name") or "").strip()
+            target = ritual_name or None
+        elif intent == CommandIntent.THROW:
+            item_name = (data.get("item") or "").strip()
+            target_name = (data.get("target") or "").strip()
+            target = item_name or None
+            secondary_target = target_name or None
+        elif intent == CommandIntent.CATCH:
+            catch_item = (data.get("item") or "").strip()
+            target = catch_item or None
+        elif intent == CommandIntent.USE:
+            item_name = (data.get("item") or "").strip()
+            target = item_name or None
+        elif intent == CommandIntent.USE_ON:
+            item_name = (data.get("item") or "").strip()
+            target_name = (data.get("target") or "").strip()
+            target = item_name or None
+            secondary_target = target_name or None
+        elif intent == CommandIntent.ENTER:
+            place_name = (data.get("place") or "").strip()
+            target = place_name or None
+        elif intent == CommandIntent.EXIT:
+            place_name = (data.get("place") or "").strip()
+            target = place_name or None
+        elif intent == CommandIntent.SWIM:
+            swim_dir = (data.get("direction") or "").strip()
+            direction = swim_dir or None
+        elif intent == CommandIntent.SEARCH:
+            scope = (data.get("scope") or "").strip()
+            obj = (data.get("object") or "").strip()
+            if scope == "room":
+                search_scope = "room"
+            else:
+                search_scope = None
+            target = obj or None
+            if search_scope:
+                preposition = search_scope
+        elif intent == CommandIntent.CLIMB:
+            climb_obj = (data.get("object") or "").strip()
+            climb_direction = (data.get("direction") or "").strip()
+            climb_scope = (data.get("scope") or "").strip()
+            target = climb_obj or None
+            direction = climb_direction or None
+            if climb_scope:
+                preposition = climb_scope or None
         elif intent in {CommandIntent.BLOCK, CommandIntent.DODGE, CommandIntent.FLEE}:
             pass
         elif intent == CommandIntent.TALK:
@@ -513,6 +625,27 @@ class GameLoop:
             CommandIntent.HIDE: handle_hide,
             CommandIntent.PICKPOCKET: handle_pickpocket,
             CommandIntent.DISARM_TRAP: handle_disarm_trap,
+            CommandIntent.CRAFT: handle_craft,
+            CommandIntent.COMBINE: handle_combine,
+            CommandIntent.GATHER: handle_gather,
+            CommandIntent.CAST: handle_cast,
+            CommandIntent.CHANNEL: handle_channel,
+            CommandIntent.SUMMON: handle_summon,
+            CommandIntent.DISMISS: handle_dismiss,
+            CommandIntent.ENCHANT: handle_enchant,
+            CommandIntent.IDENTIFY: handle_identify,
+            CommandIntent.BLESS: handle_bless,
+            CommandIntent.CURSE: handle_curse,
+            CommandIntent.TRANSMUTE: handle_transmute,
+            CommandIntent.RITUAL: handle_ritual,
+            CommandIntent.USE: handle_use,
+            CommandIntent.USE_ON: handle_use_on,
+            CommandIntent.THROW: handle_throw,
+            CommandIntent.CATCH: handle_catch,
+            CommandIntent.WAIT: handle_wait,
+            CommandIntent.ENTER: handle_enter,
+            CommandIntent.EXIT: handle_exit,
+            CommandIntent.SWIM: handle_swim,
             CommandIntent.LOCK: handle_lock,         # <-- ADD LOCK
             CommandIntent.UNLOCK: handle_unlock,     # <-- ADD UNLOCK
             CommandIntent.OPEN: handle_open,      # Added OPEN mapping

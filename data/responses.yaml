@@ -624,3 +624,97 @@ stealth_pickpocket:
 stealth_disarm_trap:
   - "You work to disarm the {trap}."
   - "You carefully disable the {trap}."
+
+# --- Crafting Commands ---
+craft_make:
+  - "You start crafting the {item}."
+  - "You assemble the {item} with what you have."
+
+craft_combine:
+  - "You combine {item_a} with {item_b}."
+  - "You carefully mix {item_a} and {item_b} together."
+
+craft_gather:
+  - "You gather {resource} from the surroundings."
+  - "You collect some {resource}."
+
+# --- Magic Commands ---
+magic_cast:
+  - "You cast {spell} toward {target}."
+  - "Arcane energy surges as you unleash {spell}."
+
+magic_channel:
+  - "You channel {power} through your body."
+  - "You focus, drawing on {power}."
+
+magic_summon:
+  - "You summon {entity} to your side."
+  - "A shimmer appears as {entity} answers your call."
+
+magic_dismiss:
+  - "You dismiss {entity} back to the void."
+  - "{entity} fades from sight."
+
+magic_enchant:
+  - "You enchant the {item}{effect:+ with {effect}}."
+  - "Mystic runes flare around the {item}{effect:+, binding {effect}}."
+
+magic_identify:
+  - "You study {target}, gleaning its hidden nature."
+  - "A vision reveals the secrets of {target}."
+
+magic_bless:
+  - "You bless {target}, wrapping them in light."
+  - "A warm aura surrounds {target}."
+
+magic_curse:
+  - "You curse {target}, shadows clinging to them."
+  - "{target} shivers as the curse takes hold."
+
+magic_transmute:
+  - "You transmute {from} into {to}."
+  - "{from} reshapes itself, becoming {to}."
+
+magic_ritual:
+  - "You begin the {name} ritual."
+  - "Chants echo as the {name} ritual takes effect."
+
+throw_action:
+  - "You throw the {item} at {target}."
+  - "The {item} flies toward {target}."
+
+catch_action:
+  - "You reach out and catch the {item}."
+  - "You snatch the {item} before it falls."
+
+interaction_use:
+  - "You use the {item}."
+  - "You interact with the {item}."
+
+interaction_use_on:
+  - "You use the {item} on {target}."
+  - "You apply the {item} to {target}."
+
+interaction_push:
+  - "You push the {object}."
+  - "You lean in and push the {object}."
+
+interaction_pull:
+  - "You pull the {object}."
+  - "You tug on the {object}."
+
+wait_action:
+  - "You wait for a moment."
+  - "Time passes quietly."
+
+enter_action:
+  - "You enter the {place}."
+  - "You step into the {place}."
+
+exit_action:
+  - "You exit the {place}."
+  - "You leave the {place} behind."
+
+swim_action:
+  - "You swim {direction}."
+  - "You stroke {direction}, pushing through the water."

@@ -1,0 +1,102 @@
+Group,Intent,Verbs,Form,Slots,Example
+Combat,AIM,aim,aim,target,aim
+Combat,AIM,aim,aim <target>,target,aim door
+Social,ASK,ask,ask <npc> about <topic>,"npc, topic",ask guard about
+Social,ASK,ask,ask <npc> <topic>,"npc, topic",ask guard
+Combat,ATTACK,attack,attack,target,attack
+Combat,ATTACK,attack,attack <target>,target,attack door
+Magic,BLESS,bless,bless <target>,target,bless door
+Combat,BLOCK,block,block,,block
+Magic,CAST,cast,cast <spell>,"spell, target",cast fireball
+Magic,CAST,cast,cast <spell> on/at <target>,"spell, target",cast fireball on/at door
+Interaction,CATCH,catch,catch <item>,item,catch keycard
+Magic,CHANNEL,channel,channel <power>,power,channel mana
+Combat,CHECK,check,check ammo,target,check ammo
+Combat,CHECK,check,check <item>,target,check keycard
+Traversal,CLIMB,climb,climb,"scope, object, direction",climb
+Traversal,CLIMB,climb,climb <object>,"scope, object, direction",climb cabinet
+Traversal,CLIMB,climb,climb up <object>,"scope, object, direction",climb up cabinet
+Traversal,CLIMB,climb,climb down <object>,"scope, object, direction",climb down cabinet
+Doors,CLOSE,"close, shut",close <object>,target,close cabinet
+Crafting,COMBINE,combine,combine <item_a> with <item_b>,"item_a, item_b",combine herb with solvent
+Crafting,CRAFT,"craft, make, build",craft <item>,item,craft keycard
+Crafting,CRAFT,"craft, make, build",make <item>,item,make keycard
+Crafting,CRAFT,"craft, make, build",build <item>,item,build keycard
+Magic,CURSE,curse,curse <target>,target,curse door
+Stealth,DISARM_TRAP,disarm,disarm <trap>,trap,disarm trap
+Magic,DISMISS,dismiss,dismiss <entity>,entity,dismiss spirit wolf
+Combat,DODGE,dodge,dodge,,dodge
+Inventory,DROP,drop,drop <object>,object,drop cabinet
+Magic,ENCHANT,enchant,enchant <item>,"item, effect",enchant keycard
+Magic,ENCHANT,enchant,enchant <item> with <effect>,"item, effect",enchant keycard with flame
+Traversal,ENTER,enter,enter,place,enter
+Traversal,ENTER,enter,enter <place>,place,enter airlock
+Other,EQUIP,equip,equip <item>,item,equip keycard
+Traversal,EXIT,"exit, leave",exit,place,exit
+Traversal,EXIT,"exit, leave",exit <place>,place,exit airlock
+Traversal,EXIT,"exit, leave",leave <place>,place,leave airlock
+Combat,FLEE,"flee, run away",flee,,flee
+Combat,FLEE,"flee, run away",run away,,run away
+Crafting,GATHER,"gather, harvest",gather <resource>,resource,gather berries
+Crafting,GATHER,"gather, harvest",harvest <resource>,resource,harvest berries
+Social,GIVE,give,give <item> to <npc>,"object, npc",give keycard to guard
+System,HELP,help,help,,help
+Stealth,HIDE,hide,hide,,hide
+Magic,IDENTIFY,identify,identify <object>,target,identify cabinet
+System,LOAD,load,load,,load
+System,LOAD,load,load game,,load game
+Doors,LOCK,lock,lock <object>,"target, tool",lock cabinet
+Doors,LOCK,lock,lock <object> with <key>,"target, tool",lock cabinet with
+Interaction,LOOK,"check, examine, inspect, look",look,"target, scope",look
+Interaction,LOOK,"check, examine, inspect, look",<verb> <target>,"target, scope",use door
+Interaction,LOOK,"check, examine, inspect, look",<verb> at <target>,"target, scope",use at door
+Movement,MOVE,"down, east, enter, exit, go, in, move, north, out, run, south, travel, up, walk, west",<direction>,direction,north
+Movement,MOVE,"down, east, enter, exit, go, in, move, north, out, run, south, travel, up, walk, west",<movement verb> <direction>,direction,go north
+Doors,OPEN,open,open <object>,target,open cabinet
+Stealth,PICKPOCKET,pickpocket,pickpocket <npc>,npc,pickpocket guard
+Interaction,PULL,pull,pull <object>,object,pull cabinet
+Interaction,PUSH,push,push <object>,object,push cabinet
+Inventory,PUT,put,put <item> in/into/onto/on <container>,"item, container, preposition",put keycard in/into/onto/on locker
+System,QUIT,quit,quit,,quit
+Interaction,READ,read,read <object>,object,read cabinet
+Combat,RELOAD,"reload, load",reload <weapon>,"weapon, ammo",reload pistol
+Combat,RELOAD,"reload, load",reload <weapon> with <ammo>,"weapon, ammo",reload pistol with cell
+Combat,RELOAD,"reload, load",load <weapon>,"weapon, ammo",load pistol
+Other,REMOVE,remove,remove <item>,item,remove keycard
+Magic,RITUAL,"invoke, perform ritual",invoke <name>,name,invoke moon rite
+Magic,RITUAL,"invoke, perform ritual",perform ritual <name>,name,perform ritual moon rite
+System,SAVE,save,save,,save
+System,SAVE,save,save game,,save game
+Interaction,SCAN,scan,scan <object>,object,scan cabinet
+Interaction,SEARCH,search,search,"scope, object",search
+Interaction,SEARCH,search,search room/area,"scope, object",search room/area
+Interaction,SEARCH,search,search <object>,"scope, object",search cabinet
+Combat,SHOOT,"fire, shoot",shoot <target>,"weapon, target",shoot door
+Combat,SHOOT,"fire, shoot",shoot <weapon> at <target>,"weapon, target",shoot pistol at door
+Combat,SHOOT,"fire, shoot",fire <weapon>,"weapon, target",fire pistol
+Social,SHOW,show,show <item> to <npc>,"object, npc",show keycard to guard
+Stealth,SNEAK,sneak,sneak,,sneak
+Magic,SUMMON,summon,summon <entity>,entity,summon spirit wolf
+Movement,SWIM,swim,swim,direction,swim
+Movement,SWIM,swim,swim <direction>,direction,swim north
+Inventory,TAKE,"take, pick up",take <object>,object,take cabinet
+Inventory,TAKE,"take, pick up",pick up <object>,object,pick up cabinet
+Social,TALK,"talk, speak",talk to <npc>,npc,talk to guard
+Social,TALK,"talk, speak",talk <npc>,npc,talk guard
+Social,TALK,"talk, speak",speak to <npc>,npc,speak to guard
+Interaction,THROW,throw,throw <item>,"item, target",throw keycard
+Interaction,THROW,throw,throw <item> at <target>,"item, target",throw keycard at door
+Magic,TRANSMUTE,transmute,transmute <from> into <to>,"from, to",transmute lead into gold
+Magic,TRANSMUTE,transmute,transmute <from> to <to>,"from, to",transmute lead to gold
+Other,UNEQUIP,unequip,unequip <item>,item,unequip keycard
+Combat,UNLOAD,unload,unload <weapon>,weapon,unload pistol
+Doors,UNLOCK,unlock,unlock <object>,"target, tool",unlock cabinet
+Doors,UNLOCK,unlock,unlock <object> with <key>,"target, tool",unlock cabinet with
+Interaction,USE,use,use <item>,item,use keycard
+Interaction,USE_ON,use,use <item> on <target>,"item, target",use keycard on door
+System,WAIT,wait,wait,,wait
+System,WAIT,wait,wait here,,wait here
+System,WAIT,wait,wait a moment,,wait a moment
+System,WAIT,wait,wait awhile,,wait awhile
+Other,WEAR,wear,wear <item>,item,wear keycard
+Other,WIELD,wield,wield <weapon>,item,wield pistol

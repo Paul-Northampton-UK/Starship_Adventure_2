@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict
+from copy import deepcopy
+from typing import Any, Dict, Iterable
 
 from loguru import logger
 
@@ -37,7 +38,6 @@ SYSTEM_COMMANDS = {
     "save": "SAVE",
     "load": "LOAD",
     "quit": "QUIT",
-    "exit": "QUIT",
 }
 SOCIAL_TALK_VERBS = {"talk", "speak"}
 SOCIAL_ASK_VERB = "ask"
@@ -86,6 +86,184 @@ SNEAK_VERBS = {"sneak"}
 HIDE_VERBS = {"hide"}
 PICKPOCKET_VERBS = {"pickpocket"}
 DISARM_VERBS = {"disarm"}
+CRAFT_VERBS = {"craft", "make", "build"}
+COMBINE_VERB = {"combine"}
+GATHER_VERBS = {"gather", "harvest"}
+THROW_VERBS = {"throw"}
+CATCH_VERBS = {"catch"}
+USE_VERBS = {"use"}
+PUSH_VERBS = {"push"}
+PULL_VERBS = {"pull"}
+ENTER_VERBS = {"enter"}
+EXIT_VERBS = {"exit", "leave"}
+SWIM_VERBS = {"swim"}
+SWIM_DIRECTIONS = {
+    "north",
+    "south",
+    "east",
+    "west",
+    "up",
+    "down",
+    "forward",
+    "backward",
+}
+
+
+def _sorted_list(values: Iterable[str]) -> list[str]:
+    """Return a sorted list with duplicates removed."""
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            ordered.append(value)
+    return sorted(ordered)
+
+
+CAPABILITIES: Dict[str, Dict[str, list[str]]] = {
+    "MOVE": {
+        "verbs": _sorted_list(list(MOVEMENT_VERBS) + list(DIRECTION_MAP.keys())),
+        "forms": ["<direction>", "<movement verb> <direction>"],
+        "slots": ["direction"],
+    },
+    "LOOK": {
+        "verbs": _sorted_list(OBSERVATION_VERBS),
+        "forms": ["look", "<verb> <target>", "<verb> at <target>"],
+        "slots": ["target", "scope"],
+    },
+    "HELP": {"verbs": ["help"], "forms": ["help"], "slots": []},
+    "SAVE": {"verbs": ["save"], "forms": ["save", "save game"], "slots": []},
+    "LOAD": {"verbs": ["load"], "forms": ["load", "load game"], "slots": []},
+    "QUIT": {"verbs": ["quit"], "forms": ["quit"], "slots": []},
+    "OPEN": {"verbs": ["open"], "forms": ["open <object>"], "slots": ["target"]},
+    "CLOSE": {"verbs": ["close", "shut"], "forms": ["close <object>"], "slots": ["target"]},
+    "LOCK": {"verbs": ["lock"], "forms": ["lock <object>", "lock <object> with <key>"], "slots": ["target", "tool"]},
+    "UNLOCK": {"verbs": ["unlock"], "forms": ["unlock <object>", "unlock <object> with <key>"], "slots": ["target", "tool"]},
+    "TAKE": {"verbs": ["take", "pick up"], "forms": ["take <object>", "pick up <object>"], "slots": ["object"]},
+    "DROP": {"verbs": ["drop"], "forms": ["drop <object>"], "slots": ["object"]},
+    "PUT": {"verbs": ["put"], "forms": ["put <item> in/into/onto/on <container>"], "slots": ["item", "container", "preposition"]},
+    "TALK": {"verbs": ["talk", "speak"], "forms": ["talk to <npc>", "talk <npc>", "speak to <npc>"], "slots": ["npc"]},
+    "ASK": {"verbs": ["ask"], "forms": ["ask <npc> about <topic>", "ask <npc> <topic>"], "slots": ["npc", "topic"]},
+    "GIVE": {"verbs": ["give"], "forms": ["give <item> to <npc>"], "slots": ["object", "npc"]},
+    "SHOW": {"verbs": ["show"], "forms": ["show <item> to <npc>"], "slots": ["object", "npc"]},
+    "READ": {"verbs": ["read"], "forms": ["read <object>"], "slots": ["object"]},
+    "SCAN": {"verbs": ["scan"], "forms": ["scan <object>"], "slots": ["object"]},
+    "EQUIP": {"verbs": ["equip"], "forms": ["equip <item>"], "slots": ["item"]},
+    "UNEQUIP": {"verbs": ["unequip"], "forms": ["unequip <item>"], "slots": ["item"]},
+    "WEAR": {"verbs": ["wear"], "forms": ["wear <item>"], "slots": ["item"]},
+    "REMOVE": {"verbs": ["remove"], "forms": ["remove <item>"], "slots": ["item"]},
+    "WIELD": {"verbs": ["wield"], "forms": ["wield <weapon>"], "slots": ["item"]},
+    "ATTACK": {"verbs": _sorted_list(ATTACK_VERBS), "forms": ["attack", "attack <target>"], "slots": ["target"]},
+    "AIM": {"verbs": _sorted_list(AIM_VERBS), "forms": ["aim", "aim <target>"], "slots": ["target"]},
+    "SHOOT": {"verbs": _sorted_list(SHOOT_VERBS), "forms": ["shoot <target>", "shoot <weapon> at <target>", "fire <weapon>"], "slots": ["weapon", "target"]},
+    "BLOCK": {"verbs": ["block"], "forms": ["block"], "slots": []},
+    "DODGE": {"verbs": ["dodge"], "forms": ["dodge"], "slots": []},
+    "FLEE": {"verbs": ["flee", "run away"], "forms": ["flee", "run away"], "slots": []},
+    "RELOAD": {"verbs": ["reload", "load"], "forms": ["reload <weapon>", "reload <weapon> with <ammo>", "load <weapon>"], "slots": ["weapon", "ammo"]},
+    "UNLOAD": {"verbs": ["unload"], "forms": ["unload <weapon>"], "slots": ["weapon"]},
+    "CHECK": {"verbs": ["check"], "forms": ["check ammo", "check <item>"], "slots": ["target"]},
+    "SNEAK": {"verbs": ["sneak"], "forms": ["sneak"], "slots": []},
+    "HIDE": {"verbs": ["hide"], "forms": ["hide"], "slots": []},
+    "PICKPOCKET": {"verbs": ["pickpocket"], "forms": ["pickpocket <npc>"], "slots": ["npc"]},
+    "DISARM_TRAP": {"verbs": ["disarm"], "forms": ["disarm <trap>"], "slots": ["trap"]},
+    "CRAFT": {"verbs": ["craft", "make", "build"], "forms": ["craft <item>", "make <item>", "build <item>"], "slots": ["item"]},
+    "COMBINE": {"verbs": ["combine"], "forms": ["combine <item_a> with <item_b>"], "slots": ["item_a", "item_b"]},
+    "GATHER": {"verbs": ["gather", "harvest"], "forms": ["gather <resource>", "harvest <resource>"], "slots": ["resource"]},
+    "CAST": {"verbs": ["cast"], "forms": ["cast <spell>", "cast <spell> on/at <target>"], "slots": ["spell", "target"]},
+    "CHANNEL": {"verbs": ["channel"], "forms": ["channel <power>"], "slots": ["power"]},
+    "SUMMON": {"verbs": ["summon"], "forms": ["summon <entity>"], "slots": ["entity"]},
+    "DISMISS": {"verbs": ["dismiss"], "forms": ["dismiss <entity>"], "slots": ["entity"]},
+    "ENCHANT": {"verbs": ["enchant"], "forms": ["enchant <item>", "enchant <item> with <effect>"], "slots": ["item", "effect"]},
+    "IDENTIFY": {"verbs": ["identify"], "forms": ["identify <object>"], "slots": ["target"]},
+    "BLESS": {"verbs": ["bless"], "forms": ["bless <target>"], "slots": ["target"]},
+    "CURSE": {"verbs": ["curse"], "forms": ["curse <target>"], "slots": ["target"]},
+    "TRANSMUTE": {"verbs": ["transmute"], "forms": ["transmute <from> into <to>", "transmute <from> to <to>"], "slots": ["from", "to"]},
+    "RITUAL": {"verbs": ["invoke", "perform ritual"], "forms": ["invoke <name>", "perform ritual <name>"], "slots": ["name"]},
+    "THROW": {"verbs": ["throw"], "forms": ["throw <item>", "throw <item> at <target>"], "slots": ["item", "target"]},
+    "CATCH": {"verbs": ["catch"], "forms": ["catch <item>"], "slots": ["item"]},
+    "PUSH": {"verbs": ["push"], "forms": ["push <object>"], "slots": ["object"]},
+    "PULL": {"verbs": ["pull"], "forms": ["pull <object>"], "slots": ["object"]},
+    "USE": {"verbs": ["use"], "forms": ["use <item>"], "slots": ["item"]},
+    "USE_ON": {"verbs": ["use"], "forms": ["use <item> on <target>"], "slots": ["item", "target"]},
+    "SEARCH": {"verbs": ["search"], "forms": ["search", "search room/area", "search <object>"], "slots": ["scope", "object"]},
+    "CLIMB": {"verbs": ["climb"], "forms": ["climb", "climb <object>", "climb up <object>", "climb down <object>"], "slots": ["scope", "object", "direction"]},
+    "ENTER": {"verbs": ["enter"], "forms": ["enter", "enter <place>"], "slots": ["place"]},
+    "EXIT": {"verbs": ["exit", "leave"], "forms": ["exit", "exit <place>", "leave <place>"], "slots": ["place"]},
+    "SWIM": {"verbs": ["swim"], "forms": ["swim", "swim <direction>"], "slots": ["direction"]},
+    "WAIT": {"verbs": ["wait"], "forms": ["wait", "wait here", "wait a moment", "wait awhile"], "slots": []},
+}
+
+INTENT_GROUPS: Dict[str, str] = {
+    "MOVE": "Movement",
+    "CLIMB": "Traversal",
+    "ENTER": "Traversal",
+    "EXIT": "Traversal",
+    "SWIM": "Movement",
+    "LOOK": "Interaction",
+    "READ": "Interaction",
+    "SCAN": "Interaction",
+    "SEARCH": "Interaction",
+    "HELP": "System",
+    "SAVE": "System",
+    "LOAD": "System",
+    "QUIT": "System",
+    "WAIT": "System",
+    "OPEN": "Doors",
+    "CLOSE": "Doors",
+    "LOCK": "Doors",
+    "UNLOCK": "Doors",
+    "TAKE": "Inventory",
+    "DROP": "Inventory",
+    "PUT": "Inventory",
+    "TAKE_FROM": "Inventory",
+    "TALK": "Social",
+    "ASK": "Social",
+    "GIVE": "Social",
+    "SHOW": "Social",
+    "PICKPOCKET": "Stealth",
+    "ATTACK": "Combat",
+    "AIM": "Combat",
+    "SHOOT": "Combat",
+    "BLOCK": "Combat",
+    "DODGE": "Combat",
+    "FLEE": "Combat",
+    "RELOAD": "Combat",
+    "UNLOAD": "Combat",
+    "CHECK": "Combat",
+    "SNEAK": "Stealth",
+    "HIDE": "Stealth",
+    "DISARM_TRAP": "Stealth",
+    "CRAFT": "Crafting",
+    "COMBINE": "Crafting",
+    "GATHER": "Crafting",
+    "CAST": "Magic",
+    "CHANNEL": "Magic",
+    "SUMMON": "Magic",
+    "DISMISS": "Magic",
+    "ENCHANT": "Magic",
+    "IDENTIFY": "Magic",
+    "BLESS": "Magic",
+    "CURSE": "Magic",
+    "TRANSMUTE": "Magic",
+    "RITUAL": "Magic",
+    "USE": "Interaction",
+    "USE_ON": "Interaction",
+    "THROW": "Interaction",
+    "CATCH": "Interaction",
+    "PUSH": "Interaction",
+    "PULL": "Interaction",
+}
+CAST_VERBS = {"cast"}
+CHANNEL_VERBS = {"channel"}
+SUMMON_VERBS = {"summon"}
+DISMISS_VERBS = {"dismiss"}
+ENCHANT_VERBS = {"enchant"}
+IDENTIFY_VERBS = {"identify"}
+BLESS_VERBS = {"bless"}
+CURSE_VERBS = {"curse"}
+TRANSMUTE_VERBS = {"transmute"}
+INVOKE_VERBS = {"invoke"}
+PERFORM_RITUAL_VERB = "perform"
 
 
 class NLPCommandParserV2:
@@ -93,6 +271,11 @@ class NLPCommandParserV2:
 
     def __init__(self) -> None:
         logger.debug("NLPCommandParserV2 scaffold initialized.")
+
+    @classmethod
+    def get_capabilities(cls) -> Dict[str, Dict[str, list[str]]]:
+        """Return a copy of the capability registry for audit tooling."""
+        return deepcopy(CAPABILITIES)
 
     def parse(self, text: str) -> Dict[str, Any]:
         """Temporary stub that always returns an UNKNOWN intent."""
@@ -144,6 +327,74 @@ class NLPCommandParserV2:
             )
             return stealth
 
+        magic = self._detect_magic_command(sanitized)
+        if magic is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                magic["intent"],
+                magic["data"],
+            )
+            return magic
+
+        crafting = self._detect_crafting_command(sanitized)
+        if crafting is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                crafting["intent"],
+                crafting["data"],
+            )
+            return crafting
+
+        thrown = self._detect_throw_catch(sanitized)
+        if thrown is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                thrown["intent"],
+                thrown["data"],
+            )
+            return thrown
+
+        use_command = self._detect_use_command(sanitized)
+        if use_command is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                use_command["intent"],
+                use_command["data"],
+            )
+            return use_command
+
+        push_pull = self._detect_push_pull(sanitized)
+        if push_pull is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                push_pull["intent"],
+                push_pull["data"],
+            )
+            return push_pull
+
+        wait_cmd = self._detect_wait_command(sanitized)
+        if wait_cmd is not None:
+            logger.info("NLPCommandParserV2 detected WAIT intent.")
+            return wait_cmd
+
+        enter_exit = self._detect_enter_exit(sanitized)
+        if enter_exit is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                enter_exit["intent"],
+                enter_exit["data"],
+            )
+            return enter_exit
+
+        swim_cmd = self._detect_swim_command(sanitized)
+        if swim_cmd is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                swim_cmd["intent"],
+                swim_cmd["data"],
+            )
+            return swim_cmd
+
         reload_cmd = self._detect_weapon_maintenance(sanitized)
         if reload_cmd is not None:
             logger.info(
@@ -185,6 +436,24 @@ class NLPCommandParserV2:
                 inventory["data"],
             )
             return inventory
+
+        search_cmd = self._detect_search_command(sanitized)
+        if search_cmd is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                search_cmd["intent"],
+                search_cmd["data"],
+            )
+            return search_cmd
+
+        climb_cmd = self._detect_climb_command(sanitized)
+        if climb_cmd is not None:
+            logger.info(
+                "NLPCommandParserV2 detected %s intent with data %s.",
+                climb_cmd["intent"],
+                climb_cmd["data"],
+            )
+            return climb_cmd
 
         logger.debug(f"NLPCommandParserV2 returning UNKNOWN for input: {text!r}")
         return {"intent": "UNKNOWN", "data": {}}
@@ -410,6 +679,51 @@ class NLPCommandParserV2:
 
         return None
 
+    def _detect_search_command(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens or tokens[0] != "search":
+            return None
+
+        remainder = self._strip_articles(tokens[1:])
+        if not remainder or remainder[0] in {"room", "area"}:
+            return {"intent": "SEARCH", "data": {"scope": "room"}}
+
+        if remainder[0] in {"it", "in", "inside"}:
+            return None
+
+        obj = self._build_social_entity(remainder)
+        if not obj:
+            return None
+        return {"intent": "SEARCH", "data": {"object": obj}}
+
+    def _detect_climb_command(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens or tokens[0] != "climb":
+            return None
+
+        remainder = self._strip_articles(tokens[1:])
+        if not remainder:
+            return {"intent": "CLIMB", "data": {"scope": "generic"}}
+
+        if remainder[0] in {"it", "over"}:
+            return None
+
+        direction = None
+        if remainder[0] in {"up", "down"}:
+            if len(remainder) == 1:
+                return None
+            direction = remainder[0]
+            remainder = remainder[1:]
+
+        obj = self._build_social_entity(remainder)
+        if not obj:
+            return None
+
+        data: Dict[str, Any] = {"object": obj}
+        if direction:
+            data["direction"] = direction
+        return {"intent": "CLIMB", "data": data}
+
     def _match_take(self, tokens: list[str]) -> str | None:
         object_tokens: list[str] | None = None
 
@@ -621,6 +935,365 @@ class NLPCommandParserV2:
 
         return None
 
+    def _detect_crafting_command(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens:
+            return None
+
+        verb = tokens[0]
+        remainder = tokens[1:]
+
+        if verb in CRAFT_VERBS:
+            if not remainder:
+                return None
+            item = self._build_social_entity(remainder)
+            if not item:
+                return None
+            return {"intent": "CRAFT", "data": {"item": item}}
+
+        if verb in COMBINE_VERB:
+            if "with" not in remainder:
+                return None
+            idx = remainder.index("with")
+            item_a_tokens = remainder[:idx]
+            item_b_tokens = remainder[idx + 1 :]
+            if not item_a_tokens or not item_b_tokens:
+                return None
+            item_a = self._build_social_entity(item_a_tokens)
+            item_b = self._build_social_entity(item_b_tokens)
+            if not item_a or not item_b:
+                return None
+            return {"intent": "COMBINE", "data": {"item_a": item_a, "item_b": item_b}}
+
+        if verb in GATHER_VERBS:
+            if not remainder:
+                return None
+            resource = self._build_social_entity(remainder)
+            if not resource:
+                return None
+            return {"intent": "GATHER", "data": {"resource": resource}}
+
+        return None
+
+    def _detect_throw_catch(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens:
+            return None
+
+        verb = tokens[0]
+        remainder = tokens[1:]
+
+        if verb in THROW_VERBS:
+            if not remainder or remainder[0] == "it":
+                return None
+            if "at" in remainder:
+                idx = remainder.index("at")
+                item_tokens = remainder[:idx]
+                target_tokens = remainder[idx + 1 :]
+                if not item_tokens or not target_tokens:
+                    return None
+            elif "to" in remainder:
+                return None
+            else:
+                item_tokens = remainder
+                target_tokens = []
+            item = self._build_social_entity(item_tokens)
+            if not item:
+                return None
+            target = self._build_social_entity(target_tokens) if target_tokens else None
+            data: Dict[str, Any] = {"item": item}
+            if target:
+                data["target"] = target
+            return {"intent": "THROW", "data": data}
+
+        if verb in CATCH_VERBS:
+            if not remainder or remainder[0] == "it":
+                return None
+            item = self._build_social_entity(remainder)
+            if not item:
+                return None
+            return {"intent": "CATCH", "data": {"item": item}}
+
+        return None
+
+    def _detect_push_pull(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens:
+            return None
+
+        verb = tokens[0]
+        remainder = tokens[1:]
+
+        if verb in PUSH_VERBS:
+            if (
+                not remainder
+                or remainder[0] == "it"
+                or remainder[0] in {"against", "on"}
+            ):
+                return None
+            obj = self._build_social_entity(remainder)
+            if not obj:
+                return None
+            return {"intent": "PUSH", "data": {"object": obj}}
+
+        if verb in PULL_VERBS:
+            if (
+                not remainder
+                or remainder[0] == "it"
+                or remainder[0] in {"against", "on"}
+            ):
+                return None
+            obj = self._build_social_entity(remainder)
+            if not obj:
+                return None
+            return {"intent": "PULL", "data": {"object": obj}}
+
+        return None
+
+    def _detect_wait_command(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens or tokens[0] not in WAIT_VERBS:
+            return None
+
+        remainder = tokens[1:]
+        if not remainder:
+            return {"intent": "WAIT", "data": {}}
+
+        if remainder[0] in {"it", "door"}:
+            return None
+
+        if any(word not in {"a", "moment", "awhile", "here"} for word in remainder):
+            return None
+
+        return {"intent": "WAIT", "data": {}}
+
+    def _detect_enter_exit(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens:
+            return None
+
+        verb = tokens[0]
+        remainder = self._strip_articles(tokens[1:])
+
+        if verb in ENTER_VERBS:
+            if not remainder:
+                return {"intent": "ENTER", "data": {}}
+            if remainder[0] in {"it", "through"}:
+                return None
+            place = self._build_social_entity(remainder)
+            if not place:
+                return None
+            return {"intent": "ENTER", "data": {"place": place}}
+
+        if verb in EXIT_VERBS:
+            if not remainder:
+                return {"intent": "EXIT", "data": {}}
+            if remainder[0] in {"it", "through"}:
+                return None
+            place = self._build_social_entity(remainder)
+            if not place:
+                return None
+            return {"intent": "EXIT", "data": {"place": place}}
+
+        return None
+
+    def _detect_swim_command(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens or tokens[0] not in SWIM_VERBS:
+            return None
+
+        remainder = tokens[1:]
+        if not remainder:
+            return {"intent": "SWIM", "data": {}}
+
+        direction_token = remainder[0]
+        if direction_token == "it":
+            return None
+
+        normalized = direction_token
+        if direction_token == "back":
+            normalized = "backward"
+        if normalized not in SWIM_DIRECTIONS:
+            return None
+
+        if len(remainder) > 1:
+            return None
+
+        return {"intent": "SWIM", "data": {"direction": normalized}}
+
+    def _detect_use_command(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens:
+            return None
+        if tokens[0] not in USE_VERBS:
+            return None
+
+        remainder = tokens[1:]
+        if not remainder or remainder[0] == "it":
+            return None
+
+        if "on" in remainder:
+            idx = remainder.index("on")
+            item_tokens = remainder[:idx]
+            target_tokens = remainder[idx + 1 :]
+            if not item_tokens or not target_tokens:
+                return None
+            # unsupported prepositions like "with" not allowed
+            item = self._build_social_entity(item_tokens)
+            target = self._build_social_entity(target_tokens)
+            if not item or not target:
+                return None
+            return {"intent": "USE_ON", "data": {"item": item, "target": target}}
+
+        if "with" in remainder:
+            return None
+
+        item = self._build_social_entity(remainder)
+        if not item:
+            return None
+        return {"intent": "USE", "data": {"item": item}}
+
+    def _detect_magic_command(self, sanitized: str) -> Dict[str, Any] | None:
+        tokens = sanitized.split()
+        if not tokens:
+            return None
+
+        verb = tokens[0]
+        remainder = tokens[1:]
+
+        if verb in CAST_VERBS:
+            if not remainder:
+                return None
+            split_idx = len(remainder)
+            for prep in ("on", "at"):
+                if prep in remainder:
+                    split_idx = remainder.index(prep)
+                    break
+            if split_idx < len(remainder) and remainder[split_idx] in {"on", "at"}:
+                spell_tokens = remainder[:split_idx]
+                target_tokens = remainder[split_idx + 1 :]
+                if not spell_tokens or not target_tokens:
+                    return None
+            else:
+                spell_tokens = remainder
+                target_tokens = []
+            spell = self._build_social_entity(spell_tokens)
+            target = (
+                self._build_social_entity(target_tokens) if target_tokens else None
+            )
+            if not spell:
+                return None
+            data: Dict[str, Any] = {"spell": spell}
+            if target:
+                data["target"] = target
+            return {"intent": "CAST", "data": data}
+
+        if verb in CHANNEL_VERBS:
+            if not remainder:
+                return None
+            power = self._build_social_entity(remainder)
+            if not power:
+                return None
+            return {"intent": "CHANNEL", "data": {"power": power}}
+
+        if verb in SUMMON_VERBS:
+            if not remainder:
+                return None
+            entity = self._build_social_entity(remainder)
+            if not entity:
+                return None
+            return {"intent": "SUMMON", "data": {"entity": entity}}
+
+        if verb in DISMISS_VERBS:
+            if not remainder:
+                return None
+            entity = self._build_social_entity(remainder)
+            if not entity:
+                return None
+            return {"intent": "DISMISS", "data": {"entity": entity}}
+
+        if verb in ENCHANT_VERBS:
+            if not remainder:
+                return None
+            item_tokens = remainder
+            effect_tokens: list[str] = []
+            if "with" in remainder:
+                idx = remainder.index("with")
+                item_tokens = remainder[:idx]
+                effect_tokens = remainder[idx + 1 :]
+                if not item_tokens:
+                    return None
+            item = self._build_social_entity(item_tokens)
+            effect = (
+                self._build_social_entity(effect_tokens) if effect_tokens else None
+            )
+            if not item:
+                return None
+            data: Dict[str, Any] = {"item": item}
+            if effect:
+                data["effect"] = effect
+            return {"intent": "ENCHANT", "data": data}
+
+        if verb in IDENTIFY_VERBS:
+            if not remainder:
+                return None
+            target = self._build_social_entity(remainder)
+            if not target:
+                return None
+            return {"intent": "IDENTIFY", "data": {"target": target}}
+
+        if verb in BLESS_VERBS:
+            if not remainder:
+                return None
+            target = self._build_social_entity(remainder)
+            if not target:
+                return None
+            return {"intent": "BLESS", "data": {"target": target}}
+
+        if verb in CURSE_VERBS:
+            if not remainder:
+                return None
+            target = self._build_social_entity(remainder)
+            if not target:
+                return None
+            return {"intent": "CURSE", "data": {"target": target}}
+
+        if verb in TRANSMUTE_VERBS:
+            if "into" in remainder:
+                idx = remainder.index("into")
+            elif "to" in remainder:
+                idx = remainder.index("to")
+            else:
+                return None
+            from_tokens = remainder[:idx]
+            to_tokens = remainder[idx + 1 :]
+            if not from_tokens or not to_tokens:
+                return None
+            from_item = self._build_social_entity(from_tokens)
+            to_item = self._build_social_entity(to_tokens)
+            if not from_item or not to_item:
+                return None
+            return {"intent": "TRANSMUTE", "data": {"from": from_item, "to": to_item}}
+
+        if verb in INVOKE_VERBS:
+            if not remainder:
+                return None
+            name = self._build_social_entity(remainder)
+            if not name:
+                return None
+            return {"intent": "RITUAL", "data": {"name": name}}
+
+        if verb == PERFORM_RITUAL_VERB:
+            if len(tokens) < 3 or tokens[1] != "ritual":
+                return None
+            name_tokens = tokens[2:]
+            name = self._build_social_entity(name_tokens)
+            if not name:
+                return None
+            return {"intent": "RITUAL", "data": {"name": name}}
+
+        return None
+
     def _detect_stealth_command(self, sanitized: str) -> Dict[str, Any] | None:
         tokens = sanitized.split()
         if not tokens:
@@ -690,3 +1363,4 @@ class NLPCommandParserV2:
         return payload
 READ_VERBS = {"read"}
 SCAN_VERBS = {"scan"}
+WAIT_VERBS = {"wait"}

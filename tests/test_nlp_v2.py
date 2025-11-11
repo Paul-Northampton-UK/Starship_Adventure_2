@@ -196,7 +196,6 @@ def test_v2_access_missing_target(v2_parser):
         ("save", "SAVE"),
         ("load", "LOAD"),
         ("quit", "QUIT"),
-        ("exit", "QUIT"),
     ],
 )
 def test_v2_system_single_word(v2_parser, text, intent):
@@ -210,7 +209,6 @@ def test_v2_system_single_word(v2_parser, text, intent):
     [
         ("save game", "SAVE"),
         ("load game", "LOAD"),
-        ("exit now", "QUIT"),
         ("please help", "HELP"),
     ],
 )
@@ -610,3 +608,384 @@ def test_v2_stealth_adapter_targets():
     )
     assert disarm.intent == CommandIntent.DISARM_TRAP
     assert disarm.target == "laser trap"
+
+
+@pytest.mark.parametrize(
+    ("text", "intent", "expected"),
+    [
+        ("craft medkit", "CRAFT", {"item": "medkit"}),
+        ("make advanced medkit", "CRAFT", {"item": "advanced medkit"}),
+        ("build shelter", "CRAFT", {"item": "shelter"}),
+        ("combine herb with solvent", "COMBINE", {"item_a": "herb", "item_b": "solvent"}),
+        ("gather berries", "GATHER", {"resource": "berries"}),
+        ("harvest rare fungus", "GATHER", {"resource": "rare fungus"}),
+    ],
+)
+def test_v2_crafting_positive(v2_parser, text, intent, expected):
+    result = v2_parser.parse(text)
+    assert result["intent"] == intent
+    assert result["data"] == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "craft",
+        "combine herb and solvent",
+        "combine herb",
+        "gather",
+    ],
+)
+def test_v2_crafting_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
+
+
+def test_v2_crafting_adapter_fields():
+    loop = GameLoop.__new__(GameLoop)
+    craft = loop._adapt_v2_result(
+        {"intent": "CRAFT", "data": {"item": "medkit"}},
+        "craft medkit",
+    )
+    assert craft.intent == CommandIntent.CRAFT
+    assert craft.target == "medkit"
+
+    combine = loop._adapt_v2_result(
+        {"intent": "COMBINE", "data": {"item_a": "herb", "item_b": "solvent"}},
+        "combine herb with solvent",
+    )
+    assert combine.intent == CommandIntent.COMBINE
+    assert combine.target == "herb"
+    assert combine.secondary_target == "solvent"
+
+
+@pytest.mark.parametrize(
+    ("text", "intent", "expected"),
+    [
+        ("cast fireball", "CAST", {"spell": "fireball"}),
+        ("cast shield on ally", "CAST", {"spell": "shield", "target": "ally"}),
+        ("channel arcane energy", "CHANNEL", {"power": "arcane energy"}),
+        ("summon spirit wolf", "SUMMON", {"entity": "spirit wolf"}),
+        ("dismiss spirit wolf", "DISMISS", {"entity": "spirit wolf"}),
+        ("enchant sword", "ENCHANT", {"item": "sword"}),
+        ("enchant sword with flame", "ENCHANT", {"item": "sword", "effect": "flame"}),
+        ("identify artifact", "IDENTIFY", {"target": "artifact"}),
+        ("bless warrior", "BLESS", {"target": "warrior"}),
+        ("curse intruder", "CURSE", {"target": "intruder"}),
+        ("transmute lead into gold", "TRANSMUTE", {"from": "lead", "to": "gold"}),
+        ("invoke celestial rite", "RITUAL", {"name": "celestial rite"}),
+        ("perform ritual sealing", "RITUAL", {"name": "sealing"}),
+    ],
+)
+def test_v2_magic_positive(v2_parser, text, intent, expected):
+    result = v2_parser.parse(text)
+    assert result["intent"] == intent
+    assert result["data"] == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "cast",
+        "cast on enemy",
+        "channel",
+        "summon",
+        "dismiss",
+        "enchant",
+        "enchant with fire",
+        "identify",
+        "bless",
+        "curse",
+        "transmute lead",
+        "transmute into gold",
+        "invoke",
+        "perform ritual",
+        "perform circle binding",  # missing 'ritual'
+    ],
+)
+def test_v2_magic_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
+
+
+def test_v2_magic_adapter_fields():
+    loop = GameLoop.__new__(GameLoop)
+    cast = loop._adapt_v2_result(
+        {"intent": "CAST", "data": {"spell": "fireball", "target": "goblin"}},
+        "cast fireball at goblin",
+    )
+    assert cast.intent == CommandIntent.CAST
+    assert cast.target == "fireball"
+    assert cast.secondary_target == "goblin"
+
+    enchant = loop._adapt_v2_result(
+        {"intent": "ENCHANT", "data": {"item": "sword", "effect": "flame"}},
+        "enchant sword with flame",
+    )
+    assert enchant.intent == CommandIntent.ENCHANT
+    assert enchant.target == "sword"
+    assert enchant.secondary_target == "flame"
+
+    transmute = loop._adapt_v2_result(
+        {"intent": "TRANSMUTE", "data": {"from": "lead", "to": "gold"}},
+        "transmute lead into gold",
+    )
+    assert transmute.intent == CommandIntent.TRANSMUTE
+    assert transmute.target == "lead"
+    assert transmute.secondary_target == "gold"
+
+
+@pytest.mark.parametrize(
+    ("text", "intent", "item", "target"),
+    [
+        ("throw rock", "THROW", "rock", None),
+        ("throw rock at guard", "THROW", "rock", "guard"),
+        ("throw heavy stone at drone", "THROW", "heavy stone", "drone"),
+        ("catch ball", "CATCH", "ball", None),
+        ("catch power cell", "CATCH", "power cell", None),
+    ],
+)
+def test_v2_throw_catch_positive(v2_parser, text, intent, item, target):
+    result = v2_parser.parse(text)
+    assert result["intent"] == intent
+    data = result["data"]
+    assert data["item"] == item
+    if target is None:
+        assert "target" not in data
+    else:
+        assert data["target"] == target
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "throw",
+        "throw it",
+        "throw rock to guard",
+        "catch",
+        "catch it",
+    ],
+)
+def test_v2_throw_catch_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
+
+
+def test_v2_throw_catch_adapter_fields():
+    loop = GameLoop.__new__(GameLoop)
+    throw_intent = loop._adapt_v2_result(
+        {"intent": "THROW", "data": {"item": "rock", "target": "guard"}},
+        "throw rock at guard",
+    )
+    assert throw_intent.intent == CommandIntent.THROW
+    assert throw_intent.target == "rock"
+    assert throw_intent.secondary_target == "guard"
+
+    catch_intent = loop._adapt_v2_result(
+        {"intent": "CATCH", "data": {"item": "ball"}},
+        "catch ball",
+    )
+    assert catch_intent.intent == CommandIntent.CATCH
+    assert catch_intent.target == "ball"
+
+
+@pytest.mark.parametrize(
+    ("text", "intent", "item", "target"),
+    [
+        ("use keycard", "USE", "keycard", None),
+        ("use access card", "USE", "access card", None),
+        ("use keycard on door", "USE_ON", "keycard", "door"),
+        ("USE   the   multitool", "USE", "multitool", None),
+        ("use   the   keycard   on   the   control panel", "USE_ON", "keycard", "control panel"),
+    ],
+)
+def test_v2_use_positive(v2_parser, text, intent, item, target):
+    result = v2_parser.parse(text)
+    assert result["intent"] == intent
+    data = result["data"]
+    assert data["item"] == item
+    if intent == "USE_ON":
+        assert data["target"] == target
+    else:
+        assert "target" not in data
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "use",
+        "use it",
+        "use keycard with door",
+    ],
+)
+def test_v2_use_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
+
+
+def test_v2_use_adapter_fields():
+    loop = GameLoop.__new__(GameLoop)
+    use_intent = loop._adapt_v2_result(
+        {"intent": "USE", "data": {"item": "keycard"}},
+        "use keycard",
+    )
+    assert use_intent.intent == CommandIntent.USE
+    assert use_intent.target == "keycard"
+
+    use_on_intent = loop._adapt_v2_result(
+        {"intent": "USE_ON", "data": {"item": "keycard", "target": "door"}},
+        "use keycard on door",
+    )
+    assert use_on_intent.intent == CommandIntent.USE_ON
+    assert use_on_intent.target == "keycard"
+    assert use_on_intent.secondary_target == "door"
+
+
+@pytest.mark.parametrize(
+    ("text", "intent", "place"),
+    [
+        ("enter", "ENTER", None),
+        ("enter airlock", "ENTER", "airlock"),
+        ("enter the maintenance hatch", "ENTER", "maintenance hatch"),
+        ("exit", "EXIT", None),
+        ("exit bridge", "EXIT", "bridge"),
+        ("leave the control room", "EXIT", "control room"),
+    ],
+)
+def test_v2_enter_exit_positive(v2_parser, text, intent, place):
+    result = v2_parser.parse(text)
+    assert result["intent"] == intent
+    data = result["data"]
+    if place is None:
+        assert data == {}
+    else:
+        assert data["place"] == place
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "enter it",
+        "enter through hatch",
+        "exit it",
+        "leave through hatch",
+    ],
+)
+def test_v2_enter_exit_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
+
+
+@pytest.mark.parametrize(
+    ("text", "direction"),
+    [
+        ("swim", None),
+        ("swim north", "north"),
+        ("swim south", "south"),
+        ("swim up", "up"),
+        ("swim down", "down"),
+        ("swim forward", "forward"),
+        ("swim back", "backward"),
+        ("SWIM   EAST", "east"),
+    ],
+)
+def test_v2_swim_positive(v2_parser, text, direction):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "SWIM"
+    if direction is None:
+        assert result["data"] == {}
+    else:
+        assert result["data"]["direction"] == direction
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "swim it",
+        "swim sideways",
+        "swim north fast",
+    ],
+)
+def test_v2_swim_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
+
+
+def test_v2_swim_adapter_fields():
+    loop = GameLoop.__new__(GameLoop)
+    parsed = loop._adapt_v2_result(
+        {"intent": "SWIM", "data": {"direction": "north"}},
+        "swim north",
+    )
+    assert parsed.intent == CommandIntent.SWIM
+    assert parsed.direction == "north"
+
+
+@pytest.mark.parametrize(
+    ("text", "data"),
+    [
+        ("search", {"scope": "room"}),
+        ("search room", {"scope": "room"}),
+        ("search area", {"scope": "room"}),
+        ("search cabinet", {"object": "cabinet"}),
+        ("search storage locker", {"object": "storage locker"}),
+        ("SEARCH   the   room", {"scope": "room"}),
+        ("search   the   storage locker", {"object": "storage locker"}),
+    ],
+)
+def test_v2_search_positive(v2_parser, text, data):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "SEARCH"
+    assert result["data"] == data
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "search it",
+        "search in locker",
+        "search inside room",
+    ],
+)
+def test_v2_search_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
+
+
+def test_v2_search_adapter_fields():
+    loop = GameLoop.__new__(GameLoop)
+    scope_intent = loop._adapt_v2_result(
+        {"intent": "SEARCH", "data": {"scope": "room"}},
+        "search room",
+    )
+    assert scope_intent.intent == CommandIntent.SEARCH
+    assert scope_intent.preposition == "room"
+    assert scope_intent.target is None
+
+    object_intent = loop._adapt_v2_result(
+        {"intent": "SEARCH", "data": {"object": "locker"}},
+        "search locker",
+    )
+    assert object_intent.intent == CommandIntent.SEARCH
+    assert object_intent.target == "locker"
+
+
+@pytest.mark.parametrize("text", ["wait", "wait a moment", "wait here", "WAIT  awhile"])
+def test_v2_wait_positive(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "WAIT"
+    assert result["data"] == {}
+
+
+@pytest.mark.parametrize("text", ["wait it", "wait the door"])
+def test_v2_wait_invalid(v2_parser, text):
+    result = v2_parser.parse(text)
+    assert result["intent"] == "UNKNOWN"
+    assert result["data"] == {}
