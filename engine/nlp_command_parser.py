@@ -43,7 +43,7 @@ LOOK_PRIORITY_KEYWORDS = ("look", "examine", "inspect", "view", "observe")
 LOOK_VERBS = {"look", "examine", "inspect", "check"}
 TAKE_KEYWORDS = {"take", "grab", "collect"}
 MOVE_VERBS = {"move", "go", "walk", "run", "head", "float", "drift"}
-COMBAT_VERBS = {"attack", "hit", "strike", "shoot", "punch", "kick", "fight", "kill", "stab", "blast", "engage"}
+COMBAT_VERBS = {"attack", "hit", "strike", "shoot", "punch", "kick", "fight", "kill", "stab", "blast"}
 MANIPULATE_PRIORITY_VERBS = {
     "push",
     "pull",
@@ -59,12 +59,15 @@ MANIPULATE_PRIORITY_VERBS = {
     "disengage",
 }
 MANIPULATE_VERBS = set(MANIPULATE_PRIORITY_VERBS) | {"open", "close", "turn", "lock", "unlock"}
+CLIMB_VERBS = {"climb", "scale", "ascend", "descend"}
+CLIMB_HINTS = {"ladder"}
 EQUIP_PRIORITY_VERBS = {"equip", "wear", "put", "don", "ready"}
 SEARCH_VERBS = {"search", "find", "locate", "seek", "probe", "detect", "discover", "track", "scout", "hunt"}
-COMMUNICATE_VERBS = {"talk", "speak", "say", "chat", "converse", "contact", "hail", "transmit", "broadcast", "ask", "tell"}
+COMMUNICATE_VERBS = {"talk", "speak", "say", "ask", "tell", "converse", "contact", "hail", "transmit", "broadcast"}
 SOCIAL_VERBS = {"give", "show", "trade", "follow", "greet", "salute", "wave", "gesture", "signal"}
-ENVIRONMENT_VERBS = {"dig", "cut", "burn", "pour", "light", "extinguish", "fill", "break", "smash", "destroy", "shatter"}
-GATHER_INFO_VERBS = {"read", "listen", "smell", "touch", "taste", "study", "analyze", "monitor", "review", "scan", "status", "diagnose", "readout"}
+ENVIRONMENT_VERBS = {"dig", "cut", "burn", "pour", "light", "extinguish", "fill", "break", "smash", "destroy", "shatter",
+                     "listen", "smell", "sniff", "feel", "observe"}
+GATHER_INFO_VERBS = {"read", "listen", "smell", "touch", "taste", "study", "analyze", "monitor", "review", "scan", "status", "diagnostics", "readout"}
 EQUIP_VERBS = {"equip", "wear", "remove", "unequip", "wield", "hold", "put", "don", "ready", "power", "charge"}
 TIME_VERBS = {"wait", "rest", "sleep", "pause", "meditate", "nap", "stop", "delay", "hold", "standby"}
 INVENTORY_KEYWORDS = {"inventory", "inv", "items", "item", "backpack", "bag"}
@@ -136,6 +139,12 @@ SINGLE_LETTER_INTENTS: dict[str, CommandIntent] = {
     "q": CommandIntent.QUIT,
     "i": CommandIntent.INVENTORY,
     "h": CommandIntent.HELP,
+    "?": CommandIntent.HELP,
+}
+SYSTEM_COMMANDS: dict[str, CommandIntent] = {
+    "save": CommandIntent.SAVE,
+    "load": CommandIntent.LOAD,
+    "help": CommandIntent.HELP,
     "?": CommandIntent.HELP,
 }
 DIRECTION_KEYWORDS: dict[str, str] = {
@@ -397,6 +406,14 @@ class NLPCommandParser:
                                 confidence=1.0,
                                 target="")
 
+        system_intent = SYSTEM_COMMANDS.get(stripped)
+        if system_intent is not None:
+            return ParsedIntent(intent=system_intent,
+                                action=stripped,
+                                original_input=command_original_case,
+                                confidence=1.0,
+                                target=None)
+
         if self._is_inventory_request(stripped) or (contains_inventory_reference and not contains_equip_reference):
             return self._build_inventory_intent(command_original_case)
 
@@ -461,6 +478,36 @@ class NLPCommandParser:
             target_phrase = self._extract_communicate_target(command_lower)
             return ParsedIntent(intent=CommandIntent.COMMUNICATE,
                                 action=first_word_lower,
+                                original_input=command_original_case,
+                                confidence=1.0,
+                                target=target_phrase or None)
+
+        # Environment
+        env_action = self._environment_action(first_word_lower, stripped)
+        if env_action:
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
+            return ParsedIntent(intent=CommandIntent.ENVIRONMENT,
+                                action=env_action,
+                                original_input=command_original_case,
+                                confidence=1.0,
+                                target=target_phrase or None)
+
+        # Gather info
+        gather_action = self._gather_info_action(first_word_lower, stripped)
+        if gather_action:
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
+            return ParsedIntent(intent=CommandIntent.GATHER_INFO,
+                                action=gather_action,
+                                original_input=command_original_case,
+                                confidence=1.0,
+                                target=target_phrase or None)
+
+        # Climb
+        climb_action = self._climb_action(first_word_lower, tokens_for_match)
+        if climb_action:
+            target_phrase = self._clean_target_phrase(self._extract_target_after_verb(command_lower))
+            return ParsedIntent(intent=CommandIntent.CLIMB,
+                                action=climb_action,
                                 original_input=command_original_case,
                                 confidence=1.0,
                                 target=target_phrase or None)
@@ -824,6 +871,38 @@ class NLPCommandParser:
         return stripped.startswith("put on ")
 
     @staticmethod
+    def _environment_action(first_word: str, stripped: str) -> str | None:
+        lowered = stripped.lower()
+        if lowered.startswith("look around"):
+            return "observe"
+        if "observe surroundings" in lowered:
+            return "observe"
+        if first_word in ENVIRONMENT_VERBS:
+            return first_word
+        return None
+
+    @staticmethod
+    def _gather_info_action(first_word: str, stripped: str) -> str | None:
+        lowered = stripped.lower()
+        if lowered.startswith("check logs"):
+            return "check"
+        if first_word in GATHER_INFO_VERBS:
+            return first_word
+        for keyword in ("diagnostics", "status", "readout"):
+            if keyword in lowered:
+                return keyword
+        return None
+
+    @staticmethod
+    def _climb_action(first_word: str, tokens: list[str]) -> str | None:
+        if first_word in CLIMB_VERBS:
+            return first_word
+        token_set = set(tokens)
+        if token_set & CLIMB_HINTS:
+            return "climb"
+        return None
+
+    @staticmethod
     def _is_search_command(first_word: str, stripped: str) -> bool:
         if first_word in SEARCH_VERBS:
             return True
@@ -919,12 +998,6 @@ class NLPCommandParser:
             return False
         value = target.lower()
         return any(hint in value for hint in COMBAT_OBJECT_HINTS)
-
-    @staticmethod
-    def _contains_time_reference(tokens: list[str]) -> bool:
-        if not tokens:
-            return False
-        return any(token in TIME_VERBS for token in tokens)
 
     @staticmethod
     def _get_time_action(first_word: str, tokens: list[str]) -> str | None:

@@ -220,8 +220,27 @@ def handle_quit(game_state: GameState, parsed_intent: ParsedIntent) -> None:
     """Handles the QUIT command intent. Returns None to signal quit."""
     return None
 
+
+def handle_help(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
+    """Handles HELP by returning a lightweight overview message."""
+    logger.info("[handle_help] Providing basic help summary.")
+    return [{'key': "system_help", 'data': {}}]
+
+
+def handle_save(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
+    """Handles SAVE (placeholder acknowledgement)."""
+    logger.info("[handle_save] Save command acknowledged (no-op).")
+    return [{'key': "system_save_placeholder", 'data': {}}]
+
+
+def handle_load(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
+    """Handles LOAD (placeholder acknowledgement)."""
+    logger.info("[handle_load] Load command acknowledged (no-op).")
+    return [{'key': "system_load_placeholder", 'data': {}}]
+
+
 def handle_unknown(game_state: GameState, parsed_intent: ParsedIntent) -> list[dict]:
     """Handles unrecognized commands."""
     logger.info(f"Unknown command received: '{parsed_intent.original_input}'")
     # Return List[Dict]
-    return [{'key': "invalid_command", 'data': {}}] 
+    return [{'key': "invalid_command", 'data': {}}]

@@ -1,6 +1,13 @@
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 class WearArea(str, Enum):
@@ -131,7 +138,8 @@ class ObjectCategory(str, Enum):
     TOOL = "tool"
     CONSUMABLE = "consumable"
     KEY_ITEM = "key_item"
-    DECORATIVE = "decorative"
+    DECORATIVE = "DECORATIVE"
+    decorative = "DECORATIVE"  # Alias to accept lowercase values from YAML
     READABLE = "readable"
     EQUIPMENT = "equipment"
     CLOTHING = "clothing"
@@ -200,6 +208,10 @@ class ObjectProperties(BaseModel):
     is_buoyant: bool = False
     is_conductive: bool = False
     is_magnetic: bool = False
+
+    # --- Consumable details ---
+    charges: int | None = Field(default=None, ge=0)
+    effects: list[str] = Field(default_factory=list)
     
     # --- Social & Ownership Properties ---
     is_owned: bool = False
@@ -214,7 +226,7 @@ class ObjectProperties(BaseModel):
     range: float | None = None
     digital_content: dict[str, str] | None = {}
     
-    @field_validator('storage_capacity', 'damage', 'durability', 'range', 'wear_layer')
+    @field_validator('storage_capacity', 'damage', 'durability', 'range', 'wear_layer', 'charges')
     @classmethod
     def validate_non_negative(cls, v: float | int | None) -> float | int | None:
         if v is not None and v < 0:
@@ -226,9 +238,31 @@ class ObjectInteraction(BaseModel):
     required_state: list[str] = Field(default_factory=list)
     required_items: list[str] = Field(default_factory=list)
     primary_actions: list[str] = Field(default_factory=list)
-    effects: dict[str, str] = Field(default_factory=dict)
+    effects: list[str] = Field(default_factory=list)
     success_message: str | None = None
     failure_message: str | None = None
+
+class ConsumableProperties(BaseModel):
+    """Structured data for consumable-only behaviour"""
+    charges: int = Field(default=1, ge=0)
+    effects: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("effects", "effect"),
+    )
+    potency: float | None = Field(default=None)
+    value: float | None = Field(default=None)
+    cooldown: float | None = Field(default=None, ge=0)
+
+    @field_validator("effects", mode="before")
+    @classmethod
+    def normalize_effects(cls, value: str | list[str] | None) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return value
+        raise TypeError("effects must be a string or list of strings")
 
 class Object(BaseModel):
     """Main object schema, updated to be more flexible"""
@@ -248,6 +282,7 @@ class Object(BaseModel):
     
     properties: ObjectProperties = Field(default_factory=ObjectProperties)
     interaction: ObjectInteraction = Field(default_factory=ObjectInteraction)
+    consumable: ConsumableProperties | None = None
     
     # Power and state, often optional
     power_state: str | None = None
@@ -306,3 +341,21 @@ class Object(BaseModel):
             if v not in valid_types:
                 raise ValueError(f"lock_type must be one of {valid_types}")
         return v
+
+    @model_validator(mode="after")
+    def enforce_consumable_requirements(self) -> "Object":
+        if self.category == ObjectCategory.CONSUMABLE:
+            if self.consumable is None:
+                fallback_charges = (
+                    self.properties.charges if self.properties.charges is not None else 1
+                )
+                fallback_effects = self.interaction.effects or []
+                self.consumable = ConsumableProperties(
+                    charges=fallback_charges,
+                    effects=fallback_effects,
+                )
+            return self
+
+        if self.consumable is not None:
+            raise ValueError("Only consumable objects can define consumable data")
+        return self

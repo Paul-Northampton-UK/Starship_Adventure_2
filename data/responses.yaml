@@ -528,3 +528,99 @@ move_fail_no_direction: # Added new response key
   - "Where are you trying to go? Please specify a direction or a valid area."
   - "You'll need to specify a direction (like north, south, up) or a known area name to move."
   - "Go where?"
+
+# --- System Commands ---
+system_help:
+  - "Core commands: LOOK, INVENTORY, TAKE or DROP <item>, MOVE <direction>, OPEN/CLOSE <object>, SAVE, LOAD, QUIT."
+  - "Try verbs like LOOK, MOVE north/south/east/west, TAKE items, or SAVE/LOAD/QUIT to manage your session."
+
+system_save_placeholder:
+  - "Saving isn't available in this build yet, but the command was recognized."
+  - "Save noted. This preview build does not persist progress yet."
+
+system_load_placeholder:
+  - "Loading previous saves isn't implemented yet, but the command was recognized."
+  - "Load acknowledged. No save data can be restored in this build."
+
+# --- Social Commands ---
+social_talk_placeholder:
+  - "You try to spark up a chat with {npc_name}, but the crew politely nods and carries on."
+  - "You attempt to converse with {npc_name}, but the detailed dialogue system isn't online yet."
+
+social_ask_placeholder:
+  - "You ask {npc_name} about {topic}, making a mental note to follow up when the intel systems return."
+  - "{npc_name} listens to your questions about {topic}, but no new data comes through."
+
+social_give_placeholder:
+  - "You offer the {object_name} to {npc_name}. They'll remember the gesture."
+  - "{npc_name} accepts the {object_name}, even if nothing dramatic happens just yet."
+
+social_show_placeholder:
+  - "You show the {object_name} to {npc_name}. Maybe they'll have insight once the dialogue module is complete."
+  - "{npc_name} inspects the {object_name}, but there are no scripted reactions in this build."
+
+# --- Combat Commands ---
+combat_attack_ready:
+  - "You prepare to strike."
+  - "You brace yourself for an attack."
+
+combat_attack_target:
+  - "You launch an attack on {target}."
+  - "You charge toward {target}."
+
+combat_aim_ready:
+  - "You steady your aim."
+  - "You take a breath and line up the shot."
+
+combat_aim_target:
+  - "You aim carefully at {target}."
+  - "Your sights lock onto {target}."
+
+combat_shoot:
+  - "You fire the {weapon} at {target}."
+  - "The {weapon} discharges toward {target}."
+
+combat_block:
+  - "You raise your guard to block the attack."
+  - "You brace and block the incoming blow."
+
+combat_dodge:
+  - "You dive aside, narrowly avoiding danger."
+  - "You dodge away from the threat."
+
+combat_flee:
+  - "You turn and flee from the fight."
+  - "Retreat! You sprint away to safety."
+
+combat_reload:
+  - "You reload the {weapon} with {ammo}."
+  - "Fresh {ammo} slides into the {weapon}."
+
+combat_unload:
+  - "You unload the {weapon} and secure the contents."
+  - "You remove the ammo from the {weapon}."
+
+combat_check_ammo:
+  - "You check your ammo reserves."
+  - "You verify how much ammunition you have left."
+
+combat_check_weapon:
+  - "You inspect the {target}."
+  - "You check the {target} for readiness."
+
+# --- Stealth Commands ---
+stealth_sneak:
+  - "You move quietly, trying not to draw attention."
+  - "You attempt to sneak through the shadows."
+
+stealth_hide:
+  - "You duck out of sight, blending with the surroundings."
+  - "You find a spot to hide and stay still."
+
+stealth_pickpocket:
+  - "You carefully pickpocket {npc}."
+  - "Your hand slips toward {npc}'s belongings."
+
+stealth_disarm_trap:
+  - "You work to disarm the {trap}."
+  - "You carefully disable the {trap}."

@@ -13,7 +13,7 @@ def handle_equip(game_state: GameState, parsed_intent: ParsedIntent) -> list[dic
     target_item_name = parsed_intent.target
     action_verb = parsed_intent.action or "" # Get action from intent
     # Define verbs that mean 'wear' vs 'remove'
-    wear_verbs = {"wear", "equip", "don", "puton", "put"} # Added "put"
+    wear_verbs = {"wear", "equip", "don", "puton", "put", "wield"} # Added "put" and "wield"
     remove_verbs = {"remove", "unequip", "doff", "takeoff", "take"} # Added "take"
 
     logger.debug(f"[handle_equip] Target: '{target_item_name}', Action: '{action_verb}'")

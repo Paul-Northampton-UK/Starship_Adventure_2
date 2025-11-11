@@ -58,9 +58,9 @@ Verbs:
     Intent: CommandIntent.QUIT
 
   - bye
-    Action: bye
-    Target: 
-    Intent: CommandIntent.QUIT
+    Action: None
+    Target: None
+    Intent: CommandIntent.UNKNOWN
 
   - logout
     Action: logout
@@ -85,7 +85,7 @@ Verbs:
 
   - help
     Action: help
-    Target: 
+    Target: None
     Intent: CommandIntent.HELP
 
   - ?
@@ -94,9 +94,9 @@ Verbs:
     Intent: CommandIntent.HELP
 
   - commands
-    Action: commands
-    Target: 
-    Intent: CommandIntent.HELP
+    Action: None
+    Target: None
+    Intent: CommandIntent.UNKNOWN
 
   - tutorial
     Action: tutorial
@@ -356,12 +356,12 @@ Targets:
   - alien
     Action: talk
     Target: alien
-    Intent: CommandIntent.COMBAT
+    Intent: CommandIntent.COMMUNICATE
 
   - robot
     Action: talk
     Target: robot
-    Intent: CommandIntent.COMBAT
+    Intent: CommandIntent.COMMUNICATE
 
   - android
     Action: talk
@@ -397,7 +397,7 @@ Complex Commands:
   - hail the alien ship
     Action: hail
     Target: alien
-    Intent: CommandIntent.COMBAT
+    Intent: CommandIntent.COMMUNICATE
 
   - contact engineering
     Action: contact
@@ -411,7 +411,7 @@ Complex Commands:
 
   - broadcast message to all stations
     Action: broadcast
-    Target: message
+    Target: all stations
     Intent: CommandIntent.COMMUNICATE
 
 
@@ -463,7 +463,7 @@ Verbs:
   - engage
     Action: engage
     Target: None
-    Intent: CommandIntent.COMBAT
+    Intent: CommandIntent.MANIPULATE
 
   - neutralize
     Action: neutralize
@@ -595,19 +595,19 @@ Verbs:
 
 Targets:
   - console
-    Action: manipulate
+    Action: search
     Target: console
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.SEARCH
 
   - panel
-    Action: manipulate
+    Action: search
     Target: panel
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.SEARCH
 
   - terminal
-    Action: manipulate
+    Action: search
     Target: terminal
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.SEARCH
 
   - device
     Action: search
@@ -663,7 +663,7 @@ Verbs:
   - unlock
     Action: unlock
     Target: None
-    Intent: CommandIntent.USE
+    Intent: CommandIntent.MANIPULATE
 
   - push
     Action: push
@@ -698,7 +698,7 @@ Verbs:
   - engage
     Action: engage
     Target: None
-    Intent: CommandIntent.COMBAT
+    Intent: CommandIntent.MANIPULATE
 
   - disengage
     Action: disengage
@@ -770,7 +770,7 @@ Verbs:
   - jump
     Action: jump
     Target: None
-    Intent: CommandIntent.CLIMB
+    Intent: CommandIntent.MANIPULATE
 
   - crawl
     Action: crawl
@@ -932,12 +932,12 @@ Objects:
 
   - data pad
     Action: give
-    Target: data pad
+    Target: pad
     Intent: CommandIntent.SOCIAL
 
   - access card
     Action: give
-    Target: access card
+    Target: card
     Intent: CommandIntent.SOCIAL
 
   - credits
@@ -1018,19 +1018,19 @@ Objects:
     Intent: CommandIntent.ENVIRONMENT
 
   - panel
-    Action: manipulate
+    Action: dig
     Target: panel
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.ENVIRONMENT
 
   - console
-    Action: manipulate
+    Action: dig
     Target: console
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.ENVIRONMENT
 
   - terminal
-    Action: manipulate
+    Action: dig
     Target: terminal
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.ENVIRONMENT
 
   - system
     Action: dig
@@ -1081,12 +1081,12 @@ Verbs:
   - listen
     Action: listen
     Target: None
-    Intent: CommandIntent.GATHER_INFO
+    Intent: CommandIntent.ENVIRONMENT
 
   - smell
     Action: smell
     Target: None
-    Intent: CommandIntent.GATHER_INFO
+    Intent: CommandIntent.ENVIRONMENT
 
   - touch
     Action: touch
@@ -1109,9 +1109,9 @@ Verbs:
     Intent: CommandIntent.GATHER_INFO
 
   - scan
-    Action: look
+    Action: scan
     Target: None
-    Intent: CommandIntent.LOOK
+    Intent: CommandIntent.GATHER_INFO
 
   - monitor
     Action: monitor
@@ -1145,14 +1145,14 @@ Objects:
     Intent: CommandIntent.GATHER_INFO
 
   - terminal
-    Action: manipulate
+    Action: read
     Target: terminal
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.GATHER_INFO
 
   - console
-    Action: manipulate
+    Action: read
     Target: console
-    Intent: CommandIntent.MANIPULATE
+    Intent: CommandIntent.GATHER_INFO
 
   - hologram
     Action: read
@@ -1181,7 +1181,7 @@ Verbs:
     Intent: CommandIntent.EQUIP
 
   - wear
-    Action: equip
+    Action: wear
     Target: None
     Intent: CommandIntent.EQUIP
 
@@ -1203,7 +1203,7 @@ Verbs:
   - hold
     Action: hold
     Target: None
-    Intent: CommandIntent.EQUIP
+    Intent: CommandIntent.TIME
 
   - power
     Action: power
@@ -1289,37 +1289,37 @@ Verbs:
 
   - pause
     Action: pause
-    Target: 
+    Target: None
     Intent: CommandIntent.TIME
 
   - meditate
     Action: meditate
-    Target: 
+    Target: None
     Intent: CommandIntent.TIME
 
   - nap
     Action: nap
-    Target: 
+    Target: None
     Intent: CommandIntent.TIME
 
   - stop
     Action: stop
-    Target: 
+    Target: None
     Intent: CommandIntent.TIME
 
   - delay
     Action: delay
-    Target: 
+    Target: None
     Intent: CommandIntent.TIME
 
   - hold
     Action: hold
     Target: None
-    Intent: CommandIntent.EQUIP
+    Intent: CommandIntent.TIME
 
   - standby
     Action: standby
-    Target: 
+    Target: None
     Intent: CommandIntent.TIME
 
 
