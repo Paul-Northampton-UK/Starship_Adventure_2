@@ -285,17 +285,36 @@ class GameState:
         """Get the value of a game flag."""
         return self.game_flags.get(flag, False)
 
-    def move_to_room(self, room_id: str) -> None:
-        """Move the player to a new room and clears the current area."""
-        self.current_room_id = room_id
-        # self.visit_room(room_id) # Removed: Visiting is handled by description logic
-        # Clear current area when changing rooms
-        self.current_area_id = None
+    def move_to_room(self, room_id: str) -> bool:
+        """Move the player to a new room, track the visit, and report success."""
+        if not isinstance(room_id, str):
+            logger.error("move_to_room expected a string room_id, got %r", room_id)
+            return False
 
-    def move_to_area(self, area_id: str) -> None:
-        """Move the player to a new area within the current room."""
-        self.current_area_id = area_id
-        # self.visit_area(area_id) # Removed: Visiting is handled by description logic
+        target_room = room_id.strip()
+        if not target_room:
+            logger.error("move_to_room received an empty room identifier.")
+            return False
+
+        self.current_room_id = target_room
+        self.current_area_id = None  # Leaving the room clears any area focus.
+        self.visit_room(target_room)
+        return True
+
+    def move_to_area(self, area_id: str) -> bool:
+        """Move the player to a new area within the current room and mark it visited."""
+        if not isinstance(area_id, str):
+            logger.error("move_to_area expected a string area_id, got %r", area_id)
+            return False
+
+        target_area = area_id.strip()
+        if not target_area:
+            logger.error("move_to_area received an empty area identifier.")
+            return False
+
+        self.current_area_id = target_area
+        self.visit_area(target_area)
+        return True
 
     def get_current_location(self) -> tuple[str, str | None]:
         """Get the current room and area IDs."""
@@ -371,15 +390,16 @@ class GameState:
             oxygen_change=-minutes // 60   # Lose oxygen every hour
         )
 
-    def get_object_state(self, object_id: str) -> dict[str, Any]:
+    def get_object_state(self, object_id: str) -> dict[str, Any] | None:
         """Get the current runtime state of an object, ensuring it's fully initialized."""
         base_data = self.get_object_by_id(object_id)
-        if not base_data:
-            logger.warning(f"get_object_state: Cannot find base data for '{object_id}'. Returning potentially empty state.")
-            # Ensure at least an empty dict exists in object_states before returning
-            return self.object_states.setdefault(object_id, {})
-
         current_state = self.object_states.get(object_id)
+
+        if not base_data:
+            if current_state is not None:
+                return current_state
+            logger.warning(f"get_object_state: Cannot find base data for '{object_id}'. Returning None.")
+            return None
         needs_rebuild = False
 
         # Determine required state components based on base data
@@ -490,15 +510,14 @@ class GameState:
 
         # Ensure the base state dictionary exists and is initialized using get_object_state
         # This call will perform initialization/rebuild if needed
-        _ = self.get_object_state(object_id) # Call primarily for side effect of initialization
-
-        # Check if the state dict exists after the call
-        if object_id not in self.object_states or not isinstance(self.object_states[object_id], dict):
-             logger.error(f"set_object_state: Failed to get/initialize state dict for '{object_id}' via get_object_state. Cannot set key '{state_key}'.")
-             return
+        state = self.get_object_state(object_id) # Call primarily for side effect of initialization
+        if state is None:
+            state = {}
+            self.object_states[object_id] = state
+            logger.debug(f"set_object_state: Created runtime state for '{object_id}' without base data.")
 
         # Set the specific key in the object's state dictionary
-        self.object_states[object_id][state_key] = value
+        state[state_key] = value
         logger.debug(f"Updated object state for '{object_id}': Set '{state_key}' = {value!r}")
 
     def update_object_lock_state(self, object_id: str, locked: bool) -> bool:
